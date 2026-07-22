@@ -250,19 +250,25 @@ try {
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
+  <base href="<?php echo BASE_URL; ?>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRMS Workspace Dashboard</title>
   
-  <link rel="stylesheet" href="css/design-system.css">
-  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="css/design-system.min.css">
+  <link rel="stylesheet" href="css/dashboard.min.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   
   <!-- Make variables accessible to JS modules -->
   <script>
     window.campusRecruitmentData = {
+      baseUrl: '<?php echo BASE_URL; ?>',
       students: <?php echo json_encode($students); ?>,
       companies: <?php echo json_encode($companies); ?>,
       drives: <?php echo json_encode($drives); ?>,
@@ -457,7 +463,7 @@ try {
                 My Profile
               </div>
 
-              <div class="dropdown-item danger" onclick="window.location.href='auth/logout.php'">
+              <div class="dropdown-item danger" onclick="window.location.href='<?php echo BASE_URL; ?>auth/logout.php'">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 Sign Out
               </div>
@@ -1246,7 +1252,7 @@ try {
 
   </div>
 
-  <script src="js/components.js"></script>
+  <script src="js/components.min.js" defer></script>
   
   <!-- Custom UI hooks connecting endpoints -->
   <script>
@@ -1450,6 +1456,6 @@ try {
   </script>
 
   <!-- Load client app logic -->
-  <script src="js/app.js"></script>
+  <script src="js/app.min.js" defer></script>
 </body>
 </html>

@@ -19,23 +19,53 @@ $userId = $_SESSION['user_id'];
 try {
   $db = getDB();
 
-  // Basic counters
-  $totalStudents = $db->query("SELECT COUNT(*) FROM users WHERE role='student'")->fetchColumn();
-  $pendingStudents = $db->query("SELECT COUNT(*) FROM users WHERE role='student' AND status='pending'")->fetchColumn();
-  $verifiedStudents = $db->query("SELECT COUNT(*) FROM users WHERE role='student' AND status='approved'")->fetchColumn();
-  
-  $companies = $db->query("SELECT COUNT(*) FROM users WHERE role='company'")->fetchColumn();
-  $pendingCompanies = $db->query("SELECT COUNT(*) FROM users WHERE role='company' AND status='pending'")->fetchColumn();
-  
-  $drives = $db->query("SELECT COUNT(*) FROM drives")->fetchColumn();
-  $applications = $db->query("SELECT COUNT(*) FROM applications")->fetchColumn();
-  $shortlisted = $db->query("SELECT COUNT(*) FROM applications WHERE status IN ('HR', 'Selected')")->fetchColumn();
-  $interviews = $db->query("SELECT COUNT(*) FROM interviews")->fetchColumn();
-  $offers = $db->query("SELECT COUNT(*) FROM offers")->fetchColumn();
-  
-  $placedStudents = $db->query("SELECT COUNT(DISTINCT student_id) FROM applications WHERE status='Selected'")->fetchColumn();
-  $rejectedApps = $db->query("SELECT COUNT(*) FROM applications WHERE status='Rejected'")->fetchColumn();
-  $pendingInterviews = $db->query("SELECT COUNT(*) FROM interviews WHERE result='Scheduled'")->fetchColumn();
+  // Basic counters (Consolidated for high performance)
+  $userStats = $db->query("
+    SELECT 
+      SUM(role='student') as total_students,
+      SUM(role='student' AND status='pending') as pending_students,
+      SUM(role='student' AND status='approved') as approved_students,
+      SUM(role='company') as total_companies,
+      SUM(role='company' AND status='pending') as pending_companies
+    FROM users
+  ")->fetch();
+
+  $totalStudents = (int)($userStats['total_students'] ?? 0);
+  $pendingStudents = (int)($userStats['pending_students'] ?? 0);
+  $verifiedStudents = (int)($userStats['approved_students'] ?? 0);
+  $companies = (int)($userStats['total_companies'] ?? 0);
+  $pendingCompanies = (int)($userStats['pending_companies'] ?? 0);
+
+  $drives = (int)$db->query("SELECT COUNT(*) FROM drives")->fetchColumn();
+  $offers = (int)$db->query("SELECT COUNT(*) FROM offers")->fetchColumn();
+
+  $appStats = $db->query("
+    SELECT 
+      COUNT(*) as total,
+      SUM(status != 'Applied') as eligible,
+      SUM(status IN ('Aptitude', 'Technical', 'HR', 'Selected')) as aptitude,
+      SUM(status IN ('Technical', 'HR', 'Selected')) as technical,
+      SUM(status IN ('HR', 'Selected')) as hr,
+      SUM(status = 'Selected') as selected,
+      COUNT(DISTINCT CASE WHEN status = 'Selected' THEN student_id END) as unique_selected,
+      SUM(status = 'Rejected') as rejected
+    FROM applications
+  ")->fetch();
+
+  $applications = (int)($appStats['total'] ?? 0);
+  $shortlisted = (int)($appStats['hr'] ?? 0);
+  $placedStudents = (int)($appStats['unique_selected'] ?? 0);
+  $rejectedApps = (int)($appStats['rejected'] ?? 0);
+
+  $interviewStats = $db->query("
+    SELECT 
+      COUNT(*) as total,
+      SUM(result='Scheduled') as pending
+    FROM interviews
+  ")->fetch();
+
+  $interviews = (int)($interviewStats['total'] ?? 0);
+  $pendingInterviews = (int)($interviewStats['pending'] ?? 0);
   
   // Package stats
   $highestPackage = $db->query("SELECT COALESCE(MAX(salary_lpa), 0) FROM offers")->fetchColumn();
@@ -113,10 +143,10 @@ try {
   // 4. Funnel stats
   $funnel = [
     'applied' => (int)$applications,
-    'eligible' => (int)$db->query("SELECT COUNT(*) FROM applications WHERE status != 'Applied'")->fetchColumn(),
-    'aptitude' => (int)$db->query("SELECT COUNT(*) FROM applications WHERE status IN ('Aptitude', 'Technical', 'HR', 'Selected')")->fetchColumn(),
-    'technical' => (int)$db->query("SELECT COUNT(*) FROM applications WHERE status IN ('Technical', 'HR', 'Selected')")->fetchColumn(),
-    'hr' => (int)$db->query("SELECT COUNT(*) FROM applications WHERE status IN ('HR', 'Selected')")->fetchColumn(),
+    'eligible' => (int)($appStats['eligible'] ?? 0),
+    'aptitude' => (int)($appStats['aptitude'] ?? 0),
+    'technical' => (int)($appStats['technical'] ?? 0),
+    'hr' => (int)($appStats['hr'] ?? 0),
     'selected' => (int)$placedStudents
   ];
 

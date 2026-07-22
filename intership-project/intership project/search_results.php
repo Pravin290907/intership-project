@@ -71,11 +71,15 @@ if ($query !== '') {
 <html lang="en" data-theme="<?php echo $_SESSION['theme'] ?? 'system'; ?>">
 <head>
   <meta charset="UTF-8">
+  <base href="<?php echo BASE_URL; ?>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Global Search Results - CampusRecruit</title>
-  <link rel="stylesheet" href="css/design-system.css">
-  <link rel="stylesheet" href="css/dashboard.css">
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/design-system.min.css">
+  <link rel="stylesheet" href="css/dashboard.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.min.js" defer></script>
 </head>
 <body>
   <div class="app-container">
@@ -83,7 +87,10 @@ if ($query !== '') {
     <main class="main-content" style="margin-left: 0; padding: var(--space-4); width: 100%; max-width: 1200px; margin: 0 auto;">
       <header class="header" style="justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: var(--space-2); margin-bottom: var(--space-4);">
         <div style="display:flex; align-items:center; gap: var(--space-2);">
-          <a href="dashboard.php" class="btn btn-secondary btn-icon-only" title="Back to Dashboard">
+          <?php 
+            $dashUrl = BASE_URL . ($_SESSION['user_role'] === 'student' ? 'student/dashboard.php' : ($_SESSION['user_role'] === 'company' ? 'company/dashboard.php' : ($_SESSION['user_role'] === 'tpo' ? 'tpo/dashboard.php' : 'admin/dashboard.php')));
+          ?>
+          <a href="<?php echo $dashUrl; ?>" class="btn btn-secondary btn-icon-only" title="Back to Dashboard">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
           </a>
           <h2 style="font-weight:700;">Search Results for "<?php echo htmlspecialchars($query); ?>"</h2>

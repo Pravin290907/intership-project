@@ -18,16 +18,11 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+require_once __DIR__ . '/app.php';
 require_once __DIR__ . '/db.php';
 
 function getProjectBase() {
-  $scriptName = $_SERVER['SCRIPT_NAME'];
-  $search = '/intership project';
-  $pos = strpos($scriptName, $search);
-  if ($pos !== false) {
-    return substr($scriptName, 0, $pos + strlen($search));
-  }
-  return '';
+  return rtrim(BASE_URL, '/');
 }
 
 // 1. Session Idle Timeout Check (30 Minutes)
@@ -49,7 +44,7 @@ if (isset($_SESSION['user_id'])) {
     session_destroy();
     
     // Redirect to home or login
-    header("Location: " . getProjectBase() . "/index.php?error=timeout");
+    header("Location: " . BASE_URL . "index.php?error=timeout");
     exit;
   }
   $_SESSION['last_activity'] = time();
@@ -80,12 +75,11 @@ function checkRole($allowedRoles) {
   if (!isset($_SESSION['user_id'])) {
     // Determine redirect login page based on directory path
     $currentPath = $_SERVER['PHP_SELF'];
-    $base = getProjectBase();
-    if (strpos($currentPath, '/admin/') !== false) $redirect = $base . '/admin/login.php';
-    else if (strpos($currentPath, '/tpo/') !== false) $redirect = $base . '/tpo/login.php';
-    else if (strpos($currentPath, '/student/') !== false) $redirect = $base . '/student/login.php';
-    else if (strpos($currentPath, '/company/') !== false) $redirect = $base . '/company/login.php';
-    else $redirect = $base . '/index.php';
+    if (strpos($currentPath, '/admin/') !== false) $redirect = BASE_URL . 'admin/login.php';
+    else if (strpos($currentPath, '/tpo/') !== false) $redirect = BASE_URL . 'tpo/login.php';
+    else if (strpos($currentPath, '/student/') !== false) $redirect = BASE_URL . 'student/login.php';
+    else if (strpos($currentPath, '/company/') !== false) $redirect = BASE_URL . 'company/login.php';
+    else $redirect = BASE_URL . 'index.php';
     
     header("Location: " . $redirect);
     exit;

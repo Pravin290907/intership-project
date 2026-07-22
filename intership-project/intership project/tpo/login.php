@@ -3,12 +3,10 @@
  * TPO Portal Login
  * Premium glassmorphic screen for Training & Placement Officer authentication.
  */
-require_once __DIR__ . '/../config/db.php';
-if (session_status() === PHP_SESSION_NONE) {
-  session_start();
-}
+require_once __DIR__ . '/../config/auth.php';
+
 if (isset($_SESSION['user_id']) && $_SESSION['user_role'] === 'tpo') {
-  header("Location: ../dashboard.php");
+  header("Location: " . BASE_URL . "tpo/dashboard.php");
   exit;
 }
 ?>
@@ -18,8 +16,11 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_role'] === 'tpo') {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TPO Portal - CRMS</title>
-  <link rel="stylesheet" href="../css/design-system.css">
-  <link rel="stylesheet" href="../css/auth.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/design-system.min.css">
+  <link rel="stylesheet" href="../css/auth.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="auth-body">
@@ -61,7 +62,7 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_role'] === 'tpo') {
         <div class="form-group" style="margin-bottom: var(--space-25);">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <label class="form-label" for="tpo-password">Password</label>
-            <span style="font-size:12px;"><a href="#" onclick="Swal.fire({title: 'Forgot Password?', text: 'Please contact admin cell or click validation templates in styleguide.', icon: 'info', confirmButtonColor: '#2563EB'})" style="color:#60A5FA;">Forgot?</a></span>
+            <span style="font-size:12px;"><a href="../forgot_password.php" style="color:#60A5FA;">Forgot?</a></span>
           </div>
           <div class="input-icon-wrapper">
             <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>

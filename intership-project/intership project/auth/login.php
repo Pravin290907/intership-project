@@ -24,10 +24,15 @@ if (empty($email) || empty($password)) {
 try {
   $db = getDB();
   
-  // Find user by email (role is dynamically auto-detected!) - forced case-sensitive via BINARY operator
-  $stmt = $db->prepare("SELECT id, name, password_hash, role, status FROM users WHERE BINARY email = ? LIMIT 1");
+  // Find user by email (role is dynamically auto-detected!)
+  $stmt = $db->prepare("SELECT id, name, email, password_hash, role, status FROM users WHERE email = ? LIMIT 1");
   $stmt->execute([$email]);
   $user = $stmt->fetch();
+
+  // Validate case-sensitive email match in PHP to preserve index utilization on database
+  if ($user && strcmp($user['email'], $email) !== 0) {
+    $user = false;
+  }
 
   if (!$user) {
     logActivity("Failed login attempt for email: $email", "failure");
@@ -85,10 +90,21 @@ try {
 
   logActivity("User logged in successfully", "success", $user['id'], $user['role'], $user['name']);
   
+  $redirectPath = 'dashboard.php';
+  if ($user['role'] === 'student') {
+    $redirectPath = 'student/dashboard.php';
+  } else if ($user['role'] === 'company') {
+    $redirectPath = 'company/dashboard.php';
+  } else if ($user['role'] === 'tpo') {
+    $redirectPath = 'tpo/dashboard.php';
+  } else if ($user['role'] === 'admin') {
+    $redirectPath = 'admin/dashboard.php';
+  }
+
   echo json_encode([
     'status' => 'success', 
     'message' => 'Login successful. Redirecting to dashboard...',
-    'redirect' => getProjectBase() . '/dashboard.php'
+    'redirect' => BASE_URL . $redirectPath
   ]);
   exit;
 

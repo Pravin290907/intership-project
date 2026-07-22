@@ -482,18 +482,20 @@ try {
       if ($role === 'student') {
         $skills = trim($_POST['skills'] ?? '');
         $projects = trim($_POST['projects'] ?? '');
-        if (isset($_POST['phone'])) {
-          $phone = trim($_POST['phone']);
+        $phone = trim($_POST['phone'] ?? '');
+        $linkedin = trim($_POST['linkedin'] ?? '');
+        $github = trim($_POST['github'] ?? '');
+        $social_links = json_encode(['linkedin' => $linkedin, 'github' => $github]);
+
+        if (!empty($phone)) {
           if (!preg_match('/^[0-9]{10}$/', $phone)) {
             echo json_encode(['status' => 'error', 'message' => 'Please enter a valid mobile number in the format +91 XXXXXXXXXX.']);
             exit;
           }
-          $stmtStudent = $db->prepare("UPDATE students SET skills = ?, projects = ?, phone = ? WHERE user_id = ?");
-          $stmtStudent->execute([$skills, $projects, $phone, $_SESSION['user_id']]);
-        } else {
-          $stmtStudent = $db->prepare("UPDATE students SET skills = ?, projects = ? WHERE user_id = ?");
-          $stmtStudent->execute([$skills, $projects, $_SESSION['user_id']]);
         }
+
+        $stmtStudent = $db->prepare("UPDATE students SET skills = ?, projects = ?, phone = ?, social_links = ? WHERE user_id = ?");
+        $stmtStudent->execute([$skills, $projects, $phone, $social_links, $_SESSION['user_id']]);
       } else if ($role === 'company') {
         $website = trim($_POST['website'] ?? '');
         $phone = trim($_POST['phone'] ?? '');

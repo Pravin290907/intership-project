@@ -104,7 +104,7 @@ if (!is_dir($destDir)) {
 // Save name using random hash
 $newFileName = $uploadType . '_' . $userId . '_' . bin2hex(random_bytes(8)) . '.' . $fileExt;
 $destPath = $destDir . '/' . $newFileName;
-$relativeUrlPath = '/uploads/' . $subDir . '/' . $newFileName;
+$relativeUrlPath = 'uploads/' . $subDir . '/' . $newFileName;
 
 try {
   $db = getDB();

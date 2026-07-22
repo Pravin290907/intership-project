@@ -1,0 +1,17 @@
+# Environment variable credentials
+.env
+.env.local
+
+# Vendor & logs
+vendor/
+*.log
+
+# IDE & OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Database sentinel
+config/.db_initialized
+

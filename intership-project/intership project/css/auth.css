@@ -196,3 +196,18 @@ body.auth-body::after {
 .auth-footer-link a:hover {
   color: #60A5FA;
 }
+
+/* SVG Icon Sizing & Asset Fallback Rules */
+svg {
+  max-width: 100%;
+}
+.auth-brand-name svg {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+}
+.input-icon-wrapper .input-icon {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+}

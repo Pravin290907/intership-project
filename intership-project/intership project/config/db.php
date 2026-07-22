@@ -4,7 +4,9 @@
  * Sets up PDO connection and initializes SQL tables and default seed data if not present.
  */
 
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+require_once __DIR__ . '/app.php';
+
+define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
 define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
 define('DB_NAME', getenv('DB_NAME') ?: 'campus_recruitment');
@@ -15,45 +17,93 @@ function getDB() {
     return $pdo;
   }
 
-  try {
-    // Connect to MySQL server first to check database existence
-    $dsn = "mysql:host=" . DB_HOST . ";charset=utf8mb4";
-    $options = [
-      PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-      PDO::ATTR_EMULATE_PREPARES   => false,
-    ];
-    
-    $temp_pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-    
-    // Create database if not exists
-    $temp_pdo->exec("CREATE DATABASE IF NOT EXISTS `" . DB_NAME . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-    $temp_pdo = null;
+  $options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+  ];
 
-    // Connect to specific database
+  try {
+    // Fast path: Connect directly to the specific database
     $dsnWithDB = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
     $pdo = new PDO($dsnWithDB, DB_USER, DB_PASS, $options);
 
-    // Initialize tables if they don't exist
-    initializeTables($pdo);
+    // Fast check: Only run initialization and schema check if sentinel file is missing
+    $initializedFile = __DIR__ . '/.db_initialized';
+    if (!file_exists($initializedFile)) {
+      initializeTables($pdo);
+      createMissingIndexes($pdo);
+      @file_put_contents($initializedFile, '1');
+    }
 
     return $pdo;
   } catch (PDOException $e) {
-    // Print error details in enterprise JSON format if it's an AJAX call, otherwise normal text
-    if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-      header('Content-Type: application/json');
-      echo json_encode(['status' => 'error', 'message' => 'Database connection failed: ' . $e->getMessage()]);
-      exit;
+    // If database does not exist (1049) or another database error occurs, try to create it
+    if ($e->getCode() == 1049 || strpos($e->getMessage(), 'Unknown database') !== false) {
+      try {
+        $dsn = "mysql:host=" . DB_HOST . ";charset=utf8mb4";
+        $temp_pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        $temp_pdo->exec("CREATE DATABASE IF NOT EXISTS `" . DB_NAME . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        $temp_pdo = null;
+
+        $dsnWithDB = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+        $pdo = new PDO($dsnWithDB, DB_USER, DB_PASS, $options);
+        initializeTables($pdo);
+        createMissingIndexes($pdo);
+        @file_put_contents(__DIR__ . '/.db_initialized', '1');
+        return $pdo;
+      } catch (PDOException $innerEx) {
+        handleDBError($innerEx);
+      }
+    } else {
+      handleDBError($e);
     }
-    die("Database Connection Error: " . $e->getMessage());
+  }
+}
+
+function handleDBError($e) {
+  if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'error', 'message' => 'Database connection failed: ' . $e->getMessage()]);
+    exit;
+  }
+  die("Database Connection Error: " . $e->getMessage());
+}
+
+function createMissingIndexes($pdo) {
+  $indexes = [
+    ['users', 'idx_users_role_status', '`role`, `status`'],
+    ['users', 'idx_users_remember', '`remember_token`'],
+    ['users', 'idx_users_reset', '`reset_token`'],
+    ['applications', 'idx_applications_status', '`status`'],
+    ['drives', 'idx_drives_company_status', '`company_id`, `status`'],
+    ['notifications', 'idx_notifications_user_read', '`user_id`, `is_read`']
+  ];
+
+  foreach ($indexes as $idx) {
+    list($table, $indexName, $columns) = $idx;
+    try {
+      $stmt = $pdo->prepare("SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ? LIMIT 1");
+      $stmt->execute([$table, $indexName]);
+      if (!$stmt->fetch()) {
+        $pdo->exec("ALTER TABLE `$table` ADD INDEX `$indexName` ($columns)");
+      }
+    } catch (PDOException $ex) {
+      // Ignore
+    }
   }
 }
 
 function initializeTables($pdo) {
-  // Check if users table exists, if so assume initialized
+  // Check if users table exists, if so ensure reset_token columns exist
   try {
     $pdo->query("SELECT 1 FROM `users` LIMIT 1");
-    return; // Tables already exist — do not overwrite any data
+    try {
+      $pdo->query("SELECT `reset_token` FROM `users` LIMIT 1");
+    } catch (PDOException $ex) {
+      $pdo->exec("ALTER TABLE `users` ADD COLUMN `reset_token` VARCHAR(255) NULL, ADD COLUMN `reset_token_expiry` DATETIME NULL;");
+    }
+    return; // Tables already exist and schema is up to date
   } catch (PDOException $e) {
     // Table does not exist yet — continue with creation below
   }
@@ -70,6 +120,8 @@ function initializeTables($pdo) {
       `status` ENUM('pending', 'approved', 'suspended') DEFAULT 'pending',
       `remember_token` VARCHAR(100) DEFAULT NULL,
       `session_expiry` DATETIME DEFAULT NULL,
+      `reset_token` VARCHAR(255) DEFAULT NULL,
+      `reset_token_expiry` DATETIME DEFAULT NULL,
       `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -376,42 +428,44 @@ function __($text) {
   return $text;
 }
 
-// Output buffering translation filter
-ob_start(function($buffer) {
-  if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-  }
-  $lang = $_SESSION['language'] ?? 'en';
-  if ($lang !== 'hi') {
+// Output buffering translation filter - Only initialize for Hindi language
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+if (isset($_SESSION['language']) && $_SESSION['language'] === 'hi') {
+  ob_start(function($buffer) {
+    $lang = $_SESSION['language'] ?? 'en';
+    if ($lang !== 'hi') {
+      return $buffer;
+    }
+    
+    static $translations = null;
+    if ($translations === null) {
+      $translations = require __DIR__ . '/lang.php';
+    }
+    
+    if (empty($translations['hi'])) {
+      return $buffer;
+    }
+    
+    $transMap = $translations['hi'];
+    uksort($transMap, function($a, $b) {
+      return strlen($b) - strlen($a);
+    });
+    
+    foreach ($transMap as $english => $hindi) {
+      $buffer = str_replace('>' . $english . '<', '>' . $hindi . '<', $buffer);
+      $buffer = str_replace('>' . $english . "\n", '>' . $hindi . "\n", $buffer);
+      $buffer = str_replace('>' . $english . "\r", '>' . $hindi . "\r", $buffer);
+      $buffer = str_replace('placeholder="' . $english . '"', 'placeholder="' . $hindi . '"', $buffer);
+      $buffer = str_replace('value="' . $english . '"', 'value="' . $hindi . '"', $buffer);
+      $buffer = str_replace(' ' . $english . ' ', ' ' . $hindi . ' ', $buffer);
+      $buffer = str_replace('>' . $english . ' ', '>' . $hindi . ' ', $buffer);
+      $buffer = str_replace(' ' . $english . '<', ' ' . $hindi . '<', $buffer);
+      $buffer = str_replace('>' . $english . '(', '>' . $hindi . '(', $buffer);
+    }
+    
     return $buffer;
-  }
-  
-  static $translations = null;
-  if ($translations === null) {
-    $translations = require __DIR__ . '/lang.php';
-  }
-  
-  if (empty($translations['hi'])) {
-    return $buffer;
-  }
-  
-  $transMap = $translations['hi'];
-  uksort($transMap, function($a, $b) {
-    return strlen($b) - strlen($a);
   });
-  
-  foreach ($transMap as $english => $hindi) {
-    $buffer = str_replace('>' . $english . '<', '>' . $hindi . '<', $buffer);
-    $buffer = str_replace('>' . $english . "\n", '>' . $hindi . "\n", $buffer);
-    $buffer = str_replace('>' . $english . "\r", '>' . $hindi . "\r", $buffer);
-    $buffer = str_replace('placeholder="' . $english . '"', 'placeholder="' . $hindi . '"', $buffer);
-    $buffer = str_replace('value="' . $english . '"', 'value="' . $hindi . '"', $buffer);
-    $buffer = str_replace(' ' . $english . ' ', ' ' . $hindi . ' ', $buffer);
-    $buffer = str_replace('>' . $english . ' ', '>' . $hindi . ' ', $buffer);
-    $buffer = str_replace(' ' . $english . '<', ' ' . $hindi . '<', $buffer);
-    $buffer = str_replace('>' . $english . '(', '>' . $hindi . '(', $buffer);
-  }
-  
-  return $buffer;
-});
+}
 ?>

@@ -137,7 +137,11 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (viewId === "pipeline") {
         renderKanban();
       } else if (viewId === "interviews") {
-        renderCalendar();
+        if (data.role === 'student') {
+          studentInterviewsRender();
+        } else {
+          renderCalendar();
+        }
       } else if (viewId === "dashboard") {
         refreshCharts();
       } else if (viewId === "notifications") {
@@ -544,6 +548,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (avatarEl) avatarEl.innerText = initials;
 
           initWelcomeGreeting();
+          setTimeout(() => window.location.reload(), 1500);
         } else {
           Swal.fire({
             title: 'Error',
@@ -1244,7 +1249,428 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
+  function getPastelBgColor(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const h = Math.abs(hash) % 360;
+    return `hsl(${h}, 65%, 45%)`;
+  }
+
+  function renderStudentApplicationsStats() {
+    const statsContainer = document.getElementById("student-applications-stats");
+    if (!statsContainer) return;
+    
+    const apps = data.applications || [];
+    const total = apps.length;
+    const placed = apps.filter(a => a.status === 'Selected').length;
+    const active = apps.filter(a => ['Eligible', 'Aptitude', 'Technical', 'HR', 'Applied'].includes(a.status)).length;
+    const rejected = apps.filter(a => a.status === 'Rejected').length;
+
+    statsContainer.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3);">
+        <div class="card card-lift" style="padding: var(--space-2); border-left: 4px solid var(--primary); background: var(--bg-card); display: flex; align-items: center; gap: var(--space-2); border-radius: var(--radius-md);">
+          <div style="background: var(--primary-light); color: var(--primary); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+            📄
+          </div>
+          <div>
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Total Applications</span>
+            <h3 style="font-size: 22px; font-weight: 700; color: var(--text-primary); margin: 0; line-height: 1.2;">${total}</h3>
+          </div>
+        </div>
+        <div class="card card-lift" style="padding: var(--space-2); border-left: 4px solid var(--color-success); background: var(--bg-card); display: flex; align-items: center; gap: var(--space-2); border-radius: var(--radius-md);">
+          <div style="background: rgba(16, 185, 129, 0.1); color: var(--color-success); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+            🎉
+          </div>
+          <div>
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Offers / Placed</span>
+            <h3 style="font-size: 22px; font-weight: 700; color: var(--color-success); margin: 0; line-height: 1.2;">${placed}</h3>
+          </div>
+        </div>
+        <div class="card card-lift" style="padding: var(--space-2); border-left: 4px solid var(--color-warning); background: var(--bg-card); display: flex; align-items: center; gap: var(--space-2); border-radius: var(--radius-md);">
+          <div style="background: rgba(245, 158, 11, 0.1); color: var(--color-warning); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+            ⏳
+          </div>
+          <div>
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Active Screening</span>
+            <h3 style="font-size: 22px; font-weight: 700; color: var(--text-primary); margin: 0; line-height: 1.2;">${active}</h3>
+          </div>
+        </div>
+        <div class="card card-lift" style="padding: var(--space-2); border-left: 4px solid var(--color-danger); background: var(--bg-card); display: flex; align-items: center; gap: var(--space-2); border-radius: var(--radius-md);">
+          <div style="background: rgba(239, 68, 68, 0.1); color: var(--color-danger); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+            ❌
+          </div>
+          <div>
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Applications Closed</span>
+            <h3 style="font-size: 22px; font-weight: 700; color: var(--text-primary); margin: 0; line-height: 1.2;">${rejected}</h3>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderStudentApplications(apps) {
+    const container = document.getElementById("applications-table-container");
+    if (!container) return;
+    
+    if (apps.length === 0) {
+      container.innerHTML = `
+        <div class="card" style="text-align: center; padding: var(--space-4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); border: 1px dashed var(--border-color); background: var(--bg-card); border-radius: var(--radius-xl);">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom: 8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <h4 style="font-weight: 700; font-size: 16px; margin: 0; color: var(--text-primary);">No Applications Submitted Yet</h4>
+          <p style="color: var(--text-secondary); font-size: 13px; max-width: 320px; margin: 0;">Explore live placement drives and apply to companies to begin your campus recruitment journey.</p>
+          <button class="btn btn-primary btn-sm" onclick="switchView('drives')" style="margin-top: 8px;">Explore Job Openings</button>
+        </div>
+      `;
+      return;
+    }
+
+    let html = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: var(--space-25);">`;
+    
+    apps.forEach(app => {
+      // Find offer details if any
+      const offer = data.offers ? data.offers.find(o => parseInt(o.application_id) === parseInt(app.id)) : null;
+      // Find interview details if any
+      const interview = data.interviews ? data.interviews.find(i => parseInt(i.application_id) === parseInt(app.id)) : null;
+      
+      const appliedDate = new Date(app.applied_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      const driveDate = app.driveDate ? new Date(app.driveDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'TBD';
+      
+      // Status styling
+      let statusStyle = 'badge-primary';
+      if (app.status === 'Selected') statusStyle = 'badge-success';
+      else if (app.status === 'Rejected') statusStyle = 'badge-danger';
+      else if (app.status === 'Eligible' || app.status === 'Applied') statusStyle = 'badge-info';
+      else statusStyle = 'badge-warning'; // screening stages
+      
+      // Progress calculation
+      // Funnel: Applied -> Eligible -> Screening (Aptitude/Technical/HR) -> Selected/Rejected
+      let currentStep = 1;
+      if (app.status === 'Eligible') currentStep = 2;
+      else if (['Aptitude', 'Technical', 'HR'].includes(app.status)) currentStep = 3;
+      else if (['Selected', 'Rejected'].includes(app.status)) currentStep = 4;
+      
+      const stepClass = (step) => {
+        if (app.status === 'Rejected' && step === 4) return 'step-rejected';
+        if (currentStep >= step) return 'step-active';
+        return '';
+      };
+
+      const pastelBg = getPastelBgColor(app.companyName);
+      const initials = app.companyName.substring(0, 2).toUpperCase();
+
+      html += `
+        <div class="card card-lift" style="display: flex; flex-direction: column; justify-content: space-between; border-radius: var(--radius-lg); padding: var(--space-25); background: var(--bg-card); border: 1px solid var(--border-color); min-height: 280px; box-shadow: var(--shadow-sm); transition: all var(--transition-normal);">
+          <div>
+            <!-- Card Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-2);">
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <div style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #FFFFFF; background-color: ${pastelBg}; flex-shrink: 0;">
+                  ${initials}
+                </div>
+                <div>
+                  <h4 style="font-weight: 700; font-size: 15px; margin: 0; color: var(--text-primary);">${app.role}</h4>
+                  <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">${app.companyName}</span>
+                </div>
+              </div>
+              <span class="badge ${statusStyle}" style="font-size: 11px; padding: 3px 10px; border-radius: 12px;">${app.status}</span>
+            </div>
+
+            <!-- Metrics Row -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: var(--space-3); padding: 10px; background: rgba(0,0,0,0.015); border-radius: var(--radius-md); font-size: 12px;">
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 10px; text-transform: uppercase; font-weight: 600;">Package Offered</span>
+                <strong style="color: var(--text-primary); font-size: 13px;">₹${parseFloat(app.lpa || 0).toFixed(2)} LPA</strong>
+              </div>
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 10px; text-transform: uppercase; font-weight: 600;">Applied Date</span>
+                <strong style="color: var(--text-primary); font-size: 13px;">${appliedDate}</strong>
+              </div>
+            </div>
+
+            <!-- Funnel Progress Tracker -->
+            <div class="application-progress-stepper" style="margin-bottom: var(--space-3); padding: 4px 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; position: relative;">
+                <div class="stepper-line" style="position: absolute; top: 50%; left: 10%; right: 10%; height: 2px; background: var(--border-color); z-index: 1; transform: translateY(-50%);">
+                  <div class="stepper-line-fill" style="height: 100%; width: ${((currentStep - 1) / 3) * 100}%; background: ${app.status === 'Rejected' ? 'var(--color-danger)' : 'var(--primary)'}; transition: width 0.3s;"></div>
+                </div>
+                
+                <div class="step-node ${stepClass(1)}" style="z-index: 2; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-color); background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700;" title="Applied">
+                  <span class="step-dot"></span>
+                </div>
+                <div class="step-node ${stepClass(2)}" style="z-index: 2; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-color); background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700;" title="Document Screening / Eligibility Verified">
+                  <span class="step-dot"></span>
+                </div>
+                <div class="step-node ${stepClass(3)}" style="z-index: 2; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-color); background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700;" title="Active Selection Rounds">
+                  <span class="step-dot"></span>
+                </div>
+                <div class="step-node ${stepClass(4)}" style="z-index: 2; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-color); background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700;" title="Final Status">
+                  <span class="step-dot"></span>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 9px; color: var(--text-secondary); margin-top: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;">
+                <span style="width: 25%; text-align: left;">Applied</span>
+                <span style="width: 25%; text-align: center;">Eligible</span>
+                <span style="width: 25%; text-align: center;">Screening</span>
+                <span style="width: 25%; text-align: right;">Result</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Actions -->
+          <div style="display: flex; gap: 8px; border-top: 1px solid var(--border-color); padding-top: var(--space-2); margin-top: var(--space-2);">
+            ${offer ? `
+              <button class="btn btn-success btn-sm btn-view-offer-letter" data-id="${offer.id}" style="flex: 1; justify-content: center; gap: 6px; background-color: var(--color-success); border-color: var(--color-success); color: white;">
+                🎉 View Offer Letter
+              </button>
+            ` : ''}
+            ${interview ? `
+              <button class="btn btn-warning btn-sm btn-view-interview-details" data-id="${interview.id}" style="flex: 1; justify-content: center; gap: 6px; background-color: var(--color-warning); border-color: var(--color-warning); color: white;">
+                📅 Interview Info
+              </button>
+            ` : ''}
+            ${!['Selected', 'Rejected'].includes(app.status) ? `
+              <button class="btn btn-ghost btn-sm btn-withdraw-app" data-id="${app.id}" style="flex: 1; justify-content: center; color: var(--color-danger); border: 1px solid var(--border-color);">
+                Withdraw App
+              </button>
+            ` : ''}
+            ${app.status === 'Rejected' ? `
+              <div style="text-align: center; width: 100%; color: var(--text-muted); font-size: 12px; font-weight: 600; padding: 4px 0;">
+                ❌ Campaign Closed for this Profile
+              </div>
+            ` : ''}
+            ${app.status === 'Selected' && !offer ? `
+              <div style="text-align: center; width: 100%; color: var(--color-success); font-size: 13px; font-weight: 700; padding: 4px 0;">
+                🎉 Placed! Offer release pending.
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    });
+    
+    html += `</div>`;
+    container.innerHTML = html;
+    
+    // Bind active buttons
+    container.querySelectorAll(".btn-view-offer-letter").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const offerId = btn.getAttribute("data-id");
+        const offer = data.offers.find(o => parseInt(o.id) === parseInt(offerId));
+        if (offer) showOfferDetailsModal(offer);
+      });
+    });
+    
+    container.querySelectorAll(".btn-view-interview-details").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const intId = btn.getAttribute("data-id");
+        const int = data.interviews.find(i => parseInt(i.id) === parseInt(intId));
+        if (int) showInterviewDetailsModal(int);
+      });
+    });
+
+    container.querySelectorAll(".btn-withdraw-app").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const appId = btn.getAttribute("data-id");
+        withdrawApplicationAPI(appId);
+      });
+    });
+  }
+
+  function showOfferDetailsModal(offer) {
+    const joiningDate = new Date(offer.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const bodyHtml = `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 40px; margin-bottom: var(--space-1);">🎉</div>
+        <div>
+          <h3 style="font-weight: 800; font-size: 20px; color: var(--color-success); margin: 0;">Congratulations on Your Placement!</h3>
+          <p style="color: var(--text-secondary); font-size: 13px; margin: 4px 0 0 0;">You have received a formal offer of employment.</p>
+        </div>
+      </div>
+      <div style="border-top: 1px solid var(--border-color); padding-top: var(--space-2); display: flex; flex-direction: column; gap: var(--space-15);">
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Company</span>
+          <span style="font-weight: 700; color: var(--text-primary);">${offer.companyName}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Designation</span>
+          <span style="font-weight: 700; color: var(--text-primary);">${offer.role}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Salary Package</span>
+          <span style="font-weight: 700; color: var(--color-success);">₹${parseFloat(offer.packageLPA || 0).toFixed(2)} LPA</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Joining Date</span>
+          <span style="font-weight: 600;">${joiningDate}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Location</span>
+          <span style="font-weight: 600;">${offer.location}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-1); padding-top: var(--space-15); border-top: 1px dashed var(--border-color);">
+          <span style="color: var(--text-secondary); font-weight: 600;">Offer Document</span>
+          ${offer.offer_letter_path ? `
+            <a href="${offer.offer_letter_path}" target="_blank" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size:12px;">
+              📄 Download PDF
+            </a>
+          ` : '<span style="color: var(--text-muted); font-style: italic;">Release Pending</span>'}
+        </div>
+      </div>
+    `;
+
+    const modal = document.getElementById("modal-view-details");
+    modal.querySelector(".modal-title").innerText = "Job Placement Offer Details";
+    modal.querySelector(".modal-body").innerHTML = bodyHtml;
+    openModal("modal-view-details");
+  }
+
+  function showInterviewDetailsModal(interview) {
+    const intDate = new Date(interview.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const timeParts = interview.time.split(":");
+    let hours = parseInt(timeParts[0], 10);
+    const minutes = timeParts[1];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedTime = `${hours}:${minutes} ${ampm}`;
+
+    const bodyHtml = `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 40px; margin-bottom: var(--space-1);">📅</div>
+        <div>
+          <h3 style="font-weight: 800; font-size: 18px; color: var(--color-warning); margin: 0;">Interview Round Scheduled</h3>
+          <p style="color: var(--text-secondary); font-size: 13px; margin: 4px 0 0 0;">Please check slot guidelines and panel details.</p>
+        </div>
+      </div>
+      <div style="border-top: 1px solid var(--border-color); padding-top: var(--space-2); display: flex; flex-direction: column; gap: var(--space-15);">
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Company / Drive</span>
+          <span style="font-weight: 700; color: var(--text-primary);">${interview.companyName}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Target Role</span>
+          <span style="font-weight: 700; color: var(--text-primary);">${interview.role}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Interview Date</span>
+          <span style="font-weight: 700; color: var(--text-primary);">${intDate}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Slot Time</span>
+          <span style="font-weight: 700; color: var(--text-primary);">${formattedTime}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Interview Venue</span>
+          <span style="font-weight: 600; color: var(--primary);">${interview.venue}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Panel/Interviewer</span>
+          <span style="font-weight: 600;">${interview.interviewer}</span>
+        </div>
+        ${interview.remarks ? `
+          <div style="display: flex; flex-direction: column; gap: 4px; margin-top: var(--space-1); padding-top: var(--space-15); border-top: 1px dashed var(--border-color);">
+            <span style="color: var(--text-secondary); font-weight: 600; font-size: 11px; text-transform: uppercase;">Recruiter Guidelines / Remarks</span>
+            <div style="background: rgba(0,0,0,0.015); border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-sm); font-size: 13px; color: var(--text-secondary); line-height: 1.4;">
+              ${interview.remarks}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    const modal = document.getElementById("modal-view-details");
+    modal.querySelector(".modal-title").innerText = "Recruitment Interview Briefing";
+    modal.querySelector(".modal-body").innerHTML = bodyHtml;
+    openModal("modal-view-details");
+  }
+
+  function withdrawApplicationAPI(appId) {
+    Swal.fire({
+      title: 'Withdraw Application?',
+      text: 'Are you sure you want to withdraw your application? This action is permanent and cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'Yes, Withdraw'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: 'Withdrawing...',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        const form = new FormData();
+        form.append("ajax_action", "student_withdraw");
+        form.append("application_id", appId);
+
+        fetch('dashboard.php', {
+          method: 'POST',
+          body: form
+        })
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === 'success') {
+            Swal.fire({
+              title: 'Withdrawn Successfully',
+              text: res.message,
+              icon: 'success',
+              timer: 1500,
+              showConfirmButton: false
+            });
+            setTimeout(() => window.location.reload(), 1500);
+          } else {
+            Swal.fire({
+              title: 'Withdrawal Failed',
+              text: res.message,
+              icon: 'error',
+              confirmButtonColor: '#2563EB'
+            });
+          }
+        })
+        .catch(err => {
+          Swal.fire({
+            title: 'Error',
+            text: 'A connection issue occurred. Please check your network.',
+            icon: 'error',
+            confirmButtonColor: '#2563EB'
+          });
+        });
+      }
+    });
+  }
+
   window.renderApplicationsTable = function() {
+    const isStudent = data.role === 'student';
+
+    // Bind filter selector
+    const filterSelect = document.getElementById("filter-app-status");
+    if (filterSelect && !filterSelect.dataset.listenerBound) {
+      filterSelect.addEventListener("change", (e) => {
+        const val = e.target.value;
+        if (isStudent) {
+          const filtered = val === 'All'
+            ? data.applications
+            : data.applications.filter(a => a.status === val);
+          renderStudentApplications(filtered);
+        } else {
+          if (applicationTableInstance) {
+            applicationTableInstance.setFilter('status', val);
+          }
+        }
+      });
+      filterSelect.dataset.listenerBound = "true";
+    }
+
+    if (isStudent) {
+      renderStudentApplicationsStats();
+      renderStudentApplications(data.applications);
+      return;
+    }
+
     if (applicationTableInstance) return;
     const cols = [
       { key: "id", label: "App ID" },
@@ -1280,6 +1706,490 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   };
+
+  let studentInterviewsIntervals = [];
+
+  function studentInterviewsGetRoundInfo(app) {
+    let type = "Technical";
+    let roundNum = 1;
+    const txt = ((app.remarks || "") + " " + (app.venue || "") + " " + (app.interviewer || "")).toLowerCase();
+    
+    if (txt.includes("hr") || txt.includes("human resource")) {
+      type = "HR";
+      roundNum = 2;
+    } else if (txt.includes("aptitude") || txt.includes("coding") || txt.includes("written")) {
+      type = "Aptitude";
+      roundNum = 1;
+    } else if (txt.includes("gd") || txt.includes("group") || txt.includes("discussion")) {
+      type = "Group Discussion";
+      roundNum = 1;
+    } else if (txt.includes("final") || txt.includes("panel")) {
+      type = "Final Round";
+      roundNum = 3;
+    } else {
+      const fallback = app.id % 5;
+      if (fallback === 0) { type = "Technical"; roundNum = 1; }
+      else if (fallback === 1) { type = "HR"; roundNum = 2; }
+      else if (fallback === 2) { type = "Aptitude"; roundNum = 1; }
+      else if (fallback === 3) { type = "Group Discussion"; roundNum = 1; }
+      else { type = "Final Round"; roundNum = 3; }
+    }
+    return { type, roundNum };
+  }
+
+  function studentInterviewsGetMode(app) {
+    const venue = (app.venue || "").toLowerCase();
+    if (venue.includes("virtual") || venue.includes("online") || venue.includes("meet") || venue.includes("zoom") || venue.includes("http")) {
+      return "Online";
+    }
+    return "Offline";
+  }
+
+  function studentInterviewsGetStatus(app) {
+    const result = app.result;
+    if (result === 'Cancelled') return 'Cancelled';
+    if (result === 'Completed' || result === 'Passed' || result === 'Failed') return 'Completed';
+    
+    const interviewDate = new Date(`${app.date}T${app.time}`);
+    const now = new Date();
+    if (interviewDate < now) {
+      return 'Missed';
+    }
+    
+    const remarks = (app.remarks || "").toLowerCase();
+    if (remarks.includes("reschedule")) {
+      return 'Rescheduled';
+    }
+    
+    return 'Upcoming';
+  }
+
+  function studentInterviewsStartCountdown(dateStr, timeStr, elementId) {
+    const targetDate = new Date(`${dateStr}T${timeStr}`);
+    
+    function updateTimer() {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      
+      const now = new Date();
+      const diff = targetDate - now;
+      
+      if (diff <= 0) {
+        el.innerHTML = "🕒 Started / Ended";
+        return;
+      }
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      let val = "";
+      if (days > 0) val += `${days}d `;
+      val += `${hours}h ${mins}m ${secs}s`;
+      
+      el.innerHTML = `🕒 ${val}`;
+    }
+    
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    studentInterviewsIntervals.push(interval);
+  }
+
+  function studentInterviewsDownloadInstructions(app) {
+    const roundInfo = studentInterviewsGetRoundInfo(app);
+    const mode = studentInterviewsGetMode(app);
+    const content = `=====================================================
+CAMPUS PLACEMENT DRIVE - INTERVIEW Slot BRIEFING
+=====================================================
+Company Name: ${app.companyName}
+Target Job Role: ${app.role}
+Round Type: ${roundInfo.type} (Round Number: ${roundInfo.roundNum})
+Mode: ${mode}
+Scheduled Date: ${new Date(app.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+Scheduled Time: ${app.time}
+Venue / Meet Details: ${app.venue}
+Interviewer/Panel: ${app.interviewer}
+
+Recruitment Directives & Remarks:
+----------------------------------
+${app.remarks || "Please be punctual and carry a copy of your verified CV/resume. Ensure good internet connectivity for virtual interviews."}
+
+Prepared automatically by CampusRecruit Portal.
+Date generated: ${new Date().toLocaleDateString()}
+=====================================================`;
+    
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `interview_instructions_${app.companyName.replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function studentInterviewsShowDetails(interviewId) {
+    const app = data.interviews.find(i => parseInt(i.id) === parseInt(interviewId));
+    if (!app) return;
+
+    const roundInfo = studentInterviewsGetRoundInfo(app);
+    const mode = studentInterviewsGetMode(app);
+    const status = studentInterviewsGetStatus(app);
+    const timeline = studentInterviewsGetTimelineState(app);
+    const intDate = new Date(app.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    
+    const timeParts = app.time.split(":");
+    let hours = parseInt(timeParts[0], 10);
+    const minutes = timeParts[1];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedTime = `${hours}:${minutes} ${ampm}`;
+
+    let statusStyle = 'upcoming';
+    if (status === 'Completed') statusStyle = 'completed';
+    else if (status === 'Cancelled') statusStyle = 'cancelled';
+    else if (status === 'Missed') statusStyle = 'missed';
+    else if (status === 'Rescheduled') statusStyle = 'rescheduled';
+
+    const getTimelineStateNodeClass = (completed) => {
+      return completed ? 'active' : '';
+    };
+
+    const bodyHtml = `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 36px; line-height: 1;">📝</div>
+        <div>
+          <h3 style="font-weight: 800; font-size: 18px; color: var(--text-primary); margin: 0;">${app.role} Interview Details</h3>
+          <p style="color: var(--text-secondary); font-size: 13px; margin: 4px 0 0 0;">${app.companyName}</p>
+        </div>
+      </div>
+
+      <!-- Timeline Block -->
+      <div class="student-interviews-timeline-wrapper" style="margin-bottom: 20px;">
+        <h4 style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px; text-align: center;">Recruitment Stepper Status</h4>
+        <div class="student-interviews-timeline-steps">
+          <div class="student-interviews-timeline-line">
+            <div class="student-interviews-timeline-line-fill" style="width: ${
+              timeline.offer ? '100%' : (timeline.hr ? '75%' : (timeline.technical ? '50%' : '25%'))
+            };"></div>
+          </div>
+          <div class="student-interviews-timeline-node active" title="Application Submitted"></div>
+          <div class="student-interviews-timeline-node active" title="Shortlisted for Interview"></div>
+          <div class="student-interviews-timeline-node ${getTimelineStateNodeClass(timeline.technical)}" title="Technical Round"></div>
+          <div class="student-interviews-timeline-node ${getTimelineStateNodeClass(timeline.hr)}" title="HR Screening"></div>
+          <div class="student-interviews-timeline-node ${getTimelineStateNodeClass(timeline.offer)}" title="Offer Released"></div>
+        </div>
+        <div class="student-interviews-timeline-labels">
+          <span>Applied</span>
+          <span>Shortlist</span>
+          <span>Technical</span>
+          <span>HR</span>
+          <span>Offer</span>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid var(--border-color); padding-top: var(--space-2); display: flex; flex-direction: column; gap: var(--space-15); font-size: 13px;">
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Interview Round</span>
+          <span style="font-weight: 700; color: var(--text-primary);">${roundInfo.type} (Round ${roundInfo.roundNum})</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Mode</span>
+          <span style="font-weight: 700; color: var(--text-primary);">${mode} (${app.venue.includes('http') ? 'Virtual Meeting' : 'In-Person'})</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Date & Time</span>
+          <span style="font-weight: 700; color: var(--text-primary);">${intDate} at ${formattedTime}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Recruiter Contact</span>
+          <span style="font-weight: 600;">${app.interviewer}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="color: var(--text-secondary);">Status</span>
+          <span class="student-interviews-badge ${statusStyle}">${status}</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: var(--space-1); padding-top: var(--space-15); border-top: 1px dashed var(--border-color);">
+          <span style="color: var(--text-secondary); font-weight: 600; font-size: 10px; text-transform: uppercase;">Directives & Information</span>
+          <div style="background: rgba(0,0,0,0.015); border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-sm); color: var(--text-secondary); line-height: 1.4;">
+            ${app.remarks || "No specific guidelines provided. Please arrive 10 minutes early and carry necessary documents."}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const modal = document.getElementById("modal-view-details");
+    modal.querySelector(".modal-title").innerText = "Recruitment Interview Briefing";
+    modal.querySelector(".modal-body").innerHTML = bodyHtml;
+    openModal("modal-view-details");
+  }
+
+  function studentInterviewsGetTimelineState(app) {
+    const status = studentInterviewsGetStatus(app);
+    const roundInfo = studentInterviewsGetRoundInfo(app);
+    const application = data.applications ? data.applications.find(a => parseInt(a.id) === parseInt(app.application_id)) : null;
+    const appStatus = application ? application.status : '';
+
+    const states = {
+      submitted: true,
+      shortlisted: true,
+      technical: false,
+      hr: false,
+      offer: false
+    };
+
+    if (appStatus === 'Technical' || appStatus === 'HR' || appStatus === 'Selected' || (roundInfo.type === 'Technical' && status === 'Completed')) {
+      states.technical = true;
+    }
+    if (appStatus === 'HR' || appStatus === 'Selected' || (roundInfo.type === 'HR' && status === 'Completed')) {
+      states.hr = true;
+    }
+    if (appStatus === 'Selected') {
+      states.offer = true;
+    }
+
+    return states;
+  }
+
+  function studentInterviewsFilterAndSort() {
+    const searchVal = document.getElementById("student-interviews-search").value.toLowerCase().trim();
+    const statusFilter = document.getElementById("student-interviews-filter-status").value;
+    const typeFilter = document.getElementById("student-interviews-filter-type").value;
+    const sortVal = document.getElementById("student-interviews-sort").value;
+
+    let filtered = [...(data.interviews || [])];
+
+    if (searchVal !== "") {
+      filtered = filtered.filter(item => 
+        (item.companyName || "").toLowerCase().includes(searchVal) ||
+        (item.role || "").toLowerCase().includes(searchVal)
+      );
+    }
+
+    if (statusFilter !== "All") {
+      filtered = filtered.filter(item => studentInterviewsGetStatus(item) === statusFilter);
+    }
+
+    if (typeFilter !== "All") {
+      filtered = filtered.filter(item => studentInterviewsGetRoundInfo(item).type === typeFilter);
+    }
+
+    filtered.sort((a, b) => {
+      if (sortVal === "nearest") {
+        return new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`);
+      } else if (sortVal === "latest") {
+        return parseInt(b.id) - parseInt(a.id);
+      } else if (sortVal === "company") {
+        return (a.companyName || "").localeCompare(b.companyName || "");
+      }
+      return 0;
+    });
+
+    studentInterviewsRenderList(filtered);
+  }
+
+  function studentInterviewsRenderList(list) {
+    const grid = document.getElementById("student-interviews-container");
+    if (!grid) return;
+
+    studentInterviewsIntervals.forEach(clearInterval);
+    studentInterviewsIntervals = [];
+
+    if (list.length === 0) {
+      grid.innerHTML = `
+        <div class="card" style="text-align: center; padding: var(--space-4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); border: 1px dashed var(--border-color); background: var(--bg-card); border-radius: var(--radius-xl);">
+          <div style="font-size: 48px; margin-bottom: 8px;">📅</div>
+          <h4 style="font-weight: 700; font-size: 16px; margin: 0; color: var(--text-primary);">No Interviews Scheduled</h4>
+          <p style="color: var(--text-secondary); font-size: 13px; max-width: 340px; margin: 0;">You don't have any interviews matching your search guidelines. Apply to active campaigns to trigger interviews.</p>
+          <button class="btn btn-primary btn-sm" onclick="switchView('drives')" style="margin-top: var(--space-1);">Browse Job Openings</button>
+        </div>
+      `;
+      return;
+    }
+
+    let html = `<div class="student-interviews-grid">`;
+
+    list.forEach(app => {
+      const roundInfo = studentInterviewsGetRoundInfo(app);
+      const mode = studentInterviewsGetMode(app);
+      const status = studentInterviewsGetStatus(app);
+      const timeline = studentInterviewsGetTimelineState(app);
+      
+      const intDate = new Date(app.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      const timeParts = app.time.split(":");
+      let hours = parseInt(timeParts[0], 10);
+      const minutes = timeParts[1];
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const formattedTime = `${hours}:${minutes} ${ampm}`;
+
+      let statusStyle = 'upcoming';
+      if (status === 'Completed') statusStyle = 'completed';
+      else if (status === 'Cancelled') statusStyle = 'cancelled';
+      else if (status === 'Missed') statusStyle = 'missed';
+      else if (status === 'Rescheduled') statusStyle = 'rescheduled';
+
+      const pastelBg = getPastelBgColor(app.companyName);
+      const initials = app.companyName.substring(0, 2).toUpperCase();
+      const timerId = `student-interviews-countdown-${app.id}`;
+
+      html += `
+        <div class="student-interviews-card">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-2);">
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <div style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #FFFFFF; background-color: ${pastelBg}; flex-shrink: 0;">
+                  ${initials}
+                </div>
+                <div>
+                  <h4 style="font-weight: 700; font-size: 15px; margin: 0; color: var(--text-primary);">${app.role}</h4>
+                  <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">${app.companyName}</span>
+                </div>
+              </div>
+              <span class="student-interviews-badge ${statusStyle}">${status}</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: var(--space-2); font-size: 12px;">
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 10px; text-transform: uppercase; font-weight: 600;">Date & Time</span>
+                <strong style="color: var(--text-primary); font-size: 12px;">${intDate} - ${formattedTime}</strong>
+              </div>
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 10px; text-transform: uppercase; font-weight: 600;">Mode / Round</span>
+                <strong style="color: var(--text-primary); font-size: 12px;">${mode} (${roundInfo.type})</strong>
+              </div>
+            </div>
+
+            <div style="font-size: 12px; padding: 8px 10px; background: rgba(0,0,0,0.01); border-radius: var(--radius-sm); margin-bottom: var(--space-2); border: 1px solid var(--border-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <span style="color: var(--text-secondary); font-weight: 600;">Venue:</span>
+              <span style="color: var(--text-primary);">${app.venue}</span>
+            </div>
+
+            <div class="student-interviews-timeline-wrapper">
+              <div class="student-interviews-timeline-steps">
+                <div class="student-interviews-timeline-line">
+                  <div class="student-interviews-timeline-line-fill" style="width: ${
+                    timeline.offer ? '100%' : (timeline.hr ? '75%' : (timeline.technical ? '50%' : '25%'))
+                  };"></div>
+                </div>
+                <div class="student-interviews-timeline-node active"></div>
+                <div class="student-interviews-timeline-node active"></div>
+                <div class="student-interviews-timeline-node ${timeline.technical ? 'active' : ''}"></div>
+                <div class="student-interviews-timeline-node ${timeline.hr ? 'active' : ''}"></div>
+                <div class="student-interviews-timeline-node ${timeline.offer ? 'active' : ''}"></div>
+              </div>
+              <div class="student-interviews-timeline-labels">
+                <span>Applied</span>
+                <span>Shortlist</span>
+                <span>Tech</span>
+                <span>HR</span>
+                <span>Offer</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); flex-wrap: wrap; gap: 8px;">
+              <div>
+                <span style="color: var(--text-muted); font-size: 12px; font-weight: 600;">Recruiter:</span>
+                <span style="color: var(--text-primary); font-size: 12px; font-weight: 700;">${app.interviewer}</span>
+              </div>
+              ${(status === 'Upcoming' || status === 'Rescheduled') ? `
+                <div class="student-interviews-countdown ${statusStyle}" id="${timerId}">🕒 Calculating...</div>
+              ` : ''}
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-ghost btn-sm btn-view-details" data-id="${app.id}" style="flex: 1; justify-content: center; font-size: 11px; padding: 6px; border: 1px solid var(--border-color);">
+                View Details
+              </button>
+              ${mode === 'Online' ? `
+                <a href="${app.venue.includes('http') ? app.venue : 'https://' + app.venue}" target="_blank" class="btn btn-primary btn-sm" style="flex: 1; justify-content: center; font-size: 11px; padding: 6px; background-color: var(--primary); border-color: var(--primary); color: white; display: inline-flex; align-items: center; gap: 4px;">
+                  Join Meeting
+                </a>
+              ` : `
+                <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(app.venue)}" target="_blank" class="btn btn-primary btn-sm" style="flex: 1; justify-content: center; font-size: 11px; padding: 6px; background-color: var(--primary); border-color: var(--primary); color: white; display: inline-flex; align-items: center; gap: 4px;">
+                  Open Location
+                </a>
+              `}
+              <button class="btn btn-ghost btn-sm btn-download-instructions" data-id="${app.id}" title="Download Instructions" style="padding: 6px 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
+                📥
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    grid.innerHTML = html;
+
+    list.forEach(app => {
+      const status = studentInterviewsGetStatus(app);
+      const timerId = `student-interviews-countdown-${app.id}`;
+      if (status === 'Upcoming' || status === 'Rescheduled') {
+        studentInterviewsStartCountdown(app.date, app.time, timerId);
+      }
+    });
+
+    grid.querySelectorAll(".btn-view-details").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        studentInterviewsShowDetails(id);
+      });
+    });
+
+    grid.querySelectorAll(".btn-download-instructions").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const app = data.interviews.find(i => parseInt(i.id) === parseInt(id));
+        if (app) studentInterviewsDownloadInstructions(app);
+      });
+    });
+  }
+
+  function studentInterviewsRender() {
+    const list = data.interviews || [];
+    
+    const badge = document.getElementById("student-interviews-count-badge");
+    if (badge) {
+      const upcomingCount = list.filter(i => {
+        const status = studentInterviewsGetStatus(i);
+        return status === 'Upcoming' || status === 'Rescheduled';
+      }).length;
+      badge.innerText = `${upcomingCount} Scheduled`;
+    }
+
+    studentInterviewsFilterAndSort();
+
+    const searchInp = document.getElementById("student-interviews-search");
+    if (searchInp && !searchInp.dataset.listenerBound) {
+      searchInp.addEventListener("input", studentInterviewsFilterAndSort);
+      searchInp.dataset.listenerBound = "true";
+    }
+
+    const statusSel = document.getElementById("student-interviews-filter-status");
+    if (statusSel && !statusSel.dataset.listenerBound) {
+      statusSel.addEventListener("change", studentInterviewsFilterAndSort);
+      statusSel.dataset.listenerBound = "true";
+    }
+
+    const typeSel = document.getElementById("student-interviews-filter-type");
+    if (typeSel && !typeSel.dataset.listenerBound) {
+      typeSel.addEventListener("change", studentInterviewsFilterAndSort);
+      typeSel.dataset.listenerBound = "true";
+    }
+
+    const sortSel = document.getElementById("student-interviews-sort");
+    if (sortSel && !sortSel.dataset.listenerBound) {
+      sortSel.addEventListener("change", studentInterviewsFilterAndSort);
+      sortSel.dataset.listenerBound = "true";
+    }
+  }
 
   window.renderCalendar = function() {
     if (calendarInstance) return;

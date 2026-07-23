@@ -1,0 +1,16 @@
+# OS / System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor files
+.vscode/
+.idea/
+
+# Vendor & Temp files
+/tmp/
+*.log
+
+# Uploads directory (optional: uncomment if user files shouldn't be tracked)
+# uploads/*
+# !uploads/.gitkeep

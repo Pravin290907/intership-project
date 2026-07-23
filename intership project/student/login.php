@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 if (isset($_SESSION['user_id']) && $_SESSION['user_role'] === 'student') {
-  header("Location: /dashboard.php");
+  header("Location: ../dashboard.php");
   exit;
 }
 ?>
@@ -20,6 +20,7 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_role'] === 'student') {
   <title>Student Login - CRMS</title>
   <link rel="stylesheet" href="../css/design-system.css">
   <link rel="stylesheet" href="../css/auth.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="auth-body">
 
@@ -60,7 +61,7 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_role'] === 'student') {
         <div class="form-group" style="margin-bottom: var(--space-25);">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <label class="form-label" for="student-password">Password</label>
-            <span style="font-size:12px;"><a href="#" onclick="alert('Password reset link has been simulated. Please check email.')" style="color:#60A5FA;">Forgot Password?</a></span>
+            <span style="font-size:12px;"><a href="../forgot_password.php" style="color:#60A5FA;">Forgot Password?</a></span>
           </div>
           <div class="input-icon-wrapper">
             <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>

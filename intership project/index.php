@@ -9,6 +9,24 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+// Force logout parameter handler
+if (isset($_GET['logout'])) {
+  $_SESSION = [];
+  if (ini_get("session.use_cookies")) {
+    $params = session_get_cookie_params();
+    setcookie(session_name(), '', time() - 42000,
+      $params["path"], $params["domain"],
+      $params["secure"], $params["httponly"]
+    );
+  }
+  if (isset($_COOKIE['remember_me'])) {
+    setcookie('remember_me', '', time() - 42000, '/');
+  }
+  session_destroy();
+  header("Location: index.php");
+  exit;
+}
+
 // Redirect if already authenticated
 if (isset($_SESSION['user_id'])) {
   header("Location: dashboard.php");
@@ -23,6 +41,7 @@ if (isset($_SESSION['user_id'])) {
   <title>Login - Campus Recruitment Portal</title>
   <link rel="stylesheet" href="css/design-system.css">
   <link rel="stylesheet" href="css/auth.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   
   <style>
     /* Styling adjustments for single-page unified login */
@@ -103,7 +122,7 @@ if (isset($_SESSION['user_id'])) {
         <div class="form-group" style="margin-bottom: var(--space-25);">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <label class="form-label" for="login-password">Password</label>
-            <span style="font-size:12px;"><a href="#" onclick="alert('Demo accounts use simplified passwords: admin123, tpo123, company123, student123.')" style="color:#60A5FA;">Forgot Password?</a></span>
+            <span style="font-size:12px;"><a href="forgot_password.php" style="color:#60A5FA;">Forgot Password?</a></span>
           </div>
           <div class="input-icon-wrapper">
             <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>

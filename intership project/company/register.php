@@ -11,6 +11,9 @@ require_once __DIR__ . '/../config/db.php';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Company Registration - CRMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/design-system.css">
   <link rel="stylesheet" href="../css/auth.css">
 </head>
@@ -87,7 +90,10 @@ require_once __DIR__ . '/../config/db.php';
           <!-- Phone -->
           <div class="col-6 col-md-12 form-group">
             <label class="form-label" for="reg-phone">Office Phone Number</label>
-            <input type="tel" class="input-field" id="reg-phone" name="phone" placeholder="+91 22 1234 5678" required>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; padding: 10px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-secondary); line-height: 1;">+91</span>
+              <input type="tel" class="input-field" id="reg-phone" name="phone" placeholder="9876543210" inputmode="numeric" maxlength="10" required style="flex: 1;">
+            </div>
           </div>
 
           <!-- Website -->
@@ -112,6 +118,34 @@ require_once __DIR__ . '/../config/db.php';
   </div>
 
   <script>
+    // Digits-only key filtering, input parsing, and pasting restriction on reg-phone
+    const phoneInput = document.getElementById("reg-phone");
+    if (phoneInput) {
+      phoneInput.addEventListener("keydown", (e) => {
+        if ([46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+            (e.ctrlKey === true || e.metaKey === true) ||
+            (e.keyCode >= 35 && e.keyCode <= 40)) {
+                 return;
+        }
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+      });
+      phoneInput.addEventListener("input", () => {
+        let val = phoneInput.value.replace(/\D/g, '');
+        if (val.length > 10) val = val.substring(0, 10);
+        phoneInput.value = val;
+      });
+      phoneInput.addEventListener("paste", (e) => {
+        e.preventDefault();
+        const clipboardData = e.clipboardData || window.clipboardData;
+        const pastedData = clipboardData.getData('text');
+        let val = pastedData.replace(/\D/g, '');
+        if (val.length > 10) val = val.substring(0, 10);
+        phoneInput.value = val;
+      });
+    }
+
     const form = document.getElementById("company-reg-form");
     const errorBanner = document.getElementById("auth-error-banner");
     const errorMsg = document.getElementById("auth-error-msg");
@@ -129,9 +163,16 @@ require_once __DIR__ . '/../config/db.php';
       const pw = document.getElementById("reg-password").value;
       const cname = document.getElementById("reg-cname").value;
       const web = document.getElementById("reg-web").value;
+      const phone = document.getElementById("reg-phone").value;
 
-      if (!name.trim() || !email.trim() || !pw.trim() || !cname.trim() || !web.trim()) {
+      if (!name.trim() || !email.trim() || !pw.trim() || !cname.trim() || !web.trim() || !phone.trim()) {
         errorMsg.innerText = "Please complete all inputs.";
+        errorBanner.classList.add("active");
+        return;
+      }
+
+      if (!/^[0-9]{10}$/.test(phone)) {
+        errorMsg.innerText = "Please enter a valid mobile number in the format +91 XXXXXXXXXX.";
         errorBanner.classList.add("active");
         return;
       }

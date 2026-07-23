@@ -42,6 +42,8 @@ require_once __DIR__ . '/../config/db.php';
         <span id="auth-success-msg">Success</span>
       </div>
 
+      <a href="login.php" class="btn btn-secondary" id="success-back-link" style="display: none; text-align: center; width: 100%; font-weight: 700; margin-bottom: var(--space-2);">Back to Login</a>
+
       <!-- Form -->
       <form id="student-reg-form" novalidate>
         <input type="hidden" name="register_type" value="student">
@@ -93,7 +95,10 @@ require_once __DIR__ . '/../config/db.php';
           <!-- Phone -->
           <div class="col-12 form-group">
             <label class="form-label" for="reg-phone">Contact Phone Number</label>
-            <input type="tel" class="input-field" id="reg-phone" name="phone" placeholder="+91 98765 43210" required>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; padding: 10px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-secondary); line-height: 1;">+91</span>
+              <input type="tel" class="input-field" id="reg-phone" name="phone" placeholder="9876543210" inputmode="numeric" maxlength="10" required style="flex: 1;">
+            </div>
           </div>
 
           <div class="col-12" style="margin-top: var(--space-2);">
@@ -112,6 +117,34 @@ require_once __DIR__ . '/../config/db.php';
   </div>
 
   <script>
+    // Digits-only key filtering, input parsing, and pasting restriction on reg-phone
+    const phoneInput = document.getElementById("reg-phone");
+    if (phoneInput) {
+      phoneInput.addEventListener("keydown", (e) => {
+        if ([46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+            (e.ctrlKey === true || e.metaKey === true) ||
+            (e.keyCode >= 35 && e.keyCode <= 40)) {
+                 return;
+        }
+        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+            e.preventDefault();
+        }
+      });
+      phoneInput.addEventListener("input", () => {
+        let val = phoneInput.value.replace(/\D/g, '');
+        if (val.length > 10) val = val.substring(0, 10);
+        phoneInput.value = val;
+      });
+      phoneInput.addEventListener("paste", (e) => {
+        e.preventDefault();
+        const clipboardData = e.clipboardData || window.clipboardData;
+        const pastedData = clipboardData.getData('text');
+        let val = pastedData.replace(/\D/g, '');
+        if (val.length > 10) val = val.substring(0, 10);
+        phoneInput.value = val;
+      });
+    }
+
     const form = document.getElementById("student-reg-form");
     const errorBanner = document.getElementById("auth-error-banner");
     const errorMsg = document.getElementById("auth-error-msg");
@@ -129,9 +162,16 @@ require_once __DIR__ . '/../config/db.php';
       const pw = document.getElementById("reg-password").value;
       const roll = document.getElementById("reg-roll").value;
       const cgpa = document.getElementById("reg-cgpa").value;
+      const phone = document.getElementById("reg-phone").value;
 
-      if (!name.trim() || !email.trim() || !pw.trim() || !roll.trim() || !cgpa.trim()) {
+      if (!name.trim() || !email.trim() || !pw.trim() || !roll.trim() || !cgpa.trim() || !phone.trim()) {
         errorMsg.innerText = "Please complete all mandatory fields.";
+        errorBanner.classList.add("active");
+        return;
+      }
+
+      if (!/^[0-9]{10}$/.test(phone)) {
+        errorMsg.innerText = "Please enter a valid mobile number in the format +91 XXXXXXXXXX.";
         errorBanner.classList.add("active");
         return;
       }
@@ -154,6 +194,7 @@ require_once __DIR__ . '/../config/db.php';
           form.style.display = "none";
           successMsg.innerText = res.message;
           successBanner.style.display = "flex";
+          document.getElementById("success-back-link").style.display = "inline-block";
         } else {
           errorMsg.innerText = res.message;
           errorBanner.classList.add("active");

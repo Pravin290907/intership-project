@@ -168,10 +168,11 @@ class ModernDataTable {
   }
 
   toggleSelectItem(id, checked) {
+    const parsedId = isNaN(id) ? id : parseInt(id, 10);
     if (checked) {
-      this.selectedIds.add(id);
+      this.selectedIds.add(parsedId);
     } else {
-      this.selectedIds.delete(id);
+      this.selectedIds.delete(parsedId);
     }
     this.render();
     this.updateBulkActionsBar();
@@ -265,15 +266,21 @@ class ModernDataTable {
                   `).join('')}
                   <td style="text-align: right;" class="actions-cell">
                     <div style="display: inline-flex; gap: 4px; justify-content: flex-end;">
+                      ${this.options.onRowClick ? `
                       <button class="btn btn-ghost btn-sm btn-icon-only row-action-view" title="View details" data-id="${row.id}">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                       </button>
+                      ` : ''}
+                      ${this.options.onEdit ? `
                       <button class="btn btn-ghost btn-sm btn-icon-only row-action-edit" title="Edit" data-id="${row.id}">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                       </button>
+                      ` : ''}
+                      ${this.options.onDelete ? `
                       <button class="btn btn-ghost btn-sm btn-icon-only row-action-delete" title="Delete" data-id="${row.id}" style="color: var(--color-danger);">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                       </button>
+                      ` : ''}
                     </div>
                   </td>
                 </tr>
@@ -388,7 +395,7 @@ class ModernDataTable {
         }
 
         if (this.options.onRowClick) {
-          this.options.onRowClick(id, this.data.find(x => x.id === id));
+          this.options.onRowClick(id, this.data.find(x => x.id == id));
         }
       });
     });
@@ -398,7 +405,7 @@ class ModernDataTable {
         e.stopPropagation();
         const id = btn.getAttribute("data-id");
         if (this.options.onRowClick) {
-          this.options.onRowClick(id, this.data.find(x => x.id === id));
+          this.options.onRowClick(id, this.data.find(x => x.id == id));
         }
       });
     });
@@ -408,7 +415,7 @@ class ModernDataTable {
         e.stopPropagation();
         const id = btn.getAttribute("data-id");
         if (this.options.onEdit) {
-          this.options.onEdit(id, this.data.find(x => x.id === id));
+          this.options.onEdit(id, this.data.find(x => x.id == id));
         }
       });
     });
@@ -567,19 +574,20 @@ class KanbanPipeline {
   }
 }
 
+const translate = (text) => (typeof window.__ === 'function' ? window.__(text) : text);
+
 // 4. Upcoming Interviews Calendar
 class InterviewCalendar {
   constructor(calendarContainerId, listContainerId, interviews) {
     this.calContainer = document.getElementById(calendarContainerId);
     this.listContainer = document.getElementById(listContainerId);
     this.interviews = interviews;
-    this.currentDate = new Date(); // Mock "today" context (July 16, 2026)
     
-    // Set to 2026-07-16 for realistic rendering matching context
-    this.currentDate.setFullYear(2026);
-    this.currentDate.setMonth(6); // July is index 6
-    this.currentDate.setDate(16);
-
+    // Set viewDate to July 2026 initially for matching existing DB mock interviews
+    this.viewDate = new Date(2026, 6, 1); // July is index 6
+    
+    // Set active today to 2026-07-16 to match seeded records
+    this.today = new Date(2026, 6, 16);
     this.selectedDateStr = "2026-07-16";
     this.timers = [];
 
@@ -598,21 +606,24 @@ class InterviewCalendar {
     // Clear existing
     this.calContainer.innerHTML = "";
     
-    const year = this.currentDate.getFullYear();
-    const month = this.currentDate.getMonth();
+    const year = this.viewDate.getFullYear();
+    const month = this.viewDate.getMonth();
     
-    // First day of month
+    // First day of month (0 = Sun, 1 = Mon, etc.)
     const firstDay = new Date(year, month, 1).getDay();
     // Days in month
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     
-    // Render Header and Navigation Grid (Static for July 2026 for pixel-perfection)
+    // Month name
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthLabel = `${monthNames[month]} ${year}`;
+    
     let html = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
-        <div style="font-weight: var(--font-bold); font-size: 16px;">July 2026</div>
+        <div style="font-weight: var(--font-bold); font-size: 16px;">${monthLabel}</div>
         <div style="display: flex; gap: 4px;">
-          <button class="btn btn-secondary btn-sm" disabled>&lt;</button>
-          <button class="btn btn-secondary btn-sm" disabled>&gt;</button>
+          <button class="btn btn-secondary btn-sm" id="cal-prev-btn">&lt;</button>
+          <button class="btn btn-secondary btn-sm" id="cal-next-btn">&gt;</button>
         </div>
       </div>
       <div class="calendar-grid-header">
@@ -626,12 +637,15 @@ class InterviewCalendar {
       html += `<div class="calendar-day empty"></div>`;
     }
     
+    // Today's exact date string for comparison (format: YYYY-MM-DD)
+    const todayStr = `${this.today.getFullYear()}-${String(this.today.getMonth() + 1).padStart(2, '0')}-${String(this.today.getDate()).padStart(2, '0')}`;
+    
     // Fill days
     for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `2026-07-${String(d).padStart(2, '0')}`;
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayInterviews = this.interviews.filter(i => i.date === dateStr);
       
-      const isToday = d === 16;
+      const isToday = dateStr === todayStr;
       const isSelected = dateStr === this.selectedDateStr;
       
       let dotsHtml = "";
@@ -664,6 +678,23 @@ class InterviewCalendar {
         this.renderList();
       });
     });
+
+    // Bind navigation buttons
+    const prevBtn = this.calContainer.querySelector("#cal-prev-btn");
+    const nextBtn = this.calContainer.querySelector("#cal-next-btn");
+    
+    if (prevBtn) {
+      prevBtn.addEventListener("click", () => {
+        this.viewDate.setMonth(this.viewDate.getMonth() - 1);
+        this.renderCalendar();
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener("click", () => {
+        this.viewDate.setMonth(this.viewDate.getMonth() + 1);
+        this.renderCalendar();
+      });
+    }
   }
 
   renderList() {
@@ -679,8 +710,8 @@ class InterviewCalendar {
     if (filtered.length === 0) {
       this.listContainer.innerHTML = `
         <div class="empty-state" style="padding: 24px;">
-          <div class="empty-state-title" style="font-size: 14px;">No interviews scheduled</div>
-          <div class="empty-state-desc">There are no placement drives running on ${this.selectedDateStr}.</div>
+          <div class="empty-state-title" style="font-size: 14px;">${translate('No interviews scheduled')}</div>
+          <div class="empty-state-desc">${translate('There are no placement drives running on')} ${this.selectedDateStr}.</div>
         </div>
       `;
       return;
@@ -725,7 +756,7 @@ class InterviewCalendar {
           
           <div style="margin-top: 10px; display: flex; gap: var(--space-1);">
             <a href="#" class="btn btn-secondary btn-sm start-meeting-btn" data-id="${int.id}" style="flex-grow: 1;">
-              Join Meeting Link
+              ${translate('Join Meeting Link')}
             </a>
           </div>
         </div>

@@ -104,7 +104,7 @@ if (!is_dir($destDir)) {
 // Save name using random hash
 $newFileName = $uploadType . '_' . $userId . '_' . bin2hex(random_bytes(8)) . '.' . $fileExt;
 $destPath = $destDir . '/' . $newFileName;
-$relativeUrlPath = '/uploads/' . $subDir . '/' . $newFileName;
+$relativeUrlPath = 'uploads/' . $subDir . '/' . $newFileName;
 
 try {
   $db = getDB();
@@ -130,6 +130,21 @@ try {
       $stmt = $db->prepare("UPDATE offers SET offer_letter_path = ? WHERE application_id = ?");
       $stmt->execute([$relativeUrlPath, $appId]);
       
+      // Get student_id and company details for student notification
+      $stmtApp = $db->prepare("SELECT a.student_id, c.company_name, d.job_role FROM applications a JOIN drives d ON a.drive_id = d.id JOIN companies c ON d.company_id = c.user_id WHERE a.id = ?");
+      $stmtApp->execute([$appId]);
+      $appData = $stmtApp->fetch();
+      if ($appData) {
+        createUserNotification(
+          $appData['student_id'],
+          "Offer Letter Uploaded",
+          "An official offer letter for the role '{$appData['job_role']}' has been uploaded by {$appData['company_name']}. Please view it in your applications section.",
+          "offer",
+          "high",
+          "applications"
+        );
+      }
+
       logActivity("Uploaded offer letter for App ID $appId", "success");
       createAdminNotification("Offer Letter Uploaded", "A recruitment offer letter has been published by Recruiter.", "offer_generated");
     }

@@ -18,6 +18,14 @@ $db = getDB();
 $action = $_POST['action'] ?? $_GET['action'] ?? 'list';
 
 try {
+  if ($action === 'mark_read') {
+    $notifyId = (int)($_POST['notification_id'] ?? $_GET['notification_id'] ?? 0);
+    $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+    $stmt->execute([$notifyId, $userId]);
+    echo json_encode(['status' => 'success', 'message' => 'Notification marked as read']);
+    exit;
+  }
+
   if ($action === 'mark_all_read') {
     $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?");
     $stmt->execute([$userId]);
@@ -26,7 +34,7 @@ try {
   }
   
   if ($action === 'delete') {
-    $notifyId = (int)($_POST['notification_id'] ?? 0);
+    $notifyId = (int)($_POST['notification_id'] ?? $_GET['notification_id'] ?? 0);
     $stmt = $db->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?");
     $stmt->execute([$notifyId, $userId]);
     echo json_encode(['status' => 'success', 'message' => 'Notification deleted']);

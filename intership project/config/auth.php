@@ -21,12 +21,31 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/db.php';
 
 function getProjectBase() {
-  $scriptName = rawurldecode($_SERVER['SCRIPT_NAME'] ?? '');
-  $pos = strpos($scriptName, '/intership project');
+  // Dynamically determine project base path relative to Document Root
+  $projectRoot = realpath(__DIR__ . '/..');
+  $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? realpath($_SERVER['DOCUMENT_ROOT']) : false;
+  
+  if ($projectRoot && $docRoot) {
+    $projectRoot = str_replace('\\', '/', $projectRoot);
+    $docRoot = str_replace('\\', '/', $docRoot);
+    if (strpos($projectRoot, $docRoot) === 0) {
+      $base = substr($projectRoot, strlen($docRoot));
+      return rtrim($base, '/');
+    }
+  }
+
+  // Fallback: search using the last occurrence of the project folder name
+  $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+  $search = '/intership project';
+  $pos = strrpos($scriptName, $search);
   if ($pos !== false) {
-    return '/intership%20project';
+    return substr($scriptName, 0, $pos + strlen($search));
   }
   return '';
+}
+
+if (!defined('BASE_URL')) {
+  define('BASE_URL', getProjectBase() . '/');
 }
 
 // 1. Session Idle Timeout Check (30 Minutes)
@@ -67,6 +86,8 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
     $_SESSION['user_name'] = $user['name'];
     $_SESSION['user_email'] = $user['email'];
     $_SESSION['user_role'] = $user['role'];
+    $_SESSION['language'] = 'en';
+    $_SESSION['theme'] = 'system';
     $_SESSION['last_activity'] = time();
     logActivity("Automatic login via remember-me cookie", "success", $user['id'], $user['role'], $user['name']);
   }
@@ -88,17 +109,38 @@ function checkRole($allowedRoles) {
     exit;
   }
 
-  $userRole = $_SESSION['user_role'];
+  $userRole = $_SESSION['user_role'] ?? '';
   
-  // Array of allowed roles or single role checking
+  // Self-healing session role: reload from database if current session role is not allowed
+  $roleMatch = false;
   if (is_array($allowedRoles)) {
-    if (!in_array($userRole, $allowedRoles)) {
-      redirectAccessDenied();
-    }
+    $roleMatch = in_array($userRole, $allowedRoles);
   } else {
-    if ($userRole !== $allowedRoles) {
-      redirectAccessDenied();
+    $roleMatch = ($userRole === $allowedRoles);
+  }
+
+  if (!$roleMatch) {
+    try {
+      $db = getDB();
+      $stmt = $db->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+      $stmt->execute([$_SESSION['user_id']]);
+      $realRole = $stmt->fetchColumn();
+      if ($realRole) {
+        $_SESSION['user_role'] = $realRole;
+        $userRole = $realRole;
+        if (is_array($allowedRoles)) {
+          $roleMatch = in_array($userRole, $allowedRoles);
+        } else {
+          $roleMatch = ($userRole === $allowedRoles);
+        }
+      }
+    } catch (Exception $e) {
+      // Ignore
     }
+  }
+
+  if (!$roleMatch) {
+    redirectAccessDenied();
   }
 }
 
@@ -108,7 +150,7 @@ function redirectAccessDenied() {
   echo "<div style='font-family: sans-serif; text-align: center; margin-top: 100px;'>
           <h2 style='color: #EF4444;'>Access Denied</h2>
           <p>You do not have administrative privilege to access this resource.</p>
-          <a href='/dashboard.php' style='color: #2563EB; text-decoration: none;'>Return to Dashboard</a>
+          <a href='" . getProjectBase() . "/dashboard.php' style='color: #2563EB; text-decoration: none;'>Return to Dashboard</a>
         </div>";
   exit;
 }
@@ -164,5 +206,57 @@ function createAdminNotification($title, $description, $category, $priority = 'm
   } catch (Exception $e) {
     // Continue
   }
+}
+
+function createUserNotification($userId, $title, $description, $category, $priority = 'medium', $url = null) {
+  try {
+    $db = getDB();
+    // Prevent duplicate notifications in the last 1 minute
+    $stmtCheck = $db->prepare("SELECT id FROM notifications WHERE user_id = ? AND title = ? AND description = ? AND is_read = 0 AND created_at > NOW() - INTERVAL 1 MINUTE LIMIT 1");
+    $stmtCheck->execute([$userId, $title, $description]);
+    if ($stmtCheck->fetch()) {
+      return; // Skip duplicate
+    }
+    
+    $stmt = $db->prepare("INSERT INTO `notifications` (`user_id`, `title`, `description`, `category`, `priority`, `url`) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$userId, $title, $description, $category, $priority, $url]);
+  } catch (Exception $e) {
+    // Continue
+  }
+}
+
+/**
+ * Reusable helper to generate initials from a user's full name.
+ * Handles prefixes, multiple spaces, and single-word names correctly.
+ */
+function getInitials($name) {
+    $name = trim($name);
+    if (empty($name)) {
+        return 'U';
+    }
+
+    // Clean up multiple spaces
+    $name = preg_replace('/\s+/', ' ', $name);
+
+    // Strip common titles/prefixes case-insensitively if followed by space
+    $name = preg_replace('/^(mr|ms|mrs|dr|prof|prof\.)\s+/i', '', $name);
+    $name = trim($name);
+
+    if (empty($name)) {
+        return 'U';
+    }
+
+    $words = explode(' ', $name);
+    $count = count($words);
+
+    if ($count === 1) {
+        return strtoupper(mb_substr($words[0], 0, 1));
+    }
+
+    // First letter of first word and first letter of last word
+    $firstInitial = mb_substr($words[0], 0, 1);
+    $lastInitial = mb_substr($words[$count - 1], 0, 1);
+
+    return strtoupper($firstInitial . $lastInitial);
 }
 ?>

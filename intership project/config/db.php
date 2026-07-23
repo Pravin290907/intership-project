@@ -4,10 +4,32 @@
  * Sets up PDO connection and initializes SQL tables and default seed data if not present.
  */
 
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'campus_recruitment');
+// Load environment variables from .env file if it exists
+if (file_exists(__DIR__ . '/../.env')) {
+  $lines = file(__DIR__ . '/../.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+  foreach ($lines as $line) {
+    $line = trim($line);
+    if ($line === '' || strpos($line, '#') === 0) {
+      continue;
+    }
+    $parts = explode('=', $line, 2);
+    if (count($parts) === 2) {
+      $key = trim($parts[0]);
+      $val = trim($parts[1]);
+      $val = trim($val, '"\'');
+      if (getenv($key) === false) {
+        putenv("$key=$val");
+        $_ENV[$key] = $val;
+        $_SERVER[$key] = $val;
+      }
+    }
+  }
+}
+
+define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
+define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
+define('DB_NAME', getenv('DB_NAME') ?: 'campus_recruitment');
 
 function getDB() {
   static $pdo = null;
@@ -52,22 +74,12 @@ function getDB() {
 function initializeTables($pdo) {
   // Check if users table exists, if so assume initialized
   try {
-    $result = $pdo->query("SELECT 1 FROM `users` LIMIT 1");
-    
-    // Force update passwords to simple versions for easy local testing
-    $adminEasy = password_hash('admin123', PASSWORD_BCRYPT);
-    $tpoEasy = password_hash('tpo123', PASSWORD_BCRYPT);
-    $compEasy = password_hash('company123', PASSWORD_BCRYPT);
-    $stuEasy = password_hash('student123', PASSWORD_BCRYPT);
-    
-    $pdo->exec("UPDATE `users` SET `password_hash` = '{$adminEasy}' WHERE `email` = 'admin@university.edu'");
-    $pdo->exec("UPDATE `users` SET `password_hash` = '{$tpoEasy}' WHERE `email` = 'tpo@university.edu'");
-    $pdo->exec("UPDATE `users` SET `password_hash` = '{$compEasy}' WHERE `role` = 'company'");
-    $pdo->exec("UPDATE `users` SET `password_hash` = '{$stuEasy}' WHERE `role` = 'student'");
-    
-    return; // Already initialized
+    $pdo->query("SELECT 1 FROM `users` LIMIT 1");
+    migrateUsersTable($pdo);
+    migrateInterviewsTable($pdo);
+    return; // Tables already exist — do not overwrite any data
   } catch (PDOException $e) {
-    // Continue with creation
+    // Table does not exist yet — continue with creation below
   }
 
   // Create tables
@@ -82,6 +94,8 @@ function initializeTables($pdo) {
       `status` ENUM('pending', 'approved', 'suspended') DEFAULT 'pending',
       `remember_token` VARCHAR(100) DEFAULT NULL,
       `session_expiry` DATETIME DEFAULT NULL,
+      `reset_token` VARCHAR(255) DEFAULT NULL,
+      `reset_token_expiry` DATETIME DEFAULT NULL,
       `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -155,6 +169,13 @@ function initializeTables($pdo) {
       `remarks` TEXT DEFAULT NULL,
       `result` ENUM('Scheduled', 'Completed', 'Cancelled', 'Passed', 'Failed') DEFAULT 'Scheduled',
       `attendance` ENUM('Present', 'Absent', 'Pending') DEFAULT 'Pending',
+      `meeting_link` VARCHAR(255) DEFAULT NULL,
+      `rating` INT DEFAULT NULL,
+      `feedback` TEXT DEFAULT NULL,
+      `interview_round` VARCHAR(50) DEFAULT NULL,
+      `interview_type` VARCHAR(50) DEFAULT NULL,
+      `instructions` TEXT DEFAULT NULL,
+      `notes` TEXT DEFAULT NULL,
       FOREIGN KEY (`application_id`) REFERENCES `applications` (`id`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -209,7 +230,7 @@ function initializeTables($pdo) {
   $pdo->exec("
     INSERT INTO `users` (`name`, `email`, `password_hash`, `role`, `status`) VALUES
     ('Dr. Amit Dev', 'admin@university.edu', '{$adminPass}', 'admin', 'approved'),
-    ('Prof. Rajesh Verma', 'tpo@university.edu', '{$tpoPass}', 'tpo', 'approved')
+    ('Mr. Pravin Kadu', 'tpo@university.edu', '{$tpoPass}', 'tpo', 'approved')
   ");
 
   // Seed default recruiters
@@ -357,7 +378,7 @@ function initializeTables($pdo) {
   $pdo->exec("
     INSERT INTO `activity_logs` (`user_id`, `username`, `role`, `action`, `ip_address`, `browser`, `status`) VALUES
     (1, 'Dr. Amit Dev', 'admin', 'System initialization and seeding successfully completed', '127.0.0.1', 'Mozilla/Firefox', 'success'),
-    (2, 'Prof. Rajesh Verma', 'tpo', 'TPO session loaded placement drive metrics', '127.0.0.1', 'Mozilla/Firefox', 'success')
+    (2, 'Mr. Pravin Kadu', 'tpo', 'TPO session loaded placement drive metrics', '127.0.0.1', 'Mozilla/Firefox', 'success')
   ");
 
   $pdo->exec("
@@ -367,6 +388,106 @@ function initializeTables($pdo) {
   ");
 }
 
+function migrateUsersTable($pdo) {
+  $cols = [
+    'reset_token' => "VARCHAR(255) DEFAULT NULL",
+    'reset_token_expiry' => "DATETIME DEFAULT NULL"
+  ];
+  
+  foreach ($cols as $colName => $colType) {
+    try {
+      $pdo->query("SELECT `$colName` FROM `users` LIMIT 1");
+    } catch (PDOException $e) {
+      $pdo->exec("ALTER TABLE `users` ADD COLUMN `$colName` $colType");
+    }
+  }
+}
+
+function migrateInterviewsTable($pdo) {
+  try {
+    $pdo->query("SELECT 1 FROM `interviews` LIMIT 1");
+  } catch (PDOException $e) {
+    // Table does not exist, it will be initialized normally
+    return;
+  }
+
+  $cols = [
+    'meeting_link' => "VARCHAR(255) DEFAULT NULL",
+    'rating' => "INT DEFAULT NULL",
+    'feedback' => "TEXT DEFAULT NULL",
+    'interview_round' => "VARCHAR(50) DEFAULT NULL",
+    'interview_type' => "VARCHAR(50) DEFAULT NULL",
+    'instructions' => "TEXT DEFAULT NULL",
+    'notes' => "TEXT DEFAULT NULL"
+  ];
+  
+  foreach ($cols as $colName => $colType) {
+    try {
+      $pdo->query("SELECT `$colName` FROM `interviews` LIMIT 1");
+    } catch (PDOException $e) {
+      // Column doesn't exist, add it
+      $pdo->exec("ALTER TABLE `interviews` ADD COLUMN `$colName` $colType");
+    }
+  }
+}
+
 // Global initialization
 getDB();
+
+// Global localization helper
+function __($text) {
+  static $translations = null;
+  if ($translations === null) {
+    $translations = require __DIR__ . '/lang.php';
+  }
+  
+  if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+  }
+  $lang = $_SESSION['language'] ?? 'en';
+  
+  if (isset($translations[$lang][$text])) {
+    return $translations[$lang][$text];
+  }
+  return $text;
+}
+
+// Output buffering translation filter
+ob_start(function($buffer) {
+  if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+  }
+  $lang = $_SESSION['language'] ?? 'en';
+  if ($lang !== 'hi') {
+    return $buffer;
+  }
+  
+  static $translations = null;
+  if ($translations === null) {
+    $translations = require __DIR__ . '/lang.php';
+  }
+  
+  if (empty($translations['hi'])) {
+    return $buffer;
+  }
+  
+  $transMap = $translations['hi'];
+  uksort($transMap, function($a, $b) {
+    return strlen($b) - strlen($a);
+  });
+  
+  foreach ($transMap as $english => $hindi) {
+    $buffer = str_replace('>' . $english . '<', '>' . $hindi . '<', $buffer);
+    $buffer = str_replace('>' . $english . "\n", '>' . $hindi . "\n", $buffer);
+    $buffer = str_replace('>' . $english . "\r", '>' . $hindi . "\r", $buffer);
+    $buffer = str_replace('placeholder="' . $english . '"', 'placeholder="' . $hindi . '"', $buffer);
+    $buffer = str_replace('value="' . $english . '"', 'value="' . $hindi . '"', $buffer);
+    $buffer = str_replace(' ' . $english . ' ', ' ' . $hindi . ' ', $buffer);
+    $buffer = str_replace('>' . $english . ' ', '>' . $hindi . ' ', $buffer);
+    $buffer = str_replace(' ' . $english . '<', ' ' . $hindi . '<', $buffer);
+    $buffer = str_replace('>' . $english . '(', '>' . $hindi . '(', $buffer);
+  }
+  
+  return $buffer;
+});
 ?>

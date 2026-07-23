@@ -59,6 +59,11 @@ try {
       exit;
     }
 
+    if (!preg_match('/^[0-9]{10}$/', $phone)) {
+      echo json_encode(['status' => 'error', 'message' => 'Please enter a valid mobile number in the format +91 XXXXXXXXXX.']);
+      exit;
+    }
+
     // Check if roll number already exists
     $stmtRollCheck = $db->prepare("SELECT user_id FROM students WHERE roll_number = ? LIMIT 1");
     $stmtRollCheck->execute([$roll]);
@@ -67,8 +72,8 @@ try {
       exit;
     }
 
-    // Insert user
-    $stmtUser = $db->prepare("INSERT INTO users (name, email, password_hash, role, status) VALUES (?, ?, ?, 'student', 'pending')");
+    // Insert user — status 'approved' so student can log in immediately after registration
+    $stmtUser = $db->prepare("INSERT INTO users (name, email, password_hash, role, status) VALUES (?, ?, ?, 'student', 'approved')");
     $stmtUser->execute([$name, $email, $passwordHash]);
     $userId = $db->lastInsertId();
 
@@ -96,6 +101,11 @@ try {
 
     if (empty($cName) || empty($industry)) {
       echo json_encode(['status' => 'error', 'message' => 'Please provide company name and industry.']);
+      exit;
+    }
+
+    if (!preg_match('/^[0-9]{10}$/', $phone)) {
+      echo json_encode(['status' => 'error', 'message' => 'Please enter a valid mobile number in the format +91 XXXXXXXXXX.']);
       exit;
     }
 
@@ -137,10 +147,11 @@ try {
   exit;
 
 } catch (Exception $e) {
-  if ($db->inTransaction()) {
+  if (isset($db) && $db->inTransaction()) {
     $db->rollBack();
   }
-  echo json_encode(['status' => 'error', 'message' => 'Registration transaction error: ' . $e->getMessage()]);
+  error_log("Registration Exception: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+  echo json_encode(['status' => 'error', 'message' => 'An unexpected registration error occurred. Please try again later.']);
   exit;
 }
 ?>

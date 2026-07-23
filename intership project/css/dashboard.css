@@ -1160,3 +1160,50 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* --- BULK ACTIONS FLOATING TOOLBAR --- */
+#table-bulk-actions {
+  transform: translateX(-50%) translateY(200%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--transition-normal), opacity var(--transition-normal);
+}
+
+#table-bulk-actions.active {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* --- APPLICATION PROGRESS STEPPER --- */
+.application-progress-stepper .step-node {
+  background-color: var(--bg-card);
+  transition: all var(--transition-normal);
+}
+
+.application-progress-stepper .step-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--border-color);
+  transition: all var(--transition-normal);
+}
+
+.application-progress-stepper .step-node.step-active {
+  border-color: var(--primary) !important;
+}
+
+.application-progress-stepper .step-node.step-active .step-dot {
+  background-color: var(--primary);
+  box-shadow: 0 0 8px var(--primary);
+}
+
+.application-progress-stepper .step-node.step-rejected {
+  border-color: var(--color-danger) !important;
+}
+
+.application-progress-stepper .step-node.step-rejected .step-dot {
+  background-color: var(--color-danger);
+  box-shadow: 0 0 8px var(--color-danger);
+}
+

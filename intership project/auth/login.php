@@ -24,8 +24,8 @@ if (empty($email) || empty($password)) {
 try {
   $db = getDB();
   
-  // Find user by email (role is dynamically auto-detected!)
-  $stmt = $db->prepare("SELECT id, name, password_hash, role, status FROM users WHERE email = ? LIMIT 1");
+  // Find user by email (role is dynamically auto-detected!) - forced case-sensitive via BINARY operator
+  $stmt = $db->prepare("SELECT id, name, password_hash, role, status FROM users WHERE BINARY email = ? LIMIT 1");
   $stmt->execute([$email]);
   $user = $stmt->fetch();
 
@@ -44,13 +44,13 @@ try {
 
   // Check registration status
   if ($user['status'] === 'pending') {
-    logActivity("Attempted login by unapproved user: {$user['name']}", "pending_blocked", $user['id'], $role, $user['name']);
+    logActivity("Attempted login by unapproved user: {$user['name']}", "pending_blocked", $user['id'], $user['role'], $user['name']);
     echo json_encode(['status' => 'error', 'message' => 'Your account registration is pending approval by TPO/Admin.']);
     exit;
   }
 
   if ($user['status'] === 'suspended') {
-    logActivity("Attempted login by suspended user: {$user['name']}", "suspended_blocked", $user['id'], $role, $user['name']);
+    logActivity("Attempted login by suspended user: {$user['name']}", "suspended_blocked", $user['id'], $user['role'], $user['name']);
     echo json_encode(['status' => 'error', 'message' => 'Your account has been suspended by TPO/Admin. Please contact support.']);
     exit;
   }
@@ -60,6 +60,8 @@ try {
   $_SESSION['user_name'] = $user['name'];
   $_SESSION['user_email'] = $email;
   $_SESSION['user_role'] = $user['role'];
+  $_SESSION['language'] = 'en';
+  $_SESSION['theme'] = 'system';
   $_SESSION['last_activity'] = time();
 
   // Remember Me Cookie Generation
@@ -91,7 +93,8 @@ try {
   exit;
 
 } catch (PDOException $e) {
-  echo json_encode(['status' => 'error', 'message' => 'Database operation failure: ' . $e->getMessage()]);
+  error_log("Login PDOException: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+  echo json_encode(['status' => 'error', 'message' => 'An unexpected database error occurred. Please try again later.']);
   exit;
 }
 ?>

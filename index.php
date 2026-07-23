@@ -73,24 +73,6 @@ if (isset($_SESSION['user_id'])) {
       color: #FFFFFF;
       box-shadow: 0 0 10px rgba(37,99,235,0.4);
     }
-    /* Auth page footer override */
-    .auth-body .app-footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 20;
-      background-color: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border-top: 1px solid rgba(255,255,255,0.07);
-    }
-    .auth-body .footer-brand,
-    .auth-body .footer-brand svg { color: #3B82F6; }
-    .auth-body .footer-link { color: #94A3B8; }
-    .auth-body .footer-link:hover { color: #3B82F6; }
-    .auth-body .footer-divider,
-    .auth-body .footer-copyright { color: #475569; }
   </style>
 </head>
 <body class="auth-body">
@@ -102,7 +84,7 @@ if (isset($_SESSION['user_id'])) {
       <div class="auth-logo-section">
         <div class="auth-brand-name">
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-          Campus Recruitment
+          CampusRecruit
         </div>
       </div>
 
@@ -140,7 +122,7 @@ if (isset($_SESSION['user_id'])) {
         <div class="form-group" style="margin-bottom: var(--space-25);">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <label class="form-label" for="login-password">Password</label>
-            <span style="font-size:12px;"><a href="#" onclick="Swal.fire({title: 'Forgot Password?', text: 'Demo accounts use simplified passwords: admin123, tpo123, company123, student123.', icon: 'info', confirmButtonColor: '#2563EB'})" style="color:#60A5FA;">Forgot Password?</a></span>
+            <span style="font-size:12px;"><a href="forgot_password.php" style="color:#60A5FA;">Forgot Password?</a></span>
           </div>
           <div class="input-icon-wrapper">
             <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -261,7 +243,5 @@ if (isset($_SESSION['user_id'])) {
       });
     });
   </script>
-
-  <?php require_once __DIR__ . '/includes/footer.php'; ?>
 </body>
 </html>

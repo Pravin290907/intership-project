@@ -68,11 +68,11 @@ if ($query !== '') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="<?php echo $_SESSION['theme'] ?? 'system'; ?>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Global Search Results - Campus Recruitment</title>
+  <title>Global Search Results - CampusRecruit</title>
   <link rel="stylesheet" href="css/design-system.css">
   <link rel="stylesheet" href="css/dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.min.js"></script>
@@ -90,7 +90,7 @@ if ($query !== '') {
         </div>
         <div class="brand" style="font-weight:800; font-size:18px; color:var(--primary); display:flex; align-items:center; gap:8px;">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-          Campus Recruitment
+          CampusRecruit
         </div>
       </header>
 
@@ -215,7 +215,5 @@ if ($query !== '') {
   <script>
     lucide.createIcons();
   </script>
-
-  <?php require_once __DIR__ . '/includes/footer.php'; ?>
 </body>
 </html>

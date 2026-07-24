@@ -77,6 +77,7 @@ function initializeTables($pdo) {
     $pdo->query("SELECT 1 FROM `users` LIMIT 1");
     migrateUsersTable($pdo);
     migrateInterviewsTable($pdo);
+    migrateCompaniesTable($pdo);
     return; // Tables already exist — do not overwrite any data
   } catch (PDOException $e) {
     // Table does not exist yet — continue with creation below
@@ -427,6 +428,45 @@ function migrateInterviewsTable($pdo) {
     } catch (PDOException $e) {
       // Column doesn't exist, add it
       $pdo->exec("ALTER TABLE `interviews` ADD COLUMN `$colName` $colType");
+    }
+  }
+}
+
+function migrateCompaniesTable($pdo) {
+  try {
+    $pdo->query("SELECT 1 FROM `companies` LIMIT 1");
+  } catch (PDOException $e) {
+    return;
+  }
+
+  $cols = [
+    'recruiter_name' => "VARCHAR(100) DEFAULT NULL",
+    'designation' => "VARCHAR(100) DEFAULT NULL",
+    'company_size' => "VARCHAR(100) DEFAULT NULL",
+    'hr_name' => "VARCHAR(100) DEFAULT NULL",
+    'gst' => "VARCHAR(50) DEFAULT NULL",
+    'pan' => "VARCHAR(50) DEFAULT NULL",
+    'office_address' => "TEXT DEFAULT NULL",
+    'description' => "TEXT DEFAULT NULL",
+    'banner_image' => "VARCHAR(255) DEFAULT NULL",
+    'vision' => "TEXT DEFAULT NULL",
+    'mission' => "TEXT DEFAULT NULL",
+    'country' => "VARCHAR(100) DEFAULT 'India'",
+    'state' => "VARCHAR(100) DEFAULT NULL",
+    'city' => "VARCHAR(100) DEFAULT NULL",
+    'pincode' => "VARCHAR(20) DEFAULT NULL",
+    'founded_year' => "INT DEFAULT NULL",
+    'employee_count' => "VARCHAR(50) DEFAULT NULL",
+    'hiring_preferences' => "TEXT DEFAULT NULL",
+    'social_links' => "TEXT DEFAULT NULL",
+    'company_docs' => "TEXT DEFAULT NULL"
+  ];
+  
+  foreach ($cols as $colName => $colType) {
+    try {
+      $pdo->query("SELECT `$colName` FROM `companies` LIMIT 1");
+    } catch (PDOException $e) {
+      $pdo->exec("ALTER TABLE `companies` ADD COLUMN `$colName` $colType");
     }
   }
 }

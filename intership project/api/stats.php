@@ -46,12 +46,19 @@ try {
   if ($avgPackage == 0) {
     $avgPackage = $db->query("SELECT COALESCE(AVG(package_lpa), 0) FROM drives")->fetchColumn();
   }
+  $lowestPackage = $db->query("SELECT COALESCE(MIN(salary_lpa), 0) FROM offers WHERE salary_lpa > 0")->fetchColumn();
+  if ($lowestPackage == 0) {
+    $lowestPackage = $db->query("SELECT COALESCE(MIN(package_lpa), 0) FROM drives WHERE package_lpa > 0")->fetchColumn();
+  }
 
-  // Calculate Placement Rate
+  // Calculate Placement Rate / Selection Ratio / Pending Apps / Upcoming Drives
   $placementRate = 0;
   if ($verifiedStudents > 0) {
     $placementRate = round(($placedStudents / $verifiedStudents) * 100, 1);
   }
+  $selectionRatio = $shortlisted > 0 ? round(($placedStudents / $shortlisted) * 100, 1) : 0;
+  $pendingApplications = $db->query("SELECT COUNT(*) FROM applications WHERE status='Applied'")->fetchColumn();
+  $upcomingDrives = $db->query("SELECT COUNT(*) FROM drives WHERE status='upcoming' OR drive_date >= CURDATE()")->fetchColumn();
 
   // 1. Monthly Placement Trend
   // Count selections grouped by month for the current year
@@ -132,14 +139,20 @@ try {
       'activeDrives' => (int)$drives,
       'applicationsCount' => (int)$applications,
       'shortlistedStudents' => (int)$shortlisted,
+      'shortlistedCandidates' => (int)$shortlisted, // Frontend alias
       'interviewsCount' => (int)$interviews,
       'offersCount' => (int)$offers,
       'studentsPlaced' => (int)$placedStudents,
       'placementRate' => $placementRate,
+      'hiringRate' => $placementRate, // Frontend alias
       'highestPackage' => round((float)$highestPackage, 1),
       'averagePackage' => round((float)$avgPackage, 2),
+      'lowestPackage' => round((float)$lowestPackage, 2),
       'rejectedApplications' => (int)$rejectedApps,
-      'pendingInterviews' => (int)$pendingInterviews
+      'pendingInterviews' => (int)$pendingInterviews,
+      'pendingApplications' => (int)$pendingApplications,
+      'upcomingDrives' => (int)$upcomingDrives,
+      'selectionRatio' => $selectionRatio
     ],
     'charts' => [
       'months' => $monthsLabel,

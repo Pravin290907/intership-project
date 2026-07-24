@@ -45,7 +45,15 @@ function getProjectBase() {
 }
 
 if (!defined('BASE_URL')) {
-  define('BASE_URL', getProjectBase() . '/');
+  define('BASE_URL', str_replace(' ', '%20', getProjectBase()) . '/');
+}
+
+function getRoleDashboard($role = null) {
+  $role = $role ?? ($_SESSION['user_role'] ?? '');
+  if ($role === 'company') {
+    return BASE_URL . 'recruiter_dashboard.php';
+  }
+  return BASE_URL . 'dashboard.php';
 }
 
 // 1. Session Idle Timeout Check (30 Minutes)

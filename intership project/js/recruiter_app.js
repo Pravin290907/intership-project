@@ -5,6 +5,24 @@
  */
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Intercept fetch to rewrite relative api/ paths dynamically to absolute base URL
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options) {
+    if (typeof url === 'string' && url.startsWith('api/')) {
+      const apiBase = window.API_BASE_URL || '../api/';
+      url = decodeURIComponent(apiBase) + url.substring(4);
+    }
+    return originalFetch(url, options);
+  };
+
+  window.getAbsoluteUrl = function(path) {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('//')) return path;
+    const apiBase = window.API_BASE_URL || '../api/';
+    const base = decodeURIComponent(apiBase).replace('/api/', '/');
+    return base + (path.startsWith('/') ? path.substring(1) : path);
+  };
+
   const globalData = window.campusRecruitmentData || {};
   let currentActiveTab = 'dashboard';
   let statsData = null;
@@ -208,43 +226,81 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* --- TAB SWITCHERS --- */
-  window.switchStudentManagementTab = function(tabId) {
-    if (typeof window.switchStudentTab === 'function') {
-      window.switchStudentTab(tabId);
+  window.switchStudentTab = function(tabId) {
+    document.querySelectorAll('#student_management .sub-tab-panel').forEach(p => {
+      p.classList.remove('active');
+      p.style.display = 'none';
+    });
+
+    const targetPanel = document.getElementById(tabId);
+    if (targetPanel) {
+      targetPanel.classList.add('active');
+      targetPanel.style.display = 'block';
     }
+
+    document.querySelectorAll('#student_management .sub-tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+      btn.setAttribute('aria-selected', 'false');
+      btn.setAttribute('tabindex', '-1');
+    });
+
+    // Check both potential id formats (tab-add-student vs add-student)
+    const activeBtn = document.getElementById(`tab-${tabId}`) || document.getElementById(tabId);
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+      activeBtn.setAttribute('aria-selected', 'true');
+      activeBtn.setAttribute('tabindex', '0');
+    }
+
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  };
+
+  window.switchStudentManagementTab = function(tabId) {
+    window.switchStudentTab(tabId);
   };
 
   window.switchOfferTab = function(tabId) {
     document.querySelectorAll('#offers .sub-offer-panel').forEach(p => {
       p.classList.remove('active');
+      p.style.display = 'none';
     });
-    document.getElementById(`tab-${tabId}-panel`).classList.add('active');
+    
+    const targetPanel = document.getElementById(`tab-${tabId}-panel`);
+    if (targetPanel) {
+      targetPanel.classList.add('active');
+      targetPanel.style.display = 'block';
+    }
 
-    document.querySelectorAll('#offers .nav-item-link').forEach(link => {
+    document.querySelectorAll('#offers .sub-tab-btn').forEach(link => {
       link.classList.remove('active');
-      link.style.borderBottomColor = 'transparent';
     });
+    
     const activeBtn = document.getElementById(`btn-tab-${tabId}`);
     if (activeBtn) {
       activeBtn.classList.add('active');
-      activeBtn.style.borderBottomColor = 'var(--primary)';
     }
   };
 
   window.switchInterviewTab = function(tabId) {
     document.querySelectorAll('#interviews .sub-interview-panel').forEach(p => {
       p.classList.remove('active');
+      p.style.display = 'none';
     });
-    document.getElementById(`tab-${tabId}-panel`).classList.add('active');
+    
+    const targetPanel = document.getElementById(`tab-${tabId}-panel`);
+    if (targetPanel) {
+      targetPanel.classList.add('active');
+      targetPanel.style.display = 'block';
+    }
 
-    document.querySelectorAll('#interviews .nav-item-link').forEach(link => {
+    document.querySelectorAll('#interviews .sub-tab-btn').forEach(link => {
       link.classList.remove('active');
-      link.style.borderBottomColor = 'transparent';
     });
     const activeBtn = document.getElementById(`btn-tab-${tabId}`);
     if (activeBtn) {
       activeBtn.classList.add('active');
-      activeBtn.style.borderBottomColor = 'var(--primary)';
     }
   };
 
@@ -660,10 +716,13 @@ document.addEventListener("DOMContentLoaded", () => {
       'kpi-active-drives': kpis.activeDrives,
       'kpi-applications': kpis.applicationsCount,
       'kpi-shortlisted': kpis.shortlistedCandidates,
-      'kpi-interviews': kpis.interviewsCount,
+      'kpi-interviews': kpis.pendingInterviews,
       'kpi-offers': kpis.offersCount,
       'kpi-hired': kpis.studentsPlaced,
       'kpi-total-students': kpis.totalStudents || 0,
+      'kpi-rejected-apps': kpis.rejectedApplications,
+      'kpi-pending-apps': kpis.pendingApplications,
+      'kpi-upcoming-drives': kpis.upcomingDrives,
       
       // Analytics Page KPIs
       'analytics-kpi-total-students': kpis.totalStudents || 0,
@@ -680,28 +739,47 @@ document.addEventListener("DOMContentLoaded", () => {
       const el = document.getElementById(id);
       if (el) {
         if (mappings[id] === null || mappings[id] === undefined) {
-          el.innerText = "No Data Available";
+          el.innerText = "0";
         } else {
           animateNumber(el, mappings[id]);
         }
       }
     });
 
-    // Handle percentage KPIs directly
-    const rateEl = document.getElementById('kpi-hiring-rate');
-    if (rateEl) rateEl.innerText = `${kpis.hiringRate}%`;
+    // Handle currency package metrics
+    const currencyKPIs = {
+      'kpi-avg-pkg': kpis.averagePackage,
+      'kpi-highest-pkg': kpis.highestPackage,
+      'kpi-lowest-pkg': kpis.lowestPackage
+    };
 
-    const oarEl = document.getElementById('kpi-acceptance-rate');
-    if (oarEl) oarEl.innerText = `${kpis.offerAcceptanceRate}%`;
-
-    const placementRateEl = document.getElementById('analytics-kpi-placement-rate');
-    if (placementRateEl) {
-      if (kpis.placementPercentage === null || kpis.placementPercentage === undefined) {
-        placementRateEl.innerText = "No Data Available";
-      } else {
-        placementRateEl.innerText = `${kpis.placementPercentage}%`;
+    Object.keys(currencyKPIs).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        const val = currencyKPIs[id];
+        if (val === null || val === undefined) {
+          el.innerText = "₹0 LPA";
+        } else {
+          el.innerText = `₹${parseFloat(val).toFixed(2)} LPA`;
+        }
       }
-    }
+    });
+
+    // Handle percentage KPIs directly
+    const percentageKPIs = {
+      'kpi-hiring-rate': kpis.hiringRate || 0,
+      'kpi-selection-ratio': kpis.selectionRatio || 0,
+      'kpi-acceptance-rate': kpis.offerAcceptanceRate || 0,
+      'analytics-kpi-placement-rate': kpis.placementRate || 0
+    };
+
+    Object.keys(percentageKPIs).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        const val = percentageKPIs[id];
+        el.innerText = `${val}%`;
+      }
+    });
   }
 
   function animateNumber(element, finalVal) {
@@ -1140,10 +1218,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const resumeHeader = document.getElementById('ats-resume-header-filename');
     if (resumeFrame && resumeHeader) {
       if (student.resume_path) {
-        resumeFrame.src = student.resume_path;
+        resumeFrame.src = window.getAbsoluteUrl(student.resume_path);
         resumeHeader.innerHTML = `
           <span>Academic_Resume.pdf</span>
-          <a href="${student.resume_path}" download class="btn btn-ghost btn-sm" style="padding:4px 8px; font-size:11px;">Download</a>
+          <a href="${window.getAbsoluteUrl(student.resume_path)}" download class="btn btn-ghost btn-sm" style="padding:4px 8px; font-size:11px;">Download</a>
         `;
       } else {
         resumeFrame.src = '';
@@ -2072,7 +2150,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ${offer.offer_letter_path ? `
         <div style="display:flex; justify-content:space-between; align-items:center; padding-top:8px;">
           <span style="color:var(--text-secondary);">${window.__('Offer PDF')}:</span>
-          <a href="${offer.offer_letter_path}" target="_blank" class="btn btn-primary btn-sm" style="font-size:11px; padding:4px 10px;">
+          <a href="${window.getAbsoluteUrl(offer.offer_letter_path)}" target="_blank" class="btn btn-primary btn-sm" style="font-size:11px; padding:4px 10px;">
             <i data-lucide="download" style="width:12px; height:12px; margin-right:4px; vertical-align:middle;"></i> ${window.__('Download')} PDF
           </a>
         </div>` : ''}
@@ -2342,7 +2420,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
               </button>
               ${o.offer_letter_path ? `
-                <a href="${o.offer_letter_path}" target="_blank" class="btn btn-ghost btn-sm btn-icon-only" title="${window.__('Download')} PDF">
+                <a href="${window.getAbsoluteUrl(o.offer_letter_path)}" target="_blank" class="btn btn-ghost btn-sm btn-icon-only" title="${window.__('Download')} PDF">
                   <i data-lucide="download" style="width:14px; height:14px; color:var(--primary);"></i>
                 </a>
               ` : ''}
@@ -2583,8 +2661,320 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
+  /* --- RECRUITER PORTAL REDESIGN CONTROLLERS --- */
+
+  // Dynamic Welcome Greeting Update (IST timezone)
+  function updateWelcomeGreeting() {
+    const msgElem = document.getElementById('recruiter-welcome-msg');
+    if (!msgElem) return;
+    
+    const now = new Date();
+    const istHourStr = now.toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      hour12: false
+    });
+    const hour = parseInt(istHourStr, 10);
+    
+    let greeting = "Good Morning";
+    if (hour >= 12 && hour < 17) {
+      greeting = "Good Afternoon";
+    } else if (hour >= 17 && hour < 21) {
+      greeting = "Good Evening";
+    } else if (hour >= 21 || hour < 5) {
+      greeting = "Good Night";
+    }
+    
+    const name = globalData.userName || 'Recruiter';
+    msgElem.innerText = `${greeting}, ${name} 👋`;
+  }
+
+  // CountUp Animation Helper
+  window.animateValue = function(id, start, end, duration, prefix = '', suffix = '') {
+    const obj = document.getElementById(id);
+    if (!obj) return;
+    if (isNaN(end)) {
+      obj.innerText = end;
+      return;
+    }
+    let startTimestamp = null;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const val = Math.floor(progress * (end - start) + start);
+      obj.innerText = prefix + val.toLocaleString() + suffix;
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      } else {
+        obj.innerText = prefix + end.toLocaleString() + suffix;
+      }
+    };
+    window.requestAnimationFrame(step);
+  };
+
+  // Profile Sub-Tabs Handler
+  window.switchProfileTab = function(secId) {
+    document.querySelectorAll('#profile .profile-sub-panel').forEach(p => p.style.display = 'none');
+    const target = document.getElementById(secId);
+    if (target) target.style.display = 'block';
+
+    document.querySelectorAll('#profile .sub-tab-btn').forEach(btn => btn.classList.remove('active'));
+    if (event && event.currentTarget) {
+      event.currentTarget.classList.add('active');
+    }
+    if (window.lucide) lucide.createIcons();
+  };
+
+  // Branding Upload & Drag-and-Drop
+  window.handleBrandingDrop = function(e, type) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files.length > 0) {
+      uploadBrandingFile(files[0], type);
+    }
+  };
+
+  window.triggerBrandingUpload = function(inputId, type) {
+    const input = document.getElementById(inputId);
+    if (input && input.files.length > 0) {
+      uploadBrandingFile(input.files[0], type);
+    }
+  };
+
+  function uploadBrandingFile(file, type) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+
+    Swal.fire({
+      title: 'Uploading Asset...',
+      text: 'Please wait while we process and store your branding file.',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    fetch('api/upload.php', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          Swal.fire({ title: 'Success!', text: 'Branding asset updated successfully.', icon: 'success', timer: 1500 });
+          if (type === 'company_logo') {
+            const preview = document.getElementById('preview-company-logo-img');
+            if (preview) preview.src = res.filepath;
+          } else if (type === 'company_banner') {
+            const preview = document.getElementById('preview-company-banner-img');
+            if (preview) preview.src = res.filepath;
+          }
+        } else {
+          Swal.fire({ title: 'Upload Failed', text: res.message, icon: 'error' });
+        }
+      })
+      .catch(err => Swal.fire({ title: 'Error', text: 'Network upload error.', icon: 'error' }));
+  }
+
+  window.removeBrandingAsset = function(type) {
+    Swal.fire({
+      title: 'Remove Branding Asset?',
+      text: 'This will reset the branding asset.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Remove'
+    }).then(res => {
+      if (res.isConfirmed) {
+        const f = new FormData();
+        f.append('action', 'update_profile');
+        f.append(type === 'company_logo' ? 'company_logo' : 'banner_image', '');
+        fetch('api/actions.php', { method: 'POST', body: f })
+          .then(r => r.json())
+          .then(r => {
+            Swal.fire({ title: 'Removed', text: 'Asset removed.', icon: 'success', timer: 1500 });
+            setTimeout(() => window.location.reload(), 1500);
+          });
+      }
+    });
+  };
+
+  // Corporate Profile AJAX Form Submission
+  window.submitRecruiterProfileForm = function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    formData.append('action', 'update_profile');
+
+    Swal.fire({
+      title: 'Saving Profile...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    fetch('api/actions.php', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          Swal.fire({ title: 'Success!', text: 'Corporate profile information updated successfully.', icon: 'success', timer: 1500 });
+        } else {
+          Swal.fire({ title: 'Error', text: res.message, icon: 'error' });
+        }
+      });
+  };
+
+  // Verification Document Handler
+  window.uploadCompanyVerificationDoc = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    Swal.fire({
+      title: 'Document Title',
+      input: 'text',
+      inputLabel: 'Enter official document title (e.g., GST Certificate, Registration Cert)',
+      inputValue: file.name.split('.')[0],
+      showCancelButton: true,
+      inputValidator: (value) => {
+        if (!value) return 'Title is required!';
+      }
+    }).then(result => {
+      if (result.isConfirmed) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'company_doc');
+        formData.append('doc_name', result.value);
+
+        Swal.fire({ title: 'Uploading Document...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        fetch('api/upload.php', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(res => {
+            if (res.status === 'success') {
+              Swal.fire({ title: 'Success!', text: 'Document uploaded successfully.', icon: 'success', timer: 1500 });
+              setTimeout(() => window.location.reload(), 1500);
+            } else {
+              Swal.fire({ title: 'Error', text: res.message, icon: 'error' });
+            }
+          });
+      }
+    });
+  };
+
+  window.deleteCompanyDoc = function(docId) {
+    Swal.fire({
+      title: 'Delete Document?',
+      text: 'This will remove the verification document.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete'
+    }).then(res => {
+      if (res.isConfirmed) {
+        Swal.fire({ title: 'Deleted', text: 'Document record deleted.', icon: 'success', timer: 1200 });
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    });
+  };
+
+  // Password Verification & Live Strength Meter
+  window.togglePasswordVisibility = function(inputId) {
+    const input = document.getElementById(inputId);
+    if (input) {
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+  };
+
+  window.checkPasswordRequirements = function(val) {
+    const fill = document.getElementById('pwd-strength-fill');
+    const reqLen = document.getElementById('req-len');
+    const reqUpper = document.getElementById('req-upper');
+    const reqNum = document.getElementById('req-num');
+    const reqSpec = document.getElementById('req-spec');
+
+    let score = 0;
+    if (val.length >= 8) { score++; if (reqLen) reqLen.classList.add('met'); } else if (reqLen) reqLen.classList.remove('met');
+    if (/[A-Z]/.test(val)) { score++; if (reqUpper) reqUpper.classList.add('met'); } else if (reqUpper) reqUpper.classList.remove('met');
+    if (/[0-9]/.test(val)) { score++; if (reqNum) reqNum.classList.add('met'); } else if (reqNum) reqNum.classList.remove('met');
+    if (/[^A-Za-z0-9]/.test(val)) { score++; if (reqSpec) reqSpec.classList.add('met'); } else if (reqSpec) reqSpec.classList.remove('met');
+
+    if (fill) {
+      fill.className = 'password-meter-fill';
+      if (score === 1) fill.classList.add('strength-weak');
+      else if (score === 2) fill.classList.add('strength-fair');
+      else if (score === 3) fill.classList.add('strength-good');
+      else if (score >= 4) fill.classList.add('strength-strong');
+    }
+  };
+
+  // Caps lock warning listener
+  document.addEventListener('keydown', (e) => {
+    const alert = document.getElementById('caps-lock-alert');
+    if (alert && e.getModifierState) {
+      alert.style.display = e.getModifierState('CapsLock') ? 'flex' : 'none';
+    }
+  });
+
+  window.submitRecruiterPasswordForm = function(e) {
+    e.preventDefault();
+    const curr = document.getElementById('pwd-current').value;
+    const newP = document.getElementById('pwd-new').value;
+    const conf = document.getElementById('pwd-confirm').value;
+
+    if (newP !== conf) {
+      Swal.fire({ title: 'Password Mismatch', text: 'New password and confirmation do not match.', icon: 'error' });
+      return;
+    }
+
+    if (newP.length < 8) {
+      Swal.fire({ title: 'Weak Password', text: 'Password must be at least 8 characters long.', icon: 'error' });
+      return;
+    }
+
+    const btn = document.getElementById('btn-change-password-submit');
+    if (btn) btn.disabled = true;
+
+    const f = new FormData();
+    f.append('action', 'update_password');
+    f.append('current_password', curr);
+    f.append('new_password', newP);
+    f.append('confirm_password', conf);
+
+    fetch('api/actions.php', { method: 'POST', body: f })
+      .then(r => r.json())
+      .then(res => {
+        if (btn) btn.disabled = false;
+        if (res.status === 'success') {
+          document.getElementById('recruiter-password-form').reset();
+          checkPasswordRequirements('');
+          Swal.fire({ title: 'Password Changed!', text: res.message, icon: 'success', timer: 1800 });
+        } else {
+          Swal.fire({ title: 'Failed', text: res.message, icon: 'error' });
+        }
+      });
+  };
+
+  // Audit Timeline Search & CSV Export
+  window.filterAuditTimeline = function() {
+    const q = document.getElementById('audit-timeline-search').value.toLowerCase().trim();
+    document.querySelectorAll('#audit-timeline-list .audit-timeline-node').forEach(node => {
+      const text = node.innerText.toLowerCase();
+      node.style.display = !q || text.includes(q) ? '' : 'none';
+    });
+  };
+
+  window.exportAuditHistoryCSV = function() {
+    let csv = "Timestamp,Action,Status,IP Address,Browser\n";
+    document.querySelectorAll('#audit-timeline-list .audit-timeline-node').forEach(node => {
+      const text = node.innerText;
+      csv += `"${text.replace(/"/g, '""')}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit_history_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  };
+
   // Initialize
   setTimeout(() => {
+    updateWelcomeGreeting();
     if (document.getElementById('placement-history-search')) {
       filterPlacementHistoryTable();
     }
@@ -2594,6 +2984,46 @@ document.addEventListener("DOMContentLoaded", () => {
     pollNotifications();
     setInterval(pollNotifications, 30000);
   }, 100);
+
+  /* --- LIVE TIME UPDATER (IST) --- */
+  function updateLiveTime() {
+    const optionsDate = {
+      timeZone: 'Asia/Kolkata',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    };
+    const optionsTime = {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    };
+    
+    const now = new Date();
+    const istDateStr = now.toLocaleDateString('en-US', optionsDate);
+    const istTimeStr = now.toLocaleTimeString('en-US', optionsTime);
+
+    // Update Banner Time
+    const bannerTimeEl = document.getElementById('live-banner-time');
+    if (bannerTimeEl) {
+      bannerTimeEl.innerText = `IST: ${istTimeStr}`;
+    }
+
+    // Update Profile Card live time
+    const profileTimeEl = document.getElementById('live-profile-time');
+    if (profileTimeEl) {
+      profileTimeEl.innerText = `${istDateStr} ${istTimeStr}`;
+    }
+
+    // Dynamic Welcome Greeting Update in real time
+    updateWelcomeGreeting();
+  }
+
+  updateLiveTime();
+  setInterval(updateLiveTime, 1000);
 
   /* --- INITIALIZATION CONTROLLERS --- */
   const savedTab = sessionStorage.getItem('recruiter_active_tab') || 'dashboard';

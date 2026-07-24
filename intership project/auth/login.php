@@ -88,7 +88,7 @@ try {
   echo json_encode([
     'status' => 'success', 
     'message' => 'Login successful. Redirecting to dashboard...',
-    'redirect' => getProjectBase() . '/dashboard.php'
+    'redirect' => getRoleDashboard($user['role'])
   ]);
   exit;
 

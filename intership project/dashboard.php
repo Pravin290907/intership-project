@@ -9,6 +9,12 @@ require_once __DIR__ . '/config/auth.php';
 // Enforce login on all roles
 checkRole(['admin', 'tpo', 'student', 'company']);
 
+// If a recruiter accesses dashboard.php directly, redirect to recruiter_dashboard.php
+if ($_SESSION['user_role'] === 'company') {
+  header("Location: " . getRoleDashboard('company'));
+  exit;
+}
+
 $role = $_SESSION['user_role'];
 $userId = $_SESSION['user_id'];
 $userName = $_SESSION['user_name'];

@@ -3,9 +3,14 @@
  * CRMS Premium Recruiter Dashboard View Container
  * High-fidelity redesign with Student Management, Offer Release, Interview CRUD, and professional Google/LinkedIn styling.
  */
+require_once __DIR__ . '/config/auth.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'company') {
-  header('Location: auth/login.php');
+if (!isset($_SESSION['user_id'])) {
+  header('Location: ' . BASE_URL . 'company/login.php');
+  exit;
+}
+if ($_SESSION['user_role'] !== 'company') {
+  header('Location: ' . getRoleDashboard($_SESSION['user_role']));
   exit;
 }
 
@@ -17,15 +22,41 @@ $userEmail = $_SESSION['user_email'];
 // Fetch recruiter company details
 $stmtComp = $db->prepare("SELECT * FROM companies WHERE user_id = ?");
 $stmtComp->execute([$userId]);
-$companyProfile = $stmtComp->fetch();
+$companyProfile = $stmtComp->fetch() ?: [];
 
-$companyName = $companyProfile['company_name'] ?? 'Recruiter Company';
-$companyLogo = $companyProfile['company_logo'] ?? '';
-$companyBanner = $companyProfile['banner_image'] ?? '';
-$recruiterName = $companyProfile['recruiter_name'] ?? 'Recruiting Officer';
+$companyName = $companyProfile['company_name'] ?? $_SESSION['user_name'] ?? 'Recruiter Company';
+$logoPath = $companyProfile['company_logo'] ?? '';
+$companyLogo = $logoPath ? BASE_URL . ltrim($logoPath, '/') : '';
+$bannerPath = $companyProfile['banner_image'] ?? '';
+$companyBanner = $bannerPath ? BASE_URL . ltrim($bannerPath, '/') : '';
+$recruiterName = $companyProfile['recruiter_name'] ?? $userName;
 $designation = $companyProfile['designation'] ?? 'Talent Acquisition Head';
 $companySize = $companyProfile['company_size'] ?? '500-1000 Employees';
 $industry = $companyProfile['industry'] ?? 'Information Technology';
+$hrName = $companyProfile['hr_name'] ?? $userName;
+$website = $companyProfile['website'] ?? '';
+$phone = $companyProfile['phone'] ?? '';
+$gst = $companyProfile['gst'] ?? '';
+$pan = $companyProfile['pan'] ?? '';
+$officeAddress = $companyProfile['office_address'] ?? '';
+$description = $companyProfile['description'] ?? '';
+$vision = $companyProfile['vision'] ?? '';
+$mission = $companyProfile['mission'] ?? '';
+$country = $companyProfile['country'] ?? 'India';
+$state = $companyProfile['state'] ?? '';
+$city = $companyProfile['city'] ?? '';
+$pincode = $companyProfile['pincode'] ?? '';
+$foundedYear = $companyProfile['founded_year'] ?? '';
+$employeeCount = $companyProfile['employee_count'] ?? '';
+$hiringPreferences = json_decode($companyProfile['hiring_preferences'] ?? '[]', true) ?: [];
+$socialLinks = json_decode($companyProfile['social_links'] ?? '{}', true) ?: [];
+$companyDocs = json_decode($companyProfile['company_docs'] ?? '[]', true) ?: [];
+foreach ($companyDocs as &$doc) {
+  if (isset($doc['path']) && strpos($doc['path'], 'http') !== 0) {
+    $doc['path'] = BASE_URL . ltrim($doc['path'], '/');
+  }
+}
+unset($doc);
 
 // Fetch active placement drives count
 $stmtActiveDrives = $db->prepare("SELECT COUNT(*) FROM drives WHERE company_id = ? AND status IN ('open', 'upcoming')");
@@ -212,14 +243,15 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRMS Recruiter Dashboard Workspace</title>
   
-  <link rel="stylesheet" href="css/design-system.css">
-  <link rel="stylesheet" href="css/recruiter_style.css">
+  <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/design-system.css">
+  <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/recruiter_style.css">
   
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   
   <script>
+    window.API_BASE_URL = "<?php echo BASE_URL; ?>api/";
     window.crmsTranslations = <?php echo json_encode(require __DIR__ . '/config/lang.php'); ?>;
     window.currentLanguage = "<?php echo $_SESSION['language'] ?? 'en'; ?>";
     window.campusRecruitmentData = {
@@ -252,32 +284,31 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
       <nav class="sidebar-navigation">
         <div class="sidebar-section">
           <div class="sidebar-section-title">Workspace</div>
-          <div class="nav-item-link active" data-target="dashboard">
+          <div class="nav-item-link active" data-target="dashboard" data-tooltip="Dashboard">
             <i class="icon" data-lucide="layout-dashboard"></i>
             <span class="nav-item-label">Dashboard</span>
           </div>
-          <div class="nav-item-link" data-target="student_management">
+          <div class="nav-item-link" data-target="student_management" data-tooltip="Student Management">
             <i class="icon" data-lucide="users"></i>
-            <span class="nav-item-label">Student</span>
+            <span class="nav-item-label">Student Management</span>
           </div>
         </div>
 
-
         <div class="sidebar-section">
           <div class="sidebar-section-title">Recruitment</div>
-          <div class="nav-item-link" data-target="drives">
+          <div class="nav-item-link" data-target="drives" data-tooltip="Placement Drives">
             <i class="icon" data-lucide="briefcase"></i>
             <span class="nav-item-label">Placement Drives</span>
           </div>
-          <div class="nav-item-link" data-target="applications">
+          <div class="nav-item-link" data-target="applications" data-tooltip="Applications">
             <i class="icon" data-lucide="file-text"></i>
             <span class="nav-item-label">Applications</span>
           </div>
-          <div class="nav-item-link" data-target="pipeline">
+          <div class="nav-item-link" data-target="pipeline" data-tooltip="Pipeline (Kanban)">
             <i class="icon" data-lucide="git-pull-request"></i>
-            <span class="nav-item-label">Pipeline (Kanban)</span>
+            <span class="nav-item-label">Pipeline</span>
           </div>
-          <div class="nav-item-link" data-target="interviews">
+          <div class="nav-item-link" data-target="interviews" data-tooltip="Interviews">
             <i class="icon" data-lucide="calendar"></i>
             <span class="nav-item-label">Interviews</span>
           </div>
@@ -285,11 +316,11 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
         <div class="sidebar-section">
           <div class="sidebar-section-title">Offboard / Selection</div>
-          <div class="nav-item-link" data-target="offers">
+          <div class="nav-item-link" data-target="offers" data-tooltip="Offer Letters">
             <i class="icon" data-lucide="award"></i>
             <span class="nav-item-label">Offer Letter</span>
           </div>
-          <div class="nav-item-link" data-target="messages">
+          <div class="nav-item-link" data-target="messages" data-tooltip="Messages">
             <i class="icon" data-lucide="message-square"></i>
             <span class="nav-item-label">Messages</span>
           </div>
@@ -297,11 +328,11 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
         <div class="sidebar-section">
           <div class="sidebar-section-title">Analytics & Audit</div>
-          <div class="nav-item-link" data-target="analytics">
+          <div class="nav-item-link" data-target="analytics" data-tooltip="Analytics">
             <i class="icon" data-lucide="bar-chart-2"></i>
             <span class="nav-item-label">Analytics</span>
           </div>
-          <div class="nav-item-link" data-target="reports">
+          <div class="nav-item-link" data-target="reports" data-tooltip="Reports">
             <i class="icon" data-lucide="clipboard"></i>
             <span class="nav-item-label">Reports</span>
           </div>
@@ -309,16 +340,16 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
         <div class="sidebar-section">
           <div class="sidebar-section-title">Account</div>
-          <div class="nav-item-link" data-target="notifications">
+          <div class="nav-item-link" data-target="notifications" data-tooltip="Notifications">
             <i class="icon" data-lucide="bell"></i>
             <span class="nav-item-label">Notifications</span>
             <span class="badge badge-danger sidebar-notif-badge" id="recruiter-sidebar-notif-badge" style="display: none; margin-left: auto; padding: 2px 6px; font-size: 10px; border-radius: 10px; min-width: 16px; text-align: center;">0</span>
           </div>
-          <div class="nav-item-link" data-target="profile">
+          <div class="nav-item-link" data-target="profile" data-tooltip="Company Profile">
             <i class="icon" data-lucide="building"></i>
             <span class="nav-item-label">Company Profile</span>
           </div>
-          <div class="nav-item-link" data-target="settings">
+          <div class="nav-item-link" data-target="settings" data-tooltip="Settings">
             <i class="icon" data-lucide="settings"></i>
             <span class="nav-item-label">Settings</span>
           </div>
@@ -353,10 +384,10 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
         </div>
 
         <div class="navbar-right-actions">
-          <div class="nav-search-bar">
+          <form class="nav-search-bar" action="<?php echo BASE_URL; ?>search_results.php" method="GET">
             <i class="search-icon" data-lucide="search"></i>
-            <input type="search" placeholder="Search profiles, drives, campaigns...">
-          </div>
+            <input type="search" name="query" placeholder="Search profiles, drives, campaigns..." required>
+          </form>
 
           <!-- Notification indicator -->
           <button class="navbar-btn-icon" onclick="window.switchRecruiterView('notifications')">
@@ -406,19 +437,52 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
         <div class="page-view-section active" id="dashboard">
           
           <!-- Top Welcome Banner -->
-          <div class="recruiter-welcome-banner">
-            <div class="banner-left">
-              <h1 class="banner-title" id="recruiter-welcome-msg">Good Morning, Recruiter 👋</h1>
-              <p class="banner-subtitle">Campus Drive Batch Year: 2026 Batch Portal &bull; Today: <?php echo date('l, F d, Y'); ?></p>
+          <!-- Top Welcome Banner Redesigned -->
+          <div class="recruiter-welcome-banner" style="background: linear-gradient(135deg, #1E40AF, #3B82F6); position:relative; overflow:hidden; border-radius:16px; padding:28px 32px; color:white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; box-shadow:0 10px 25px -5px rgba(37,99,235,0.25);">
+            
+            <!-- Soft graphic background overlay -->
+            <div style="position:absolute; right:-50px; bottom:-50px; width:260px; height:260px; background:radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%); pointer-events:none;"></div>
+            
+            <div style="display:flex; align-items:center; gap:20px; z-index:2;">
+              <!-- Recruiter Profile Badge -->
+              <div class="avatar-profile" style="width:68px; height:68px; font-size:22px; border:3px solid rgba(255,255,255,0.3); background-color:rgba(255,255,255,0.15); backdrop-filter:blur(4px); box-shadow:0 4px 10px rgba(0,0,0,0.1); color:white;">
+                <?php echo getInitials($userName); ?>
+              </div>
+              
+              <div>
+                <h1 class="banner-title" id="recruiter-welcome-msg" style="font-size:26px; font-weight:800; letter-spacing:-0.5px; margin-bottom:4px; text-shadow:0 2px 4px rgba(0,0,0,0.1);">Good Morning, Recruiter 👋</h1>
+                <p class="banner-subtitle" style="font-size:13px; opacity:0.9; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  <span class="badge badge-success" style="background-color:rgba(255,255,255,0.2); color:#FFFFFF; border:1px solid rgba(255,255,255,0.3); font-size:11px; padding:2px 8px;">2026 Batch Season</span>
+                  <span>&bull; Today: <?php echo date('l, F d, Y'); ?></span>
+                  <span id="live-banner-time" style="margin-left: 6px; font-weight: 600; background-color: rgba(255, 255, 255, 0.15); padding: 2px 8px; border-radius: 6px; font-size: 11px;">Loading Time...</span>
+                </p>
+              </div>
             </div>
-            <div class="banner-right">
-              <div class="banner-company-logo">
+
+            <!-- Quick statistics and Logo inside header -->
+            <div style="display:flex; align-items:center; gap:24px; z-index:2; flex-wrap:wrap;">
+              
+              <!-- Quick Stats glass badges -->
+              <div style="display:flex; gap:12px;">
+                <div style="background-color:rgba(255,255,255,0.12); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.2); padding:8px 14px; border-radius:12px; text-align:center; min-width:80px; box-shadow:0 4px 6px rgba(0,0,0,0.02);">
+                  <div style="font-size:11px; opacity:0.85; font-weight:500; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Active Drives</div>
+                  <div style="font-size:18px; font-weight:800; color:#FFFFFF;"><?php echo $activeDrivesCount; ?></div>
+                </div>
+                <div style="background-color:rgba(255,255,255,0.12); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.2); padding:8px 14px; border-radius:12px; text-align:center; min-width:80px; box-shadow:0 4px 6px rgba(0,0,0,0.02);">
+                  <div style="font-size:11px; opacity:0.85; font-weight:500; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Hired</div>
+                  <div style="font-size:18px; font-weight:800; color:#22C55E;"><?php echo $totalHiringCount; ?></div>
+                </div>
+              </div>
+
+              <!-- Company Branding Logo Emblem -->
+              <div class="banner-company-logo" style="width:68px; height:68px; background-color:#FFFFFF; border-radius:16px; display:flex; align-items:center; justify-content:center; padding:8px; box-shadow:0 8px 20px rgba(0,0,0,0.08); border:1px solid rgba(226,232,240,0.8);">
                 <?php if ($companyLogo): ?>
-                  <img src="<?php echo $companyLogo; ?>" alt="Branding Logo" style="width:100%; height:100%; object-fit:contain;">
+                  <img src="<?php echo $companyLogo; ?>" alt="Branding Logo" style="max-width:100%; max-height:100%; object-fit:contain;">
                 <?php else: ?>
-                  <i data-lucide="building-2" style="width:32px; height:32px; color:var(--primary);"></i>
+                  <i data-lucide="building-2" style="width:32px; height:32px; color:#2563EB;"></i>
                 <?php endif; ?>
               </div>
+
             </div>
           </div>
 
@@ -426,189 +490,328 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
           <div class="grid-container" style="margin-bottom:24px;">
             
             <!-- Sleek Recruiter Profile Card (Google/LinkedIn style) -->
-            <div class="dashboard-card col-4 col-lg-12" style="padding:20px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div class="dashboard-card col-4 col-lg-12" style="padding:24px; align-self: start; box-shadow:0 4px 20px rgba(0,0,0,0.04); border-radius:16px; background:#FFFFFF; border:1px solid #E2E8F0;">
+              <?php
+              $profileFields = [
+                $companyName, $industry, $recruiterName, $designation, $companySize,
+                $website, $phone, $gst, $pan, $officeAddress, $description,
+                $vision, $mission, $country, $state, $city, $pincode, $foundedYear, $employeeCount
+              ];
+              $filledFields = 0;
+              foreach ($profileFields as $fieldVal) {
+                if (!empty($fieldVal)) $filledFields++;
+              }
+              $profileCompletion = round(($filledFields / count($profileFields)) * 100);
+              ?>
               <div>
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
-                  <div style="display:flex; gap:12px; align-items:center;">
-                    <div class="avatar-profile" style="width:50px; height:50px; font-size:18px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+                  <div style="display:flex; gap:14px; align-items:center;">
+                    <div class="avatar-profile" style="width:56px; height:56px; font-size:20px; font-weight:700; color:white; background:linear-gradient(135deg, #2563EB, #4F46E5); box-shadow:0 4px 10px rgba(37,99,235,0.2);">
                       <?php echo getInitials($userName); ?>
                     </div>
                     <div>
-                      <h3 style="font-size:15px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                      <h3 style="font-size:16px; font-weight:800; display:inline-flex; align-items:center; gap:6px; color:#0F172A; margin-bottom:2px;">
                         <?php echo htmlspecialchars($companyName); ?>
-                        <span style="display:inline-flex; background-color:rgba(37,99,235,0.1); color:var(--primary); border-radius:50%; width:16px; height:16px; align-items:center; justify-content:center; font-size:9px;" title="Verified Enterprise Recruiter">✔</span>
+                        <span style="display:inline-flex; background-color:#2563EB; color:white; border-radius:50%; width:16px; height:16px; align-items:center; justify-content:center; font-size:8px; box-shadow:0 2px 4px rgba(37,99,235,0.3);" title="Verified Enterprise Recruiter">✔</span>
                       </h3>
-                      <p style="color:var(--text-secondary); font-size:11px;"><?php echo htmlspecialchars($industry); ?></p>
+                      <p style="color:#64748B; font-size:12px; font-weight:500;"><?php echo htmlspecialchars($industry); ?></p>
                     </div>
                   </div>
                 </div>
 
-                <div style="display:flex; flex-direction:column; gap:10px; font-size:12px; border-top:1px solid var(--border-color); padding-top:12px; margin-bottom:16px;">
-                  <div style="display:flex; justify-content:space-between;">
-                    <span style="color:var(--text-secondary);">Recruiter Head</span>
-                    <strong><?php echo htmlspecialchars($recruiterName); ?></strong>
+                <!-- Profile Completion Indicator -->
+                <div style="margin-bottom:20px; background:#F8FAFC; border-radius:12px; padding:12px; border:1px solid #E2E8F0;">
+                  <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:#0F172A; margin-bottom:6px;">
+                    <span>Profile Completion</span>
+                    <span style="color:#2563EB;"><?php echo $profileCompletion; ?>%</span>
                   </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span style="color:var(--text-secondary);">Designation</span>
-                    <strong><?php echo htmlspecialchars($designation); ?></strong>
+                  <div style="height:6px; background-color:#E2E8F0; border-radius:10px; overflow:hidden;">
+                    <div style="height:100%; width:<?php echo $profileCompletion; ?>%; background:linear-gradient(90deg, #2563EB, #4F46E5); border-radius:10px; transition:width 0.4s ease;"></div>
                   </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span style="color:var(--text-secondary);">Company Size</span>
-                    <strong><?php echo htmlspecialchars($companySize); ?></strong>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:12px; font-size:12px; border-top:1px solid #E2E8F0; padding-top:16px; margin-bottom:20px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748B; font-weight:500;">Recruiter Head</span>
+                    <strong style="color:#0F172A;"><?php echo htmlspecialchars($recruiterName); ?></strong>
                   </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span style="color:var(--text-secondary);">Active Drive Campaigns</span>
-                    <strong style="color:var(--primary);"><?php echo $activeDrivesCount; ?> drives</strong>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748B; font-weight:500;">Designation</span>
+                    <strong style="color:#0F172A;"><?php echo htmlspecialchars($designation); ?></strong>
                   </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span style="color:var(--text-secondary);">Open Positions</span>
-                    <strong style="color:var(--color-success);"><?php echo $openJobsCount; ?> roles</strong>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748B; font-weight:500;">Company Size</span>
+                    <strong style="color:#0F172A;"><?php echo htmlspecialchars($companySize); ?></strong>
                   </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span style="color:var(--text-secondary);">Total Hiring count</span>
-                    <strong><?php echo $totalHiringCount; ?> students</strong>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748B; font-weight:500;">Active Drive Campaigns</span>
+                    <strong style="color:#2563EB; background:rgba(37,99,235,0.08); padding:2px 8px; border-radius:6px; font-size:11px;"><?php echo $activeDrivesCount; ?> drives</strong>
                   </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span style="color:var(--text-secondary);">Audit Log Timestamp</span>
-                    <strong style="font-size:10px;"><?php echo $lastLoginTime; ?></strong>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748B; font-weight:500;">Open Positions</span>
+                    <strong style="color:#22C55E; background:rgba(34,197,94,0.08); padding:2px 8px; border-radius:6px; font-size:11px;"><?php echo $openJobsCount; ?> roles</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748B; font-weight:500;">Total Hiring count</span>
+                    <strong style="color:#0F172A;"><?php echo $totalHiringCount; ?> students</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748B; font-weight:500;">Audit Log Timestamp</span>
+                    <strong style="font-size:11px; color:#0F172A;"><?php echo $lastLoginTime; ?></strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748B; font-weight:500;">Live Workspace Time (IST)</span>
+                    <strong id="live-profile-time" style="font-size:11px; color:#0F172A;">Loading...</strong>
                   </div>
                 </div>
               </div>
               
-              <button class="btn btn-secondary" onclick="window.switchRecruiterView('profile')" style="width:100%; font-size:12px; padding:8px;">
-                <i data-lucide="edit-3" style="width:12px; height:12px; vertical-align:middle; margin-right:4px;"></i>
+              <button class="btn btn-secondary" onclick="window.switchRecruiterView('profile')" style="width:100%; font-size:13px; font-weight:600; padding:10px; background:#F1F5F9; border:1px solid #E2E8F0; color:#0F172A; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                <i data-lucide="edit-3" style="width:14px; height:14px;"></i>
                 Edit Corporate Profile
               </button>
             </div>
 
-            <!-- Clickable Analytics KPI Cards Grid (8 Cards) -->
-            <div class="col-8 col-lg-12" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:16px;">
+            <!-- Clickable Analytics KPI Cards Grid (15 Cards Redesigned) -->
+            <div class="col-8 col-lg-12" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
               
-              <!-- 1. Total Applications (Clicks to Applications) -->
-              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer;">
-                <div class="kpi-header">
-                  <span>Total Applications</span>
-                  <div class="kpi-icon-wrapper" style="background-color:var(--primary-light); color:var(--primary);">
-                    <i data-lucide="file-text" style="width:16px; height:16px;"></i>
+              <!-- 1. Total Applications -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer; border-top: 4px solid #2563EB; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Total Applications</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(37,99,235,0.08); color:#2563EB; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="file-text" style="width:18px; height:18px;"></i>
                   </div>
                 </div>
-                <div class="kpi-body">
-                  <span class="kpi-value-text" id="kpi-applications">0</span>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-applications" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0</span>
                 </div>
-                <div class="kpi-footer">
-                  <span class="trend-up">&uarr; View all</span><span>student profiles</span>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; View</span><span>candidate apps</span>
                 </div>
               </div>
 
-              <!-- 2. Active Jobs (Clicks to Drives) -->
-              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('drives')" style="cursor:pointer;">
-                <div class="kpi-header">
-                  <span>Active Jobs</span>
-                  <div class="kpi-icon-wrapper" style="background-color:rgba(124,58,237,0.08); color:var(--secondary);">
-                    <i data-lucide="briefcase" style="width:16px; height:16px;"></i>
+              <!-- 2. Active Jobs -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('drives')" style="cursor:pointer; border-top: 4px solid #4F46E5; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Active Jobs</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(79,70,229,0.08); color:#4F46E5; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="briefcase" style="width:18px; height:18px;"></i>
                   </div>
                 </div>
-                <div class="kpi-body">
-                  <span class="kpi-value-text" id="kpi-active-drives">0</span>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-active-drives" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0</span>
                 </div>
-                <div class="kpi-footer">
-                  <span class="trend-up">&uarr; Manage</span><span>drives panel</span>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Manage</span><span>drives panel</span>
                 </div>
               </div>
 
-              <!-- 3. Students Hired (Clicks to Pipeline) -->
-              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('pipeline')" style="cursor:pointer;">
-                <div class="kpi-header">
-                  <span>Students Hired</span>
-                  <div class="kpi-icon-wrapper" style="background-color:var(--color-success-light); color:var(--color-success);">
-                    <i data-lucide="smile" style="width:16px; height:16px;"></i>
+              <!-- 3. Students Hired -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('pipeline')" style="cursor:pointer; border-top: 4px solid #16A34A; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Students Hired</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(22,163,74,0.08); color:#16A34A; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="smile" style="width:18px; height:18px;"></i>
                   </div>
                 </div>
-                <div class="kpi-body">
-                  <span class="kpi-value-text" id="kpi-hired">0</span>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-hired" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0</span>
                 </div>
-                <div class="kpi-footer">
-                  <span class="trend-up">&uarr; Selections</span><span>Kanban board</span>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Selections</span><span>Kanban</span>
                 </div>
               </div>
 
-              <!-- 4. Shortlisted Candidates (Clicks to Applications) -->
-              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer;">
-                <div class="kpi-header">
-                  <span>Shortlisted Candidates</span>
-                  <div class="kpi-icon-wrapper" style="background-color:rgba(6,182,212,0.08); color:var(--color-info);">
-                    <i data-lucide="user-check" style="width:16px; height:16px;"></i>
+              <!-- 4. Shortlisted -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer; border-top: 4px solid #0891B2; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Shortlisted</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(8,145,178,0.08); color:#0891B2; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="user-check" style="width:18px; height:18px;"></i>
                   </div>
                 </div>
-                <div class="kpi-body">
-                  <span class="kpi-value-text" id="kpi-shortlisted">0</span>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-shortlisted" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0</span>
                 </div>
-                <div class="kpi-footer">
-                  <span class="trend-up">&uarr; Screen</span><span>shortlisted cards</span>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Screen</span><span>candidates</span>
                 </div>
               </div>
 
-              <!-- 5. Interviews Scheduled (Clicks to Interviews) -->
-              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('interviews')" style="cursor:pointer;">
-                <div class="kpi-header">
-                  <span>Interviews Scheduled</span>
-                  <div class="kpi-icon-wrapper" style="background-color:rgba(245,158,11,0.08); color:var(--color-warning);">
-                    <i data-lucide="calendar" style="width:16px; height:16px;"></i>
+              <!-- 5. Interviews Scheduled -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('interviews')" style="cursor:pointer; border-top: 4px solid #F59E0B; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Pending Interviews</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(245,158,11,0.08); color:#F59E0B; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="calendar" style="width:18px; height:18px;"></i>
                   </div>
                 </div>
-                <div class="kpi-body">
-                  <span class="kpi-value-text" id="kpi-interviews">0</span>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-interviews" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0</span>
                 </div>
-                <div class="kpi-footer">
-                  <span class="trend-up">&uarr; View</span><span>calendar agenda</span>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; View</span><span>calendar</span>
                 </div>
               </div>
 
-              <!-- 6. Offers Released (Clicks to Offers) -->
-              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('offers')" style="cursor:pointer;">
-                <div class="kpi-header">
-                  <span>Offers Released</span>
-                  <div class="kpi-icon-wrapper" style="background-color:var(--color-success-light); color:var(--color-success);">
-                    <i data-lucide="award" style="width:16px; height:16px;"></i>
+              <!-- 6. Offers Released -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('offers')" style="cursor:pointer; border-top: 4px solid #7C3AED; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Offers Released</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(124,58,237,0.08); color:#7C3AED; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="award" style="width:18px; height:18px;"></i>
                   </div>
                 </div>
-                <div class="kpi-body">
-                  <span class="kpi-value-text" id="kpi-offers">0</span>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-offers" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0</span>
                 </div>
-                <div class="kpi-footer">
-                  <span class="trend-up">&uarr; Dispatch</span><span>PDF templates</span>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Dispatch</span><span>letters</span>
                 </div>
               </div>
 
-              <!-- 7. Hiring Rate (Clicks to Analytics) -->
-              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('analytics')" style="cursor:pointer;">
-                <div class="kpi-header">
-                  <span>Hiring Rate</span>
-                  <div class="kpi-icon-wrapper" style="background-color:rgba(239,68,68,0.08); color:var(--color-danger);">
-                    <i data-lucide="percent" style="width:16px; height:16px;"></i>
+              <!-- 7. Hiring Rate -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('analytics')" style="cursor:pointer; border-top: 4px solid #059669; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Hiring Rate</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(5,150,105,0.08); color:#059669; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="percent" style="width:18px; height:18px;"></i>
                   </div>
                 </div>
-                <div class="kpi-body">
-                  <span class="kpi-value-text" id="kpi-hiring-rate">0%</span>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-hiring-rate" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0%</span>
                 </div>
-                <div class="kpi-footer">
-                  <span class="trend-up">&uarr; Ratio</span><span>against total apps</span>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Ratio</span><span>apps to hires</span>
                 </div>
               </div>
 
-              <!-- 8. Total Students (Clicks to Student Management) -->
-              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('student_management')" style="cursor:pointer;">
-                <div class="kpi-header">
-                  <span>Total Students</span>
-                  <div class="kpi-icon-wrapper" style="background-color:var(--primary-light); color:var(--primary);">
-                    <i data-lucide="users" style="width:16px; height:16px;"></i>
+              <!-- 8. Student Database -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('student_management')" style="cursor:pointer; border-top: 4px solid #0D9488; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Student Database</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(13,148,136,0.08); color:#0D9488; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="users" style="width:18px; height:18px;"></i>
                   </div>
                 </div>
-                <div class="kpi-body">
-                  <span class="kpi-value-text" id="kpi-total-students">0</span>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-total-students" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0</span>
                 </div>
-                <div class="kpi-footer">
-                  <span class="trend-up">&uarr; Manage</span><span>candidate database</span>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Browse</span><span>directory</span>
+                </div>
+              </div>
+
+              <!-- 9. Rejected Applications -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer; border-top: 4px solid #DC2626; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Rejected Applications</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(220,38,38,0.08); color:#DC2626; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="user-x" style="width:18px; height:18px;"></i>
+                  </div>
+                </div>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-rejected-apps" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0</span>
+                </div>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-down" style="color:#DC2626; font-weight:600;">&darr; Review</span><span>rejections</span>
+                </div>
+              </div>
+
+              <!-- 10. Pending Applications -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer; border-top: 4px solid #0EA5E9; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">New Applications</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(14,165,233,0.08); color:#0EA5E9; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="clock" style="width:18px; height:18px;"></i>
+                  </div>
+                </div>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-pending-apps" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0</span>
+                </div>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Awaiting</span><span>evaluation</span>
+                </div>
+              </div>
+
+              <!-- 11. Upcoming Drives -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('drives')" style="cursor:pointer; border-top: 4px solid #EA580C; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Upcoming Drives</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(234,88,12,0.08); color:#EA580C; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="send" style="width:18px; height:18px;"></i>
+                  </div>
+                </div>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-upcoming-drives" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0</span>
+                </div>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Next</span><span>campaigns</span>
+                </div>
+              </div>
+
+              <!-- 12. Average Package -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('analytics')" style="cursor:pointer; border-top: 4px solid #8B5CF6; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Average Package</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(139,92,246,0.08); color:#8B5CF6; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="dollar-sign" style="width:18px; height:18px;"></i>
+                  </div>
+                </div>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-avg-pkg" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">₹0 LPA</span>
+                </div>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Mean</span><span>CTC offered</span>
+                </div>
+              </div>
+
+              <!-- 13. Highest Package -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('analytics')" style="cursor:pointer; border-top: 4px solid #16A34A; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Highest Package</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(22,163,74,0.08); color:#16A34A; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="trending-up" style="width:18px; height:18px;"></i>
+                  </div>
+                </div>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-highest-pkg" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">₹0 LPA</span>
+                </div>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Peak</span><span>offer compensation</span>
+                </div>
+              </div>
+
+              <!-- 14. Lowest Package -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('analytics')" style="cursor:pointer; border-top: 4px solid #475569; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Lowest Package</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(71,85,105,0.08); color:#475569; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="shield-alert" style="width:18px; height:18px;"></i>
+                  </div>
+                </div>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-lowest-pkg" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">₹0 LPA</span>
+                </div>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Floor</span><span>base package</span>
+                </div>
+              </div>
+
+              <!-- 15. Selection Ratio -->
+              <div class="dashboard-card kpi-card-premium lift" onclick="window.switchRecruiterView('analytics')" style="cursor:pointer; border-top: 4px solid #2563EB; border-radius:16px; padding:20px; background:#FFFFFF; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); transition:all 0.3s ease;">
+                <div class="kpi-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <span style="font-size:14px; font-weight:600; color:#64748B;">Selection Ratio</span>
+                  <div class="kpi-icon-wrapper" style="background-color:rgba(37,99,235,0.08); color:#2563EB; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.3s ease;">
+                    <i data-lucide="pie-chart" style="width:18px; height:18px;"></i>
+                  </div>
+                </div>
+                <div class="kpi-body" style="margin-bottom:8px;">
+                  <span class="kpi-value-text" id="kpi-selection-ratio" style="font-size:32px; font-weight:800; color:#0F172A; line-height:1.2;">0%</span>
+                </div>
+                <div class="kpi-footer" style="font-size:12px; color:#64748B; display:flex; align-items:center; gap:4px;">
+                  <span class="trend-up" style="color:#16A34A; font-weight:600;">&uarr; Hired /</span><span>Shortlisted</span>
                 </div>
               </div>
 
@@ -616,29 +819,104 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
           </div>
 
-          <!-- Quick Actions & Visualizations -->
-          <div class="quick-actions-row">
-            <button class="quick-action-btn" onclick="openRecruiterModal('modal-create-drive')">
-              <i data-lucide="plus-circle" style="width:24px; height:24px;"></i>
-              <span>Create Drive</span>
-            </button>
+          <!-- Redesigned Quick Actions Section -->
+          <div style="margin-bottom:28px;">
+            <h3 style="font-size:15px; font-weight:700; color:#0F172A; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="zap" style="width:16px; height:16px; color:#F59E0B;"></i>
+              Quick Recruitment Workspace Actions
+            </h3>
+            
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
+              
+              <!-- 1. Create Placement Drive -->
+              <div class="dashboard-card quick-action-card-premium lift" onclick="openRecruiterModal('modal-create-drive')" style="cursor:pointer; padding:18px; border-radius:14px; background:#FFFFFF; border:1px solid #E2E8F0; display:flex; align-items:center; gap:14px; transition:all 0.2s ease;">
+                <div style="width:42px; height:42px; border-radius:10px; background-color:rgba(37,99,235,0.08); color:#2563EB; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="plus-circle" style="width:20px; height:20px;"></i>
+                </div>
+                <div>
+                  <h4 style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:2px;">Create Drive</h4>
+                  <p style="font-size:11px; color:#64748B;">Launch new campaign</p>
+                </div>
+              </div>
 
-            <button class="quick-action-btn" onclick="openScheduleInterviewModalDirectly()">
-              <i data-lucide="calendar-plus" style="width:24px; height:24px;"></i>
-              <span>Schedule Round</span>
-            </button>
-            <button class="quick-action-btn" onclick="openOfferModalDirectly()">
-              <i data-lucide="file-plus" style="width:24px; height:24px;"></i>
-              <span>Release Offer</span>
-            </button>
-            <button class="quick-action-btn" onclick="window.switchRecruiterView('messages')">
-              <i data-lucide="mail-open" style="width:24px; height:24px;"></i>
-              <span>Chat Candidate</span>
-            </button>
-            <button class="quick-action-btn" onclick="window.switchRecruiterView('settings')">
-              <i data-lucide="sliders" style="width:24px; height:24px;"></i>
-              <span>Preferences</span>
-            </button>
+              <!-- 2. Review Applications -->
+              <div class="dashboard-card quick-action-card-premium lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer; padding:18px; border-radius:14px; background:#FFFFFF; border:1px solid #E2E8F0; display:flex; align-items:center; gap:14px; transition:all 0.2s ease;">
+                <div style="width:42px; height:42px; border-radius:10px; background-color:rgba(79,70,229,0.08); color:#4F46E5; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="file-text" style="width:20px; height:20px;"></i>
+                </div>
+                <div>
+                  <h4 style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:2px;">Applications</h4>
+                  <p style="font-size:11px; color:#64748B;">Screen candidates</p>
+                </div>
+              </div>
+
+              <!-- 3. Schedule Interview -->
+              <div class="dashboard-card quick-action-card-premium lift" onclick="openScheduleInterviewModalDirectly()" style="cursor:pointer; padding:18px; border-radius:14px; background:#FFFFFF; border:1px solid #E2E8F0; display:flex; align-items:center; gap:14px; transition:all 0.2s ease;">
+                <div style="width:42px; height:42px; border-radius:10px; background-color:rgba(245,158,11,0.08); color:#F59E0B; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="calendar-plus" style="width:20px; height:20px;"></i>
+                </div>
+                <div>
+                  <h4 style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:2px;">Schedule Round</h4>
+                  <p style="font-size:11px; color:#64748B;">Book assessment session</p>
+                </div>
+              </div>
+
+              <!-- 4. Release Offer Letter -->
+              <div class="dashboard-card quick-action-card-premium lift" onclick="openOfferModalDirectly()" style="cursor:pointer; padding:18px; border-radius:14px; background:#FFFFFF; border:1px solid #E2E8F0; display:flex; align-items:center; gap:14px; transition:all 0.2s ease;">
+                <div style="width:42px; height:42px; border-radius:10px; background-color:rgba(34,197,94,0.08); color:#22C55E; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="file-plus" style="width:20px; height:20px;"></i>
+                </div>
+                <div>
+                  <h4 style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:2px;">Release Offer</h4>
+                  <p style="font-size:11px; color:#64748B;">Dispatch selection letter</p>
+                </div>
+              </div>
+
+              <!-- 5. Campaign Analytics -->
+              <div class="dashboard-card quick-action-card-premium lift" onclick="window.switchRecruiterView('analytics')" style="cursor:pointer; padding:18px; border-radius:14px; background:#FFFFFF; border:1px solid #E2E8F0; display:flex; align-items:center; gap:14px; transition:all 0.2s ease;">
+                <div style="width:42px; height:42px; border-radius:10px; background-color:rgba(6,182,212,0.08); color:#06B6D4; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="bar-chart-3" style="width:20px; height:20px;"></i>
+                </div>
+                <div>
+                  <h4 style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:2px;">Analytics</h4>
+                  <p style="font-size:11px; color:#64748B;">Hiring funnel insight</p>
+                </div>
+              </div>
+
+              <!-- 6. Generate Reports -->
+              <div class="dashboard-card quick-action-card-premium lift" onclick="window.switchRecruiterView('reports')" style="cursor:pointer; padding:18px; border-radius:14px; background:#FFFFFF; border:1px solid #E2E8F0; display:flex; align-items:center; gap:14px; transition:all 0.2s ease;">
+                <div style="width:42px; height:42px; border-radius:10px; background-color:rgba(239,68,68,0.08); color:#EF4444; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="clipboard" style="width:20px; height:20px;"></i>
+                </div>
+                <div>
+                  <h4 style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:2px;">Reports</h4>
+                  <p style="font-size:11px; color:#64748B;">Export drive metrics</p>
+                </div>
+              </div>
+
+              <!-- 7. Candidate Messaging -->
+              <div class="dashboard-card quick-action-card-premium lift" onclick="window.switchRecruiterView('messages')" style="cursor:pointer; padding:18px; border-radius:14px; background:#FFFFFF; border:1px solid #E2E8F0; display:flex; align-items:center; gap:14px; transition:all 0.2s ease;">
+                <div style="width:42px; height:42px; border-radius:10px; background-color:rgba(124,58,237,0.08); color:#7C3AED; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="mail-open" style="width:20px; height:20px;"></i>
+                </div>
+                <div>
+                  <h4 style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:2px;">Messages</h4>
+                  <p style="font-size:11px; color:#64748B;">Chat with applicants</p>
+                </div>
+              </div>
+
+              <!-- 8. Portal Settings -->
+              <div class="dashboard-card quick-action-card-premium lift" onclick="window.switchRecruiterView('settings')" style="cursor:pointer; padding:18px; border-radius:14px; background:#FFFFFF; border:1px solid #E2E8F0; display:flex; align-items:center; gap:14px; transition:all 0.2s ease;">
+                <div style="width:42px; height:42px; border-radius:10px; background-color:rgba(100,116,139,0.08); color:#64748B; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i data-lucide="sliders" style="width:20px; height:20px;"></i>
+                </div>
+                <div>
+                  <h4 style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:2px;">Settings</h4>
+                  <p style="font-size:11px; color:#64748B;">Workspace preferences</p>
+                </div>
+              </div>
+
+            </div>
           </div>
 
 
@@ -764,19 +1042,23 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
           <div class="sub-tab-panel" id="add-student">
             <div class="dashboard-card" style="max-width:700px; margin:0 auto;">
               <h3 style="font-size:16px; font-weight:700; margin-bottom:20px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Register Student Profile</h3>
-              <form id="form-recruiter-add-student" onsubmit="submitAddStudentForm(event)">
+              <form id="form-recruiter-add-student" onsubmit="submitAddStudentForm(event)" autocomplete="off">
+                <!-- Dummy hidden inputs to confuse autocompletion algorithms -->
+                <input type="text" name="prevent_autofill" style="display:none;" />
+                <input type="password" name="prevent_autofill_pwd" style="display:none;" />
+                
                 <div class="grid-container">
                   <div class="form-input-wrapper col-6 col-md-12">
                     <label class="form-input-label">Student Name *</label>
-                    <input type="text" class="input-field-custom" name="name" placeholder="Example: Rahul Sharma" required>
+                    <input type="text" class="input-field-custom" name="name" placeholder="Example: Rahul Sharma" required autocomplete="off">
                   </div>
                   <div class="form-input-wrapper col-6 col-md-12">
                     <label class="form-input-label">Email Address *</label>
-                    <input type="email" class="input-field-custom" name="email" placeholder="Example: rahul@gmail.com" required>
+                    <input type="email" class="input-field-custom" name="email" placeholder="Example: rahul@gmail.com" required autocomplete="off">
                   </div>
                   <div class="form-input-wrapper col-6 col-md-12">
                     <label class="form-input-label">Setup Password *</label>
-                    <input type="password" class="input-field-custom" name="password" placeholder="Min 6 characters" required>
+                    <input type="password" class="input-field-custom" name="password" placeholder="Min 6 characters" required autocomplete="new-password">
                   </div>
                   <div class="form-input-wrapper col-6 col-md-12">
                     <label class="form-input-label">Roll Number *</label>
@@ -1022,13 +1304,13 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
           <!-- Tabbed Header for Interviews -->
           <div class="dashboard-card" style="margin-bottom:20px; padding:8px 16px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
-              <div style="display:flex; gap:16px; border-bottom:1px solid var(--border-color); padding-bottom:0;">
-                <span class="nav-item-link active" id="btn-tab-interview-calendar" onclick="switchInterviewTab('interview-calendar')" style="margin-bottom:-1px; padding:12px 16px; border-bottom:2px solid var(--primary); border-radius:0; background:none; font-weight:600; box-shadow:none;">
+              <div style="display:flex; gap:12px; padding-bottom:8px;">
+                <button class="sub-tab-btn active" id="btn-tab-interview-calendar" onclick="switchInterviewTab('interview-calendar')">
                   Interview Calendar
-                </span>
-                <span class="nav-item-link" id="btn-tab-interview-directory" onclick="switchInterviewTab('interview-directory')" style="margin-bottom:-1px; padding:12px 16px; border-bottom:2px solid transparent; border-radius:0; background:none; font-weight:600; box-shadow:none;">
+                </button>
+                <button class="sub-tab-btn" id="btn-tab-interview-directory" onclick="switchInterviewTab('interview-directory')">
                   Directory / Logs
-                </span>
+                </button>
               </div>
               
               <button class="btn btn-primary" onclick="openScheduleInterviewModalDirectly()">
@@ -1134,13 +1416,13 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
           
           <!-- View Tabs Header -->
           <div class="dashboard-card" style="margin-bottom:20px; padding:8px 16px;">
-            <div style="display:flex; gap:16px; border-bottom:1px solid var(--border-color); padding-bottom:0;">
-              <span class="nav-item-link active" id="btn-tab-release-offer" onclick="switchOfferTab('release-offer')" style="margin-bottom:-1px; padding:12px 16px; border-bottom:2px solid var(--primary); border-radius:0; background:none; font-weight:600; box-shadow:none;">
+            <div style="display:flex; gap:12px; padding-bottom:8px;">
+              <button class="sub-tab-btn active" id="btn-tab-release-offer" onclick="switchOfferTab('release-offer')">
                 Release Offer Letter
-              </span>
-              <span class="nav-item-link" id="btn-tab-offer-history" onclick="switchOfferTab('offer-history')" style="margin-bottom:-1px; padding:12px 16px; border-bottom:2px solid transparent; border-radius:0; background:none; font-weight:600; box-shadow:none;">
+              </button>
+              <button class="sub-tab-btn" id="btn-tab-offer-history" onclick="switchOfferTab('offer-history')">
                 Offers Status Tracker
-              </span>
+              </button>
             </div>
           </div>
 
@@ -1459,126 +1741,466 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
         <!-- ==================== COMPANY PROFILE VIEW ==================== -->
         <div class="page-view-section" id="profile">
-          <div class="grid-container">
-            <!-- Branding uploads logo / banner -->
-            <div class="dashboard-card col-4 col-lg-12">
-              <h3 style="font-size:14px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Upload Branding Assets</h3>
-              
-              <div style="margin-bottom:20px;">
-                <label class="form-input-label">Corporate Logo Preview</label>
-                <div class="branding-logo-preview">
-                  <?php if ($companyLogo): ?>
-                    <img src="<?php echo $companyLogo; ?>" alt="Branding Logo">
-                  <?php else: ?>
-                    <span style="color:var(--text-muted); font-size:11px;">No Logo</span>
-                  <?php endif; ?>
-                </div>
-                <input type="file" id="logo-file-input" style="display:none;" onchange="triggerBrandingUpload('logo-file-input', 'company_logo')">
-                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('logo-file-input').click()" style="width:100%; margin-top:8px;">Choose Logo File</button>
-              </div>
-
-              <div>
-                <label class="form-input-label">Branding Banner Preview</label>
-                <div class="branding-banner-preview">
-                  <?php if ($companyBanner): ?>
-                    <img src="<?php echo $companyBanner; ?>" alt="Branding Banner">
-                  <?php else: ?>
-                    <span style="color:var(--text-muted); font-size:11px;">No Banner</span>
-                  <?php endif; ?>
-                </div>
-                <input type="file" id="banner-file-input" style="display:none;" onchange="triggerBrandingUpload('banner-file-input', 'company_banner')">
-                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('banner-file-input').click()" style="width:100%; margin-top:8px;">Choose Banner File</button>
-              </div>
+          
+          <!-- Sub-Tab Header for Profile -->
+          <div class="dashboard-card" style="margin-bottom:20px; padding:12px 16px;">
+            <div class="sub-tab-nav-bar" role="tablist" style="display:flex; gap:10px; overflow-x:auto;">
+              <button type="button" class="sub-tab-btn active" onclick="switchProfileTab('sec-branding')">1. Company Branding</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-corporate')">2. Corporate Info</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-location')">3. Office Location</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-preferences')">4. Hiring Preferences</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-social')">5. Social Media</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-documents')">6. Verification Docs</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-password')">Security & Password</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-audit')">Activity Audit Timeline</button>
             </div>
+          </div>
 
-            <!-- Profile Info Form -->
-            <div class="dashboard-card col-8 col-lg-12">
-              <h3 style="font-size:14px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Corporate Parameters</h3>
-              <form id="recruiter-profile-form">
+          <!-- SECTION 1: Company Branding -->
+          <div class="profile-sub-panel active" id="sec-branding">
+            <div class="grid-container">
+              
+              <!-- Logo Upload Dropzone -->
+              <div class="dashboard-card col-6 col-lg-12">
+                <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+                  <span>Corporate Logo Asset</span>
+                  <span class="badge badge-primary" style="font-size:10px;">Recommended: 400x400 px</span>
+                </h3>
+                
+                <div class="branding-logo-preview" style="width:120px; height:120px; border-radius:16px; border:2px dashed #CBD5E1; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto; overflow:hidden; background-color:#F8FAFC;">
+                  <?php if ($companyLogo): ?>
+                    <img src="<?php echo htmlspecialchars($companyLogo); ?>" id="preview-company-logo-img" alt="Branding Logo" style="width:100%; height:100%; object-fit:contain;">
+                  <?php else: ?>
+                    <span id="preview-company-logo-placeholder" style="color:var(--text-muted); font-size:12px;">No Logo</span>
+                  <?php endif; ?>
+                </div>
+
+                <div class="branding-dropzone" onclick="document.getElementById('logo-file-input').click()" ondragover="event.preventDefault(); this.classList.add('dragover');" ondragleave="this.classList.remove('dragover');" ondrop="handleBrandingDrop(event, 'company_logo')">
+                  <i data-lucide="upload-cloud" style="width:32px; height:32px; color:var(--primary); margin-bottom:8px;"></i>
+                  <p style="font-weight:600; font-size:13px; margin-bottom:4px;">Drag & Drop Corporate Logo Here</p>
+                  <p style="font-size:11px; color:var(--text-muted);">Supports PNG, JPG, WEBP or SVG up to 5MB</p>
+                </div>
+
+                <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;" onchange="triggerBrandingUpload('logo-file-input', 'company_logo')">
+
+                <!-- Progress & Action Bar -->
+                <div class="crop-preview-toolbar" style="margin-top:16px;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('logo-file-input').click()">
+                    <i data-lucide="image" style="width:12px; height:12px; margin-right:4px;"></i> Choose File
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="removeBrandingAsset('company_logo')" style="color:var(--color-danger);">
+                    <i data-lucide="trash-2" style="width:12px; height:12px; margin-right:4px;"></i> Remove
+                  </button>
+                </div>
+              </div>
+
+              <!-- Banner Upload Dropzone -->
+              <div class="dashboard-card col-6 col-lg-12">
+                <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+                  <span>Corporate Banner Header</span>
+                  <span class="badge badge-primary" style="font-size:10px;">Recommended: 1200x400 px</span>
+                </h3>
+                
+                <div class="branding-banner-preview" style="width:100%; height:120px; border-radius:16px; border:2px dashed #CBD5E1; display:flex; align-items:center; justify-content:center; margin-bottom:16px; overflow:hidden; background-color:#F8FAFC;">
+                  <?php if ($companyBanner): ?>
+                    <img src="<?php echo htmlspecialchars($companyBanner); ?>" id="preview-company-banner-img" alt="Branding Banner" style="width:100%; height:100%; object-fit:cover;">
+                  <?php else: ?>
+                    <span id="preview-company-banner-placeholder" style="color:var(--text-muted); font-size:12px;">No Banner Header</span>
+                  <?php endif; ?>
+                </div>
+
+                <div class="branding-dropzone" onclick="document.getElementById('banner-file-input').click()" ondragover="event.preventDefault(); this.classList.add('dragover');" ondragleave="this.classList.remove('dragover');" ondrop="handleBrandingDrop(event, 'company_banner')">
+                  <i data-lucide="image-plus" style="width:32px; height:32px; color:var(--primary); margin-bottom:8px;"></i>
+                  <p style="font-weight:600; font-size:13px; margin-bottom:4px;">Drag & Drop Cover Banner Here</p>
+                  <p style="font-size:11px; color:var(--text-muted);">Supports PNG, JPG, WEBP up to 8MB</p>
+                </div>
+
+                <input type="file" id="banner-file-input" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="triggerBrandingUpload('banner-file-input', 'company_banner')">
+
+                <!-- Progress & Action Bar -->
+                <div class="crop-preview-toolbar" style="margin-top:16px;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('banner-file-input').click()">
+                    <i data-lucide="image" style="width:12px; height:12px; margin-right:4px;"></i> Choose File
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="removeBrandingAsset('company_banner')" style="color:var(--color-danger);">
+                    <i data-lucide="trash-2" style="width:12px; height:12px; margin-right:4px;"></i> Remove
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- SECTION 2: Corporate Information Form -->
+          <div class="profile-sub-panel" id="sec-corporate" style="display:none;">
+            <div class="dashboard-card">
+              <h3 style="font-size:16px; font-weight:700; margin-bottom:20px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Corporate Parameters & Recruiter Head Details</h3>
+              <form id="recruiter-profile-form" onsubmit="submitRecruiterProfileForm(event)">
                 <div class="grid-container">
-                  <div class="form-input-wrapper col-6 col-md-12">
+                  
+                  <div class="form-input-wrapper col-4 col-md-12">
                     <label class="form-input-label">HR Representative Name *</label>
-                    <input type="text" class="input-field-custom" name="hr_name" value="<?php echo htmlspecialchars($companyProfile['hr_name'] ?? $userName); ?>" placeholder="Example: Rahul Sharma" required>
+                    <input type="text" class="input-field-custom" name="hr_name" value="<?php echo htmlspecialchars($hrName); ?>" placeholder="Example: Rahul Sharma" required>
                   </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
+
+                  <div class="form-input-wrapper col-4 col-md-12">
                     <label class="form-input-label">Recruiter Head Title *</label>
-                    <input type="text" class="input-field-custom" name="recruiter_name" value="<?php echo htmlspecialchars($companyProfile['recruiter_name'] ?? ''); ?>" placeholder="Example: Recruiting Officer" required>
+                    <input type="text" class="input-field-custom" name="recruiter_name" value="<?php echo htmlspecialchars($recruiterName); ?>" placeholder="Example: Recruiting Officer" required>
                   </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
+
+                  <div class="form-input-wrapper col-4 col-md-12">
                     <label class="form-input-label">Recruiter Head Designation</label>
-                    <input type="text" class="input-field-custom" name="designation" value="<?php echo htmlspecialchars($companyProfile['designation'] ?? ''); ?>" placeholder="Example: Talent Acquisition Head">
+                    <input type="text" class="input-field-custom" name="designation" value="<?php echo htmlspecialchars($designation); ?>" placeholder="Example: Talent Acquisition Head">
                   </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
+
+                  <div class="form-input-wrapper col-4 col-md-12">
+                    <label class="form-input-label">Industry Domain *</label>
+                    <input type="text" class="input-field-custom" name="industry" value="<?php echo htmlspecialchars($industry); ?>" placeholder="Example: Information Technology" required>
+                  </div>
+
+                  <div class="form-input-wrapper col-4 col-md-12">
+                    <label class="form-input-label">Company Name *</label>
+                    <input type="text" class="input-field-custom" name="company_name" value="<?php echo htmlspecialchars($companyName); ?>" placeholder="Example: Google Inc." required>
+                  </div>
+
+                  <div class="form-input-wrapper col-4 col-md-12">
                     <label class="form-input-label">Corporate Company Size</label>
-                    <input type="text" class="input-field-custom" name="company_size" value="<?php echo htmlspecialchars($companyProfile['company_size'] ?? ''); ?>" placeholder="Example: 500-1000 Employees">
+                    <input type="text" class="input-field-custom" name="company_size" value="<?php echo htmlspecialchars($companySize); ?>" placeholder="Example: 500-1000 Employees">
                   </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
+
+                  <div class="form-input-wrapper col-4 col-md-12">
                     <label class="form-input-label">Corporate Website URL *</label>
-                    <input type="url" class="input-field-custom" name="website" value="<?php echo htmlspecialchars($companyProfile['website'] ?? ''); ?>" placeholder="Example: https://google.com" required>
+                    <input type="url" class="input-field-custom" name="website" value="<?php echo htmlspecialchars($website); ?>" placeholder="Example: https://google.com" required>
                   </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Corporate Contact Phone (10 digits) *</label>
-                    <input type="text" class="input-field-custom" name="phone" value="<?php echo htmlspecialchars($companyProfile['phone'] ?? ''); ?>" placeholder="Example: 9876543210" required>
+
+                  <div class="form-input-wrapper col-4 col-md-12">
+                    <label class="form-input-label">Official Contact Phone (10 digits) *</label>
+                    <input type="text" class="input-field-custom" name="phone" value="<?php echo htmlspecialchars($phone); ?>" placeholder="Example: 9876543210" required>
                   </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
+
+                  <div class="form-input-wrapper col-4 col-md-12">
+                    <label class="form-input-label">Official HR Email Address *</label>
+                    <input type="email" class="input-field-custom" value="<?php echo htmlspecialchars($userEmail); ?>" disabled style="background-color:#F1F5F9;">
+                  </div>
+
+                  <div class="form-input-wrapper col-4 col-md-12">
                     <label class="form-input-label">GSTIN ID Number</label>
-                    <input type="text" class="input-field-custom" name="gst" value="<?php echo htmlspecialchars($companyProfile['gst'] ?? ''); ?>" placeholder="Example: 27AAAAA1111A1Z1">
+                    <input type="text" class="input-field-custom" name="gst" value="<?php echo htmlspecialchars($gst); ?>" placeholder="Example: 27AAAAA1111A1Z1">
                   </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
+
+                  <div class="form-input-wrapper col-4 col-md-12">
                     <label class="form-input-label">PAN ID Card</label>
-                    <input type="text" class="input-field-custom" name="pan" value="<?php echo htmlspecialchars($companyProfile['pan'] ?? ''); ?>" placeholder="Example: ABCDE1234F">
+                    <input type="text" class="input-field-custom" name="pan" value="<?php echo htmlspecialchars($pan); ?>" placeholder="Example: ABCDE1234F">
                   </div>
+
+                  <div class="form-input-wrapper col-4 col-md-12">
+                    <label class="form-input-label">Founded Year</label>
+                    <input type="number" class="input-field-custom" name="founded_year" value="<?php echo htmlspecialchars($foundedYear); ?>" placeholder="Example: 2010">
+                  </div>
+
+                  <div class="form-input-wrapper col-4 col-md-12">
+                    <label class="form-input-label">Total Employee Count</label>
+                    <input type="text" class="input-field-custom" name="employee_count" value="<?php echo htmlspecialchars($employeeCount); ?>" placeholder="Example: 1200+ Employees">
+                  </div>
+
                   <div class="form-input-wrapper col-12">
                     <label class="form-input-label">Headquarters Address</label>
-                    <textarea class="textarea-field-custom" name="office_address" rows="3" placeholder="Example: Pune"><?php echo htmlspecialchars($companyProfile['office_address'] ?? ''); ?></textarea>
+                    <textarea class="textarea-field-custom" name="office_address" rows="2" placeholder="Example: Cyber City, Tower B, Level 6, Pune, India"><?php echo htmlspecialchars($officeAddress); ?></textarea>
                   </div>
+
                   <div class="form-input-wrapper col-12">
-                    <label class="form-input-label">Corporate Profile Description</label>
-                    <textarea class="textarea-field-custom" name="description" rows="3" placeholder="Explain your core corporate activities..."><?php echo htmlspecialchars($companyProfile['description'] ?? ''); ?></textarea>
+                    <label class="form-input-label">Company Description</label>
+                    <textarea class="textarea-field-custom" name="description" rows="3" placeholder="Describe core business operations and technology stack..."><?php echo htmlspecialchars($description); ?></textarea>
                   </div>
+
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">Corporate Vision</label>
+                    <textarea class="textarea-field-custom" name="vision" rows="2" placeholder="Enter corporate vision statement..."><?php echo htmlspecialchars($vision); ?></textarea>
+                  </div>
+
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">Corporate Mission</label>
+                    <textarea class="textarea-field-custom" name="mission" rows="2" placeholder="Enter corporate mission statement..."><?php echo htmlspecialchars($mission); ?></textarea>
+                  </div>
+
                 </div>
-                <button type="submit" class="btn btn-primary" style="margin-top:16px;">Save Parameters</button>
+                <button type="submit" class="btn btn-primary" style="margin-top:16px;">
+                  <i data-lucide="save" style="width:14px; height:14px; margin-right:6px;"></i> Save Corporate Information
+                </button>
               </form>
             </div>
           </div>
 
-          <!-- Change password card -->
-          <div class="grid-container" style="margin-top:24px;">
-            <div class="dashboard-card col-6 col-lg-12">
-              <h3 style="font-size:14px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Change Security Password</h3>
-              <form id="recruiter-password-form">
-                <div class="form-input-wrapper">
-                  <label class="form-input-label">Current Password</label>
-                  <input type="password" class="input-field-custom" id="pwd-current" placeholder="Enter current hash" required>
+          <!-- SECTION 3: Office Location -->
+          <div class="profile-sub-panel" id="sec-location" style="display:none;">
+            <div class="grid-container">
+              <div class="dashboard-card col-6 col-lg-12">
+                <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Office Address Details</h3>
+                <form onsubmit="submitRecruiterProfileForm(event)">
+                  <div class="grid-container">
+                    <div class="form-input-wrapper col-6 col-md-12">
+                      <label class="form-input-label">Country *</label>
+                      <input type="text" class="input-field-custom" name="country" value="<?php echo htmlspecialchars($country); ?>" required>
+                    </div>
+                    <div class="form-input-wrapper col-6 col-md-12">
+                      <label class="form-input-label">State / Province *</label>
+                      <input type="text" class="input-field-custom" name="state" value="<?php echo htmlspecialchars($state); ?>" placeholder="Example: Maharashtra" required>
+                    </div>
+                    <div class="form-input-wrapper col-6 col-md-12">
+                      <label class="form-input-label">City *</label>
+                      <input type="text" class="input-field-custom" name="city" value="<?php echo htmlspecialchars($city); ?>" placeholder="Example: Pune" required>
+                    </div>
+                    <div class="form-input-wrapper col-6 col-md-12">
+                      <label class="form-input-label">Pincode / Postal Code *</label>
+                      <input type="text" class="input-field-custom" name="pincode" value="<?php echo htmlspecialchars($pincode); ?>" placeholder="Example: 411001" required>
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-primary" style="margin-top:12px;">Save Office Location</button>
+                </form>
+              </div>
+
+              <!-- Interactive Location Preview Card -->
+              <div class="dashboard-card col-6 col-lg-12">
+                <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Location Map Preview</h3>
+                <div style="width:100%; height:220px; background-color:#E2E8F0; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:16px;">
+                  <i data-lucide="map-pin" style="width:36px; height:36px; color:var(--primary); margin-bottom:8px;"></i>
+                  <h4 style="font-size:14px; font-weight:700; margin-bottom:4px;"><?php echo htmlspecialchars($companyName); ?> HQ</h4>
+                  <p style="font-size:12px; color:var(--text-secondary);"><?php echo htmlspecialchars($officeAddress ?: 'Pune, Maharashtra, India'); ?></p>
                 </div>
-                <div class="form-input-wrapper">
-                  <label class="form-input-label">New Password</label>
-                  <input type="password" class="input-field-custom" id="pwd-new" placeholder="Enter new password" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 4: Hiring Preferences -->
+          <div class="profile-sub-panel" id="sec-preferences" style="display:none;">
+            <div class="dashboard-card">
+              <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Campus Recruitment Eligibility Criteria & Preferences</h3>
+              <form onsubmit="submitRecruiterProfileForm(event)">
+                <div class="grid-container">
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">Target Eligible Branches</label>
+                    <input type="text" class="input-field-custom" name="eligible_branches" value="<?php echo htmlspecialchars($hiringPreferences['eligible_branches'] ?? 'CE, IT, ENTC, AI'); ?>" placeholder="Example: CE, IT, ENTC, AI">
+                  </div>
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">Minimum CGPA Criteria (1.00 - 10.00)</label>
+                    <input type="number" class="input-field-custom" name="min_cgpa" step="0.01" value="<?php echo htmlspecialchars($hiringPreferences['min_cgpa'] ?? '7.50'); ?>">
+                  </div>
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">Maximum Allowed Backlogs</label>
+                    <input type="number" class="input-field-custom" name="max_backlogs" value="<?php echo htmlspecialchars($hiringPreferences['max_backlogs'] ?? '0'); ?>">
+                  </div>
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">Compensation Salary Range (LPA)</label>
+                    <input type="text" class="input-field-custom" name="salary_range" value="<?php echo htmlspecialchars($hiringPreferences['salary_range'] ?? '8.0 - 24.0 LPA'); ?>">
+                  </div>
+                  <div class="form-input-wrapper col-4 col-md-12">
+                    <label class="form-input-label">Work Mode Preference</label>
+                    <select class="input-field-custom" name="work_mode">
+                      <option value="Onsite" <?php echo ($hiringPreferences['work_mode'] ?? '') === 'Onsite' ? 'selected' : ''; ?>>Onsite Office</option>
+                      <option value="Hybrid" <?php echo ($hiringPreferences['work_mode'] ?? '') === 'Hybrid' ? 'selected' : ''; ?>>Hybrid Mode</option>
+                      <option value="Remote" <?php echo ($hiringPreferences['work_mode'] ?? '') === 'Remote' ? 'selected' : ''; ?>>Remote Work</option>
+                    </select>
+                  </div>
+                  <div class="form-input-wrapper col-4 col-md-12">
+                    <label class="form-input-label">Opportunity Type</label>
+                    <select class="input-field-custom" name="job_type">
+                      <option value="Full-Time" <?php echo ($hiringPreferences['job_type'] ?? '') === 'Full-Time' ? 'selected' : ''; ?>>Full-Time Permanent</option>
+                      <option value="Internship + FTE" <?php echo ($hiringPreferences['job_type'] ?? '') === 'Internship + FTE' ? 'selected' : ''; ?>>Internship + Full-Time Conversion</option>
+                      <option value="Internship Only" <?php echo ($hiringPreferences['job_type'] ?? '') === 'Internship Only' ? 'selected' : ''; ?>>Internship Only</option>
+                    </select>
+                  </div>
+                  <div class="form-input-wrapper col-4 col-md-12">
+                    <label class="form-input-label">Service Bond Requirement</label>
+                    <input type="text" class="input-field-custom" name="bond" value="<?php echo htmlspecialchars($hiringPreferences['bond'] ?? 'No Bond'); ?>" placeholder="Example: 1 Year Service Agreement or None">
+                  </div>
                 </div>
-                <div class="form-input-wrapper">
-                  <label class="form-input-label">Confirm New Password</label>
-                  <input type="password" class="input-field-custom" id="pwd-confirm" placeholder="Confirm new password" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Change Password</button>
+                <button type="submit" class="btn btn-primary" style="margin-top:12px;">Save Hiring Preferences</button>
               </form>
             </div>
+          </div>
 
-            <!-- Activity Logs list -->
-            <div class="dashboard-card col-6 col-lg-12" style="max-height:360px; overflow-y:auto;">
-              <h3 style="font-size:14px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Activity Audit History</h3>
-              <div style="display:flex; flex-direction:column; gap:10px;">
-                <?php foreach (($recruiterLogs ?? []) as $log): ?>
-                  <div style="font-size:12px; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
-                    <div style="display:flex; justify-content:space-between; font-weight:600; margin-bottom:2px;">
-                      <span><?php echo htmlspecialchars($log['action']); ?></span>
-                      <span style="color:var(--text-muted); font-size:10px;"><?php echo $log['created_at']; ?></span>
+          <!-- SECTION 5: Social Media -->
+          <div class="profile-sub-panel" id="sec-social" style="display:none;">
+            <div class="dashboard-card">
+              <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Corporate Social Media Links</h3>
+              <form onsubmit="submitRecruiterProfileForm(event)">
+                <div class="grid-container">
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">LinkedIn Organization URL</label>
+                    <input type="url" class="input-field-custom" name="social_linkedin" value="<?php echo htmlspecialchars($socialLinks['linkedin'] ?? ''); ?>" placeholder="https://linkedin.com/company/example">
+                  </div>
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">Twitter / X Page</label>
+                    <input type="url" class="input-field-custom" name="social_twitter" value="<?php echo htmlspecialchars($socialLinks['twitter'] ?? ''); ?>" placeholder="https://x.com/example">
+                  </div>
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">Facebook Page</label>
+                    <input type="url" class="input-field-custom" name="social_facebook" value="<?php echo htmlspecialchars($socialLinks['facebook'] ?? ''); ?>" placeholder="https://facebook.com/example">
+                  </div>
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">Instagram Profile</label>
+                    <input type="url" class="input-field-custom" name="social_instagram" value="<?php echo htmlspecialchars($socialLinks['instagram'] ?? ''); ?>" placeholder="https://instagram.com/example">
+                  </div>
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">GitHub Organization</label>
+                    <input type="url" class="input-field-custom" name="social_github" value="<?php echo htmlspecialchars($socialLinks['github'] ?? ''); ?>" placeholder="https://github.com/example">
+                  </div>
+                  <div class="form-input-wrapper col-6 col-md-12">
+                    <label class="form-input-label">YouTube Channel</label>
+                    <input type="url" class="input-field-custom" name="social_youtube" value="<?php echo htmlspecialchars($socialLinks['youtube'] ?? ''); ?>" placeholder="https://youtube.com/@example">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top:12px;">Save Social Media Handles</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- SECTION 6: Company Verification Documents -->
+          <div class="profile-sub-panel" id="sec-documents" style="display:none;">
+            <div class="dashboard-card" style="margin-bottom:20px;">
+              <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span>Corporate Verification Certificates & Documents</span>
+                <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('company-doc-file-input').click()">
+                  <i data-lucide="upload" style="width:14px; height:14px; margin-right:4px;"></i> Upload Document
+                </button>
+              </h3>
+              
+              <input type="file" id="company-doc-file-input" accept="application/pdf,image/png,image/jpeg" style="display:none;" onchange="uploadCompanyVerificationDoc(event)">
+
+              <div class="dashboard-card" style="padding:0; overflow-x:auto;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Document Title</th>
+                      <th>File Size</th>
+                      <th>Uploaded Timestamp</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="company-docs-tbody">
+                    <?php if (empty($companyDocs)): ?>
+                      <tr>
+                        <td colspan="4" style="text-align:center; padding:32px; color:var(--text-muted);">
+                          No verification documents uploaded. Please upload GST Certificate, PAN, or Company Registration.
+                        </td>
+                      </tr>
+                    <?php endif; ?>
+                    <?php foreach ($companyDocs as $doc): ?>
+                      <tr>
+                        <td><strong><?php echo htmlspecialchars($doc['name']); ?></strong></td>
+                        <td><code><?php echo htmlspecialchars($doc['size'] ?? 'PDF'); ?></code></td>
+                        <td><?php echo htmlspecialchars($doc['uploaded_at'] ?? date('Y-m-d')); ?></td>
+                        <td>
+                          <div style="display:inline-flex; gap:6px;">
+                            <a href="<?php echo htmlspecialchars($doc['path']); ?>" target="_blank" class="btn btn-ghost btn-sm btn-icon-only" title="Preview / Download">
+                              <i data-lucide="eye" style="width:14px; height:14px;"></i>
+                            </a>
+                            <button type="button" class="btn btn-ghost btn-sm btn-icon-only" onclick="deleteCompanyDoc('<?php echo $doc['id']; ?>')" style="color:var(--color-danger);" title="Delete Document">
+                              <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECURITY & PASSWORD SECTION -->
+          <div class="profile-sub-panel" id="sec-password" style="display:none;">
+            <div class="dashboard-card" style="max-width:650px; margin:0 auto;">
+              <h3 style="font-size:16px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Change Security Password</h3>
+              <form id="recruiter-password-form" onsubmit="submitRecruiterPasswordForm(event)">
+                
+                <div class="form-input-wrapper">
+                  <label class="form-input-label">Current Password *</label>
+                  <div style="position:relative;">
+                    <input type="password" class="input-field-custom" id="pwd-current" required placeholder="Enter current account password">
+                    <button type="button" onclick="togglePasswordVisibility('pwd-current')" style="position:absolute; right:12px; top:12px; border:none; background:none; cursor:pointer; color:var(--text-muted);">
+                      <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-input-wrapper">
+                  <label class="form-input-label">New Password *</label>
+                  <div style="position:relative;">
+                    <input type="password" class="input-field-custom" id="pwd-new" onkeyup="checkPasswordRequirements(this.value)" required placeholder="Enter new password (Min 8 chars)">
+                    <button type="button" onclick="togglePasswordVisibility('pwd-new')" style="position:absolute; right:12px; top:12px; border:none; background:none; cursor:pointer; color:var(--text-muted);">
+                      <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                    </button>
+                  </div>
+                  
+                  <!-- Live Password Strength Meter Bar -->
+                  <div class="password-strength-container">
+                    <div class="password-meter-bar">
+                      <div class="password-meter-fill" id="pwd-strength-fill"></div>
                     </div>
-                    <div style="color:var(--text-secondary); font-size:11px;">IP Address: <code><?php echo $log['ip_address']; ?></code> &bull; Browser: <?php echo htmlspecialchars($log['browser']); ?></div>
+                    <div class="caps-lock-warning" id="caps-lock-alert">
+                      <i data-lucide="alert-triangle" style="width:14px; height:14px;"></i> Caps Lock is ON
+                    </div>
+                    
+                    <div class="password-requirements-list">
+                      <div class="password-req-item" id="req-len"><span>&bull;</span> Min 8 characters</div>
+                      <div class="password-req-item" id="req-upper"><span>&bull;</span> 1 Uppercase letter</div>
+                      <div class="password-req-item" id="req-num"><span>&bull;</span> 1 Number</div>
+                      <div class="password-req-item" id="req-spec"><span>&bull;</span> 1 Special character</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-input-wrapper">
+                  <label class="form-input-label">Confirm New Password *</label>
+                  <div style="position:relative;">
+                    <input type="password" class="input-field-custom" id="pwd-confirm" required placeholder="Re-enter new password">
+                    <button type="button" onclick="togglePasswordVisibility('pwd-confirm')" style="position:absolute; right:12px; top:12px; border:none; background:none; cursor:pointer; color:var(--text-muted);">
+                      <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="btn-change-password-submit" style="width:100%; margin-top:8px;">
+                  <i data-lucide="lock" style="width:14px; height:14px; margin-right:6px;"></i> Change Password
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- ACTIVITY AUDIT TIMELINE SECTION -->
+          <div class="profile-sub-panel" id="sec-audit" style="display:none;">
+            <div class="dashboard-card">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                <h3 style="font-size:16px; font-weight:700;">Activity Audit History Timeline</h3>
+                
+                <div style="display:flex; gap:10px;">
+                  <input type="search" id="audit-timeline-search" class="input-field-custom" placeholder="Search event history..." oninput="filterAuditTimeline()" style="width:220px; height:36px; font-size:12px;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="exportAuditHistoryCSV()">
+                    <i data-lucide="download" style="width:12px; height:12px; margin-right:4px;"></i> Export Log CSV
+                  </button>
+                </div>
+              </div>
+
+              <div class="audit-timeline-container" id="audit-timeline-list">
+                <?php foreach (($recruiterLogs ?? []) as $log): ?>
+                  <div class="audit-timeline-node">
+                    <div class="audit-timeline-dot"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                      <strong style="font-size:13px; color:var(--text-primary);"><?php echo htmlspecialchars($log['action']); ?></strong>
+                      <span class="badge badge-primary" style="font-size:10px;"><?php echo htmlspecialchars($log['status'] ?? 'Success'); ?></span>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-secondary); display:flex; gap:16px;">
+                      <span><i data-lucide="clock" style="width:12px; height:12px; vertical-align:middle;"></i> <?php echo $log['created_at']; ?></span>
+                      <span><i data-lucide="globe" style="width:12px; height:12px; vertical-align:middle;"></i> IP: <code><?php echo $log['ip_address']; ?></code></span>
+                      <span><i data-lucide="laptop" style="width:12px; height:12px; vertical-align:middle;"></i> <?php echo htmlspecialchars($log['browser']); ?></span>
+                    </div>
                   </div>
                 <?php endforeach; ?>
               </div>
             </div>
           </div>
+
         </div>
 
         <!-- ==================== SETTINGS VIEW ==================== -->
@@ -2084,6 +2706,6 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
   </div>
 
-  <script src="js/recruiter_app.js"></script>
+  <script src="<?php echo BASE_URL; ?>js/recruiter_app.js"></script>
 </body>
 </html>

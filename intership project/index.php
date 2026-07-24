@@ -3,11 +3,7 @@
  * Unified Portal Gateway & Login Page
  * Default entry point. Redirects to dashboard if logged in, otherwise displays the role-detecting login.
  */
-require_once __DIR__ . '/config/db.php';
-
-if (session_status() === PHP_SESSION_NONE) {
-  session_start();
-}
+require_once __DIR__ . '/config/auth.php';
 
 // Force logout parameter handler
 if (isset($_GET['logout'])) {
@@ -29,7 +25,7 @@ if (isset($_GET['logout'])) {
 
 // Redirect if already authenticated
 if (isset($_SESSION['user_id'])) {
-  header("Location: dashboard.php");
+  header("Location: " . getRoleDashboard());
   exit;
 }
 ?>

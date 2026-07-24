@@ -450,6 +450,33 @@ try {
       echo json_encode(['status' => 'success', 'message' => 'Interview deleted successfully']);
       break;
 
+    // 3.8 DELETE STUDENT PROFILE
+    case 'delete_student':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+
+      $studentId = (int)($_POST['student_id'] ?? 0);
+
+      // Verify the student exists and actually has the role 'student'
+      $stmtCheck = $db->prepare("SELECT name FROM users WHERE id = ? AND role = 'student'");
+      $stmtCheck->execute([$studentId]);
+      $studentName = $stmtCheck->fetchColumn();
+
+      if (!$studentName) {
+        echo json_encode(['status' => 'error', 'message' => 'Student record not found.']);
+        exit;
+      }
+
+      $stmtDelete = $db->prepare("DELETE FROM users WHERE id = ? AND role = 'student'");
+      $stmtDelete->execute([$studentId]);
+
+      logActivity("Deleted student profile: $studentName", "success");
+
+      echo json_encode(['status' => 'success', 'message' => 'Student deleted successfully']);
+      break;
+
     // 4. PUBLISH RESULTS / GENERATE OFFER
     case 'publish_selection':
       if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
@@ -526,6 +553,230 @@ try {
       );
 
       echo json_encode(['status' => 'success', 'message' => 'Selection result updated successfully']);
+      break;
+
+    // 4.5 OFFER MANAGEMENT CRUD
+    case 'create_offer':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+
+      $appId = (int)($_POST['application_id'] ?? 0);
+      $designation = trim($_POST['designation'] ?? '');
+      $salaryLpa = (float)($_POST['salary_lpa'] ?? 0.0);
+      $joiningDate = trim($_POST['joining_date'] ?? '');
+      $location = trim($_POST['location'] ?? '');
+
+      if (!$appId || !$designation || !$salaryLpa || !$joiningDate || !$location) {
+        echo json_encode(['status' => 'error', 'message' => 'Please fill in all required fields.']);
+        exit;
+      }
+
+      // Check application
+      $stmtCheck = $db->prepare("SELECT a.*, d.company_id FROM applications a JOIN drives d ON a.drive_id = d.id WHERE a.id = ?");
+      $stmtCheck->execute([$appId]);
+      $app = $stmtCheck->fetch();
+
+      if (!$app) {
+        echo json_encode(['status' => 'error', 'message' => 'Application not found.']);
+        exit;
+      }
+
+      // Check file upload
+      $offerLetterPath = null;
+      if (isset($_FILES['offer_letter']) && $_FILES['offer_letter']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['offer_letter'];
+        $fileName = $file['name'];
+        $fileSize = $file['size'];
+        $fileTmp = $file['tmp_name'];
+        
+        $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        if ($fileExt !== 'pdf') {
+          echo json_encode(['status' => 'error', 'message' => 'Only PDF files are allowed for offer letters.']);
+          exit;
+        }
+        
+        $destDir = __DIR__ . '/../uploads/offers';
+        if (!is_dir($destDir)) {
+          mkdir($destDir, 0755, true);
+        }
+        
+        $newFileName = 'offer_' . $_SESSION['user_id'] . '_' . bin2hex(random_bytes(8)) . '.pdf';
+        $destPath = $destDir . '/' . $newFileName;
+        if (move_uploaded_file($fileTmp, $destPath)) {
+          $offerLetterPath = 'uploads/offers/' . $newFileName;
+        } else {
+          echo json_encode(['status' => 'error', 'message' => 'Failed to save offer letter file.']);
+          exit;
+        }
+      } else {
+        echo json_encode(['status' => 'error', 'message' => 'Offer letter PDF file is required.']);
+        exit;
+      }
+
+      $db->beginTransaction();
+
+      // Check if offer already exists for this application
+      $stmtOfferCheck = $db->prepare("SELECT id FROM offers WHERE application_id = ?");
+      $stmtOfferCheck->execute([$appId]);
+      $existingOfferId = $stmtOfferCheck->fetchColumn();
+
+      if ($existingOfferId) {
+        // Update existing offer
+        $stmtOffer = $db->prepare("UPDATE offers SET salary_lpa = ?, designation = ?, joining_date = ?, location = ?, status = 'Released', offer_letter_path = ?, offer_date = CURDATE() WHERE id = ?");
+        $stmtOffer->execute([$salaryLpa, $designation, $joiningDate, $location, $offerLetterPath, $existingOfferId]);
+      } else {
+        // Insert new offer
+        $stmtOffer = $db->prepare("INSERT INTO offers (application_id, salary_lpa, designation, joining_date, location, status, offer_letter_path, offer_date) VALUES (?, ?, ?, ?, ?, 'Released', ?, CURDATE())");
+        $stmtOffer->execute([$appId, $salaryLpa, $designation, $joiningDate, $location, $offerLetterPath]);
+      }
+
+      // Update application status to 'Selected'
+      $stmtUpdateApp = $db->prepare("UPDATE applications SET status = 'Selected' WHERE id = ?");
+      $stmtUpdateApp->execute([$appId]);
+
+      // Increment company's students_hired count
+      $stmtInc = $db->prepare("UPDATE companies SET students_hired = students_hired + 1 WHERE user_id = ?");
+      $stmtInc->execute([$app['company_id']]);
+
+      // Create student notification
+      createUserNotification(
+        $app['student_id'],
+        "Offer Letter Released",
+        "An official offer letter for the role '{$designation}' has been released by your recruiter. Please check the offers panel.",
+        "offer",
+        "high",
+        "applications"
+      );
+
+      $db->commit();
+
+      logActivity("Created offer letter for Application ID: $appId", "success");
+
+      echo json_encode(['status' => 'success', 'message' => 'Offer released successfully']);
+      break;
+
+    case 'edit_offer':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+
+      $offerId = (int)($_POST['offer_id'] ?? 0);
+      $designation = trim($_POST['designation'] ?? '');
+      $salaryLpa = (float)($_POST['salary_lpa'] ?? 0.0);
+      $joiningDate = trim($_POST['joining_date'] ?? '');
+      $location = trim($_POST['location'] ?? '');
+      $status = trim($_POST['status'] ?? 'Released');
+      $expiryDate = trim($_POST['expiry_date'] ?? '');
+
+      if (!$offerId || !$designation || !$salaryLpa || !$joiningDate || !$location) {
+        echo json_encode(['status' => 'error', 'message' => 'Please fill in all required fields.']);
+        exit;
+      }
+
+      // Verify the offer exists
+      $stmtCheck = $db->prepare("SELECT o.*, a.student_id, a.drive_id, d.company_id FROM offers o JOIN applications a ON o.application_id = a.id JOIN drives d ON a.drive_id = d.id WHERE o.id = ?");
+      $stmtCheck->execute([$offerId]);
+      $offer = $stmtCheck->fetch();
+
+      if (!$offer) {
+        echo json_encode(['status' => 'error', 'message' => 'Offer record not found.']);
+        exit;
+      }
+
+      // Check if new file uploaded
+      $offerLetterPath = $offer['offer_letter_path'];
+      if (isset($_FILES['offer_letter']) && $_FILES['offer_letter']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['offer_letter'];
+        $fileName = $file['name'];
+        $fileSize = $file['size'];
+        $fileTmp = $file['tmp_name'];
+        
+        $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        if ($fileExt !== 'pdf') {
+          echo json_encode(['status' => 'error', 'message' => 'Only PDF files are allowed for offer letters.']);
+          exit;
+        }
+        
+        $destDir = __DIR__ . '/../uploads/offers';
+        if (!is_dir($destDir)) {
+          mkdir($destDir, 0755, true);
+        }
+        
+        $newFileName = 'offer_' . $_SESSION['user_id'] . '_' . bin2hex(random_bytes(8)) . '.pdf';
+        $destPath = $destDir . '/' . $newFileName;
+        if (move_uploaded_file($fileTmp, $destPath)) {
+          $offerLetterPath = 'uploads/offers/' . $newFileName;
+        } else {
+          echo json_encode(['status' => 'error', 'message' => 'Failed to save offer letter file.']);
+          exit;
+        }
+      }
+
+      $db->beginTransaction();
+
+      // Update offer
+      $stmtUpdate = $db->prepare("UPDATE offers SET salary_lpa = ?, designation = ?, joining_date = ?, location = ?, status = ?, expiry_date = ?, offer_letter_path = ? WHERE id = ?");
+      $stmtUpdate->execute([$salaryLpa, $designation, $joiningDate, $location, $status, empty($expiryDate) ? null : $expiryDate, $offerLetterPath, $offerId]);
+
+      // If status changed to Rejected/Declined, update application status
+      if ($status === 'Declined') {
+        $stmtUpdateApp = $db->prepare("UPDATE applications SET status = 'Rejected' WHERE id = ?");
+        $stmtUpdateApp->execute([$offer['application_id']]);
+        
+        $stmtDec = $db->prepare("UPDATE companies SET students_hired = GREATEST(0, students_hired - 1) WHERE user_id = ?");
+        $stmtDec->execute([$offer['company_id']]);
+      } else {
+        $stmtUpdateApp = $db->prepare("UPDATE applications SET status = 'Selected' WHERE id = ?");
+        $stmtUpdateApp->execute([$offer['application_id']]);
+      }
+
+      $db->commit();
+
+      logActivity("Updated offer letter ID: $offerId", "success");
+
+      echo json_encode(['status' => 'success', 'message' => 'Offer updated successfully!']);
+      break;
+
+    case 'delete_offer':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+
+      $offerId = (int)($_POST['offer_id'] ?? 0);
+
+      // Verify the offer exists
+      $stmtCheck = $db->prepare("SELECT o.*, a.drive_id, d.company_id FROM offers o JOIN applications a ON o.application_id = a.id JOIN drives d ON a.drive_id = d.id WHERE o.id = ?");
+      $stmtCheck->execute([$offerId]);
+      $offer = $stmtCheck->fetch();
+
+      if (!$offer) {
+        echo json_encode(['status' => 'error', 'message' => 'Offer record not found.']);
+        exit;
+      }
+
+      $db->beginTransaction();
+
+      // Delete the offer record
+      $stmtDelete = $db->prepare("DELETE FROM offers WHERE id = ?");
+      $stmtDelete->execute([$offerId]);
+
+      // Revert application status to 'Applied'
+      $stmtRevertApp = $db->prepare("UPDATE applications SET status = 'Applied' WHERE id = ?");
+      $stmtRevertApp->execute([$offer['application_id']]);
+
+      // Decrement company's students_hired count
+      $stmtDec = $db->prepare("UPDATE companies SET students_hired = GREATEST(0, students_hired - 1) WHERE user_id = ?");
+      $stmtDec->execute([$offer['company_id']]);
+
+      $db->commit();
+
+      logActivity("Deleted offer letter ID: $offerId", "success");
+
+      echo json_encode(['status' => 'success', 'message' => 'Offer letter deleted successfully']);
       break;
 
     // 5. DATABASE BACKUP UTILITY (SQL Exporter)
@@ -626,12 +877,54 @@ try {
       } else if ($role === 'company') {
         $website = trim($_POST['website'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
-        if (!preg_match('/^[0-9]{10}$/', $phone)) {
-          echo json_encode(['status' => 'error', 'message' => 'Please enter a valid mobile number in the format +91 XXXXXXXXXX.']);
+        $company_name = trim($_POST['company_name'] ?? '');
+        $industry = trim($_POST['industry'] ?? '');
+        $hr_name = trim($_POST['hr_name'] ?? '');
+        $recruiter_name = trim($_POST['recruiter_name'] ?? '');
+        $designation = trim($_POST['designation'] ?? '');
+        $company_size = trim($_POST['company_size'] ?? '');
+        $gst = trim($_POST['gst'] ?? '');
+        $pan = trim($_POST['pan'] ?? '');
+        $office_address = trim($_POST['office_address'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $vision = trim($_POST['vision'] ?? '');
+        $mission = trim($_POST['mission'] ?? '');
+        $country = trim($_POST['country'] ?? 'India');
+        $state = trim($_POST['state'] ?? '');
+        $city = trim($_POST['city'] ?? '');
+        $pincode = trim($_POST['pincode'] ?? '');
+        $founded_year = (int)($_POST['founded_year'] ?? 0);
+        $employee_count = trim($_POST['employee_count'] ?? '');
+        $hiring_preferences = is_array($_POST['hiring_preferences'] ?? null) ? json_encode($_POST['hiring_preferences']) : ($_POST['hiring_preferences'] ?? '');
+        $social_links = is_array($_POST['social_links'] ?? null) ? json_encode($_POST['social_links']) : ($_POST['social_links'] ?? '');
+
+        if (!empty($phone) && !preg_match('/^[0-9]{10}$/', $phone)) {
+          echo json_encode(['status' => 'error', 'message' => 'Please enter a valid 10-digit mobile number.']);
           exit;
         }
-        $stmtCompany = $db->prepare("UPDATE companies SET website = ?, phone = ? WHERE user_id = ?");
-        $stmtCompany->execute([$website, $phone, $_SESSION['user_id']]);
+
+        $stmtCompany = $db->prepare("
+          UPDATE companies SET 
+            website = ?, phone = ?, hr_name = ?, recruiter_name = ?, designation = ?, 
+            company_size = ?, gst = ?, pan = ?, office_address = ?, description = ?, 
+            vision = ?, mission = ?, country = ?, state = ?, city = ?, pincode = ?, 
+            founded_year = ?, employee_count = ?, hiring_preferences = ?, social_links = ?
+          WHERE user_id = ?
+        ");
+        $stmtCompany->execute([
+          $website, $phone, $hr_name, $recruiter_name, $designation,
+          $company_size, $gst, $pan, $office_address, $description,
+          $vision, $mission, $country, $state, $city, $pincode,
+          $founded_year ?: null, $employee_count, $hiring_preferences, $social_links,
+          $_SESSION['user_id']
+        ]);
+
+        if (!empty($company_name)) {
+          $db->prepare("UPDATE companies SET company_name = ? WHERE user_id = ?")->execute([$company_name, $_SESSION['user_id']]);
+        }
+        if (!empty($industry)) {
+          $db->prepare("UPDATE companies SET industry = ? WHERE user_id = ?")->execute([$industry, $_SESSION['user_id']]);
+        }
       }
 
       $db->commit();
@@ -640,7 +933,46 @@ try {
       echo json_encode(['status' => 'success', 'message' => 'Profile updated successfully!', 'user_name' => $name]);
       break;
 
+    // 7.5 UPDATE PASSWORD
+    case 'update_password':
+      $currentPassword = $_POST['current_password'] ?? '';
+      $newPassword = $_POST['new_password'] ?? '';
+      $confirmPassword = $_POST['confirm_password'] ?? '';
+
+      if (empty($currentPassword) || empty($newPassword)) {
+        echo json_encode(['status' => 'error', 'message' => 'Both current and new password are required.']);
+        exit;
+      }
+
+      if ($newPassword !== $confirmPassword) {
+        echo json_encode(['status' => 'error', 'message' => 'New password and confirmation do not match.']);
+        exit;
+      }
+
+      if (strlen($newPassword) < 8) {
+        echo json_encode(['status' => 'error', 'message' => 'Password must be at least 8 characters long.']);
+        exit;
+      }
+
+      // Check current password
+      $stmtUser = $db->prepare("SELECT password_hash FROM users WHERE id = ?");
+      $stmtUser->execute([$_SESSION['user_id']]);
+      $userHash = $stmtUser->fetchColumn();
+
+      if (!password_verify($currentPassword, $userHash)) {
+        echo json_encode(['status' => 'error', 'message' => 'Incorrect current password.']);
+        exit;
+      }
+
+      $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+      $db->prepare("UPDATE users SET password_hash = ? WHERE id = ?")->execute([$newHash, $_SESSION['user_id']]);
+
+      logActivity("Updated account security password", "success");
+      echo json_encode(['status' => 'success', 'message' => 'Security password updated successfully!']);
+      break;
+
     // 8. UPDATE SETTINGS (Language & Theme)
+    case 'save_user_settings':
     case 'update_settings':
       $language = trim($_POST['language'] ?? 'en');
       $theme = trim($_POST['theme'] ?? 'system');

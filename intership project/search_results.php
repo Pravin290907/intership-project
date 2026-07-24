@@ -83,7 +83,7 @@ if ($query !== '') {
     <main class="main-content" style="margin-left: 0; padding: var(--space-4); width: 100%; max-width: 1200px; margin: 0 auto;">
       <header class="header" style="justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: var(--space-2); margin-bottom: var(--space-4);">
         <div style="display:flex; align-items:center; gap: var(--space-2);">
-          <a href="dashboard.php" class="btn btn-secondary btn-icon-only" title="Back to Dashboard">
+          <a href="<?php echo $role === 'company' ? 'company/dashboard.php' : 'dashboard.php'; ?>" class="btn btn-secondary btn-icon-only" title="Back to Dashboard">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
           </a>
           <h2 style="font-weight:700;">Search Results for "<?php echo htmlspecialchars($query); ?>"</h2>

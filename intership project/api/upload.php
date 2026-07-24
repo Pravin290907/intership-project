@@ -15,9 +15,9 @@ if (!isset($_SESSION['user_id'])) {
 $userId = $_SESSION['user_id'];
 $role = $_SESSION['user_role'];
 
-$uploadType = $_POST['type'] ?? ''; // 'resume', 'certificate', 'offer_letter'
+$uploadType = $_POST['type'] ?? ''; // 'resume', 'certificate', 'offer_letter', 'company_logo', 'company_banner', 'company_doc'
 
-if (!in_array($uploadType, ['resume', 'certificate', 'offer_letter'])) {
+if (!in_array($uploadType, ['resume', 'certificate', 'offer_letter', 'company_logo', 'company_banner', 'company_doc'])) {
   echo json_encode(['status' => 'error', 'message' => 'Invalid upload category.']);
   exit;
 }
@@ -34,7 +34,7 @@ $fileTmp = $file['tmp_name'];
 
 // Validation Criteria
 $allowedExtensions = [];
-$maxSize = 5 * 1024 * 1024; // 5 MB
+$maxSize = 10 * 1024 * 1024; // 10 MB limit
 
 if ($uploadType === 'resume') {
   if ($role !== 'student') {
@@ -54,6 +54,24 @@ if ($uploadType === 'resume') {
     exit;
   }
   $allowedExtensions = ['pdf'];
+} else if ($uploadType === 'company_logo') {
+  if ($role !== 'company' && $role !== 'admin') {
+    echo json_encode(['status' => 'error', 'message' => 'Only recruiters can update corporate logo branding.']);
+    exit;
+  }
+  $allowedExtensions = ['png', 'jpg', 'jpeg', 'svg', 'webp'];
+} else if ($uploadType === 'company_banner') {
+  if ($role !== 'company' && $role !== 'admin') {
+    echo json_encode(['status' => 'error', 'message' => 'Only recruiters can update corporate banner branding.']);
+    exit;
+  }
+  $allowedExtensions = ['png', 'jpg', 'jpeg', 'webp'];
+} else if ($uploadType === 'company_doc') {
+  if ($role !== 'company' && $role !== 'admin') {
+    echo json_encode(['status' => 'error', 'message' => 'Only recruiters can upload company verification documents.']);
+    exit;
+  }
+  $allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg'];
 }
 
 // Check size
@@ -89,10 +107,12 @@ if (!in_array($mimeType, $allowedMimes)) {
 }
 
 // Determine destination folder
-$subDir = '';
+$subDir = 'documents';
 if ($uploadType === 'resume') $subDir = 'resumes';
 else if ($uploadType === 'certificate') $subDir = 'certificates';
 else if ($uploadType === 'offer_letter') $subDir = 'offers';
+else if ($uploadType === 'company_logo' || $uploadType === 'company_banner') $subDir = 'branding';
+else if ($uploadType === 'company_doc') $subDir = 'company_docs';
 
 $destDir = __DIR__ . '/../uploads/' . $subDir;
 
@@ -147,6 +167,33 @@ try {
 
       logActivity("Uploaded offer letter for App ID $appId", "success");
       createAdminNotification("Offer Letter Uploaded", "A recruitment offer letter has been published by Recruiter.", "offer_generated");
+      
+    } else if ($uploadType === 'company_logo') {
+      $stmt = $db->prepare("UPDATE companies SET company_logo = ? WHERE user_id = ?");
+      $stmt->execute([$relativeUrlPath, $userId]);
+      logActivity("Uploaded company logo asset", "success");
+
+    } else if ($uploadType === 'company_banner') {
+      $stmt = $db->prepare("UPDATE companies SET banner_image = ? WHERE user_id = ?");
+      $stmt->execute([$relativeUrlPath, $userId]);
+      logActivity("Uploaded company banner asset", "success");
+
+    } else if ($uploadType === 'company_doc') {
+      $docName = $_POST['doc_name'] ?? 'Verification Document';
+      $stmtFetch = $db->prepare("SELECT company_docs FROM companies WHERE user_id = ?");
+      $stmtFetch->execute([$userId]);
+      $existingDocsJson = $stmtFetch->fetchColumn();
+      $existingDocs = json_decode($existingDocsJson ?: '[]', true) ?: [];
+      $existingDocs[] = [
+        'id' => uniqid('doc_'),
+        'name' => $docName,
+        'path' => $relativeUrlPath,
+        'size' => number_format($fileSize / 1024, 1) . ' KB',
+        'uploaded_at' => date('Y-m-d H:i:s')
+      ];
+      $stmt = $db->prepare("UPDATE companies SET company_docs = ? WHERE user_id = ?");
+      $stmt->execute([json_encode($existingDocs), $userId]);
+      logActivity("Uploaded company document: $docName", "success");
     }
 
     echo json_encode([

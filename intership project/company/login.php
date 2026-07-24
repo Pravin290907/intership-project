@@ -5,8 +5,8 @@
  */
 require_once __DIR__ . '/../config/auth.php';
 
-if (isset($_SESSION['user_id']) && $_SESSION['user_role'] === 'company') {
-  header("Location: " . BASE_URL . "company/dashboard.php");
+if (isset($_SESSION['user_id'])) {
+  header("Location: " . getRoleDashboard());
   exit;
 }
 ?>

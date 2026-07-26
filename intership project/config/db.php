@@ -78,6 +78,10 @@ function initializeTables($pdo) {
     migrateUsersTable($pdo);
     migrateInterviewsTable($pdo);
     migrateCompaniesTable($pdo);
+    migrateReportsTable($pdo);
+    migrateAptitudeTables($pdo);
+    migrateOffersTable($pdo);
+    migrateUserSettingsTable($pdo);
     return; // Tables already exist — do not overwrite any data
   } catch (PDOException $e) {
     // Table does not exist yet — continue with creation below
@@ -216,9 +220,89 @@ function initializeTables($pdo) {
       `action` VARCHAR(255) NOT NULL,
       `ip_address` VARCHAR(45) NOT NULL,
       `browser` VARCHAR(255) DEFAULT NULL,
-      `status` VARCHAR(50) NOT NULL,
       `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    -- Reports Table
+    CREATE TABLE IF NOT EXISTS `reports` (
+      `id` INT AUTO_INCREMENT PRIMARY KEY,
+      `user_id` INT NOT NULL,
+      `report_name` VARCHAR(150) NOT NULL,
+      `date_range` VARCHAR(100) NOT NULL,
+      `filter_status` VARCHAR(50) NOT NULL,
+      `format` VARCHAR(10) NOT NULL,
+      `generated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    -- Aptitude Tests Table
+    CREATE TABLE IF NOT EXISTS `aptitude_tests` (
+      `id` INT AUTO_INCREMENT PRIMARY KEY,
+      `company_id` INT NOT NULL,
+      `drive_id` INT DEFAULT NULL,
+      `title` VARCHAR(255) NOT NULL,
+      `description` TEXT DEFAULT NULL,
+      `duration_minutes` INT NOT NULL DEFAULT 30,
+      `total_marks` INT NOT NULL DEFAULT 100,
+      `pass_marks` INT NOT NULL DEFAULT 40,
+      `status` ENUM('Draft', 'Scheduled', 'Active', 'Completed', 'Archived') DEFAULT 'Draft',
+      `scheduled_date` DATE DEFAULT NULL,
+      `start_time` TIME DEFAULT NULL,
+      `end_time` TIME DEFAULT NULL,
+      `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (`company_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+      FOREIGN KEY (`drive_id`) REFERENCES `drives` (`id`) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    -- Aptitude Questions Table
+    CREATE TABLE IF NOT EXISTS `aptitude_questions` (
+      `id` INT AUTO_INCREMENT PRIMARY KEY,
+      `test_id` INT NOT NULL,
+      `question_text` TEXT NOT NULL,
+      `option_a` TEXT NOT NULL,
+      `option_b` TEXT NOT NULL,
+      `option_c` TEXT NOT NULL,
+      `option_d` TEXT NOT NULL,
+      `correct_option` ENUM('A', 'B', 'C', 'D') NOT NULL,
+      `marks` INT NOT NULL DEFAULT 1,
+      `explanation` TEXT DEFAULT NULL,
+      `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (`test_id`) REFERENCES `aptitude_tests` (`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    -- Aptitude Test Assignments Table
+    CREATE TABLE IF NOT EXISTS `aptitude_assignments` (
+      `id` INT AUTO_INCREMENT PRIMARY KEY,
+      `test_id` INT NOT NULL,
+      `student_id` INT NOT NULL,
+      `application_id` INT DEFAULT NULL,
+      `assigned_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      `status` ENUM('Assigned', 'In Progress', 'Submitted', 'Evaluated', 'Expired') DEFAULT 'Assigned',
+      `score` DECIMAL(5,2) DEFAULT NULL,
+      `total_questions` INT DEFAULT 0,
+      `correct_answers` INT DEFAULT 0,
+      `wrong_answers` INT DEFAULT 0,
+      `unanswered` INT DEFAULT 0,
+      `start_time` DATETIME DEFAULT NULL,
+      `submit_time` DATETIME DEFAULT NULL,
+      `rank` INT DEFAULT NULL,
+      FOREIGN KEY (`test_id`) REFERENCES `aptitude_tests` (`id`) ON DELETE CASCADE,
+      FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+      FOREIGN KEY (`application_id`) REFERENCES `applications` (`id`) ON DELETE SET NULL,
+      UNIQUE KEY `unique_student_test` (`student_id`, `test_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    -- Aptitude Responses Table
+    CREATE TABLE IF NOT EXISTS `aptitude_responses` (
+      `id` INT AUTO_INCREMENT PRIMARY KEY,
+      `assignment_id` INT NOT NULL,
+      `question_id` INT NOT NULL,
+      `selected_option` ENUM('A', 'B', 'C', 'D') DEFAULT NULL,
+      `is_correct` TINYINT(1) DEFAULT 0,
+      `marks_obtained` DECIMAL(5,2) DEFAULT 0,
+      FOREIGN KEY (`assignment_id`) REFERENCES `aptitude_assignments` (`id`) ON DELETE CASCADE,
+      FOREIGN KEY (`question_id`) REFERENCES `aptitude_questions` (`id`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   ";
 
@@ -471,63 +555,160 @@ function migrateCompaniesTable($pdo) {
   }
 }
 
+function migrateReportsTable($pdo) {
+  try {
+    $pdo->query("SELECT 1 FROM `reports` LIMIT 1");
+  } catch (PDOException $e) {
+    $sql = "
+      CREATE TABLE IF NOT EXISTS `reports` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `user_id` INT NOT NULL,
+        `report_name` VARCHAR(150) NOT NULL,
+        `date_range` VARCHAR(100) NOT NULL,
+        `filter_status` VARCHAR(50) NOT NULL,
+        `format` VARCHAR(10) NOT NULL,
+        `generated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    $pdo->exec($sql);
+  }
+}
+
+function migrateAptitudeTables($pdo) {
+  try {
+    $pdo->query("SELECT 1 FROM `aptitude_tests` LIMIT 1");
+  } catch (PDOException $e) {
+    $sql = "
+      CREATE TABLE IF NOT EXISTS `aptitude_tests` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `company_id` INT NOT NULL,
+        `drive_id` INT DEFAULT NULL,
+        `title` VARCHAR(255) NOT NULL,
+        `description` TEXT DEFAULT NULL,
+        `duration_minutes` INT NOT NULL DEFAULT 30,
+        `total_marks` INT NOT NULL DEFAULT 100,
+        `pass_marks` INT NOT NULL DEFAULT 40,
+        `status` ENUM('Draft', 'Scheduled', 'Active', 'Completed', 'Archived') DEFAULT 'Draft',
+        `scheduled_date` DATE DEFAULT NULL,
+        `start_time` TIME DEFAULT NULL,
+        `end_time` TIME DEFAULT NULL,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`company_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+        FOREIGN KEY (`drive_id`) REFERENCES `drives` (`id`) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+      CREATE TABLE IF NOT EXISTS `aptitude_questions` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `test_id` INT NOT NULL,
+        `question_text` TEXT NOT NULL,
+        `option_a` TEXT NOT NULL,
+        `option_b` TEXT NOT NULL,
+        `option_c` TEXT NOT NULL,
+        `option_d` TEXT NOT NULL,
+        `correct_option` ENUM('A', 'B', 'C', 'D') NOT NULL,
+        `marks` INT NOT NULL DEFAULT 1,
+        `explanation` TEXT DEFAULT NULL,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`test_id`) REFERENCES `aptitude_tests` (`id`) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+      CREATE TABLE IF NOT EXISTS `aptitude_assignments` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `test_id` INT NOT NULL,
+        `student_id` INT NOT NULL,
+        `application_id` INT DEFAULT NULL,
+        `assigned_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        `status` ENUM('Assigned', 'In Progress', 'Submitted', 'Evaluated', 'Expired') DEFAULT 'Assigned',
+        `score` DECIMAL(5,2) DEFAULT NULL,
+        `total_questions` INT DEFAULT 0,
+        `correct_answers` INT DEFAULT 0,
+        `wrong_answers` INT DEFAULT 0,
+        `unanswered` INT DEFAULT 0,
+        `start_time` DATETIME DEFAULT NULL,
+        `submit_time` DATETIME DEFAULT NULL,
+        `rank` INT DEFAULT NULL,
+        FOREIGN KEY (`test_id`) REFERENCES `aptitude_tests` (`id`) ON DELETE CASCADE,
+        FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+        FOREIGN KEY (`application_id`) REFERENCES `applications` (`id`) ON DELETE SET NULL,
+        UNIQUE KEY `unique_student_test` (`student_id`, `test_id`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+      CREATE TABLE IF NOT EXISTS `aptitude_responses` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `assignment_id` INT NOT NULL,
+        `question_id` INT NOT NULL,
+        `selected_option` ENUM('A', 'B', 'C', 'D') DEFAULT NULL,
+        `is_correct` TINYINT(1) DEFAULT 0,
+        `marks_obtained` DECIMAL(5,2) DEFAULT 0,
+        FOREIGN KEY (`assignment_id`) REFERENCES `aptitude_assignments` (`id`) ON DELETE CASCADE,
+        FOREIGN KEY (`question_id`) REFERENCES `aptitude_questions` (`id`) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ";
+    $pdo->exec($sql);
+  }
+}
+
+function migrateOffersTable($pdo) {
+  try {
+    $pdo->query("SELECT 1 FROM `offers` LIMIT 1");
+  } catch (PDOException $e) {
+    return;
+  }
+
+  $cols = [
+    'offer_date' => "DATE DEFAULT NULL",
+    'expiry_date' => "DATE DEFAULT NULL",
+    'sent_date' => "DATETIME DEFAULT NULL",
+    'viewed_date' => "DATETIME DEFAULT NULL",
+    'accepted_date' => "DATETIME DEFAULT NULL",
+    'rejected_date' => "DATETIME DEFAULT NULL"
+  ];
+  
+  foreach ($cols as $colName => $colType) {
+    try {
+      $pdo->query("SELECT `$colName` FROM `offers` LIMIT 1");
+    } catch (PDOException $e) {
+      $pdo->exec("ALTER TABLE `offers` ADD COLUMN `$colName` $colType");
+    }
+  }
+
+  try {
+    $pdo->exec("
+      UPDATE `offers` 
+      SET `offer_date` = COALESCE(`offer_date`, CURDATE()),
+          `expiry_date` = COALESCE(`expiry_date`, DATE_ADD(CURDATE(), INTERVAL 15 DAY)),
+          `sent_date` = COALESCE(`sent_date`, NOW())
+      WHERE `offer_date` IS NULL OR `expiry_date` IS NULL OR `sent_date` IS NULL
+    ");
+  } catch (Exception $e) {}
+}
+
+function migrateUserSettingsTable($pdo) {
+  try {
+    $pdo->query("SELECT 1 FROM `user_settings` LIMIT 1");
+  } catch (PDOException $e) {
+    return;
+  }
+
+  $cols = [
+    'extra_config' => "TEXT DEFAULT NULL"
+  ];
+  
+  foreach ($cols as $colName => $colType) {
+    try {
+      $pdo->query("SELECT `$colName` FROM `user_settings` LIMIT 1");
+    } catch (PDOException $e) {
+      $pdo->exec("ALTER TABLE `user_settings` ADD COLUMN `$colName` $colType");
+    }
+  }
+}
+
 // Global initialization
 getDB();
 
 // Global localization helper
 function __($text) {
-  static $translations = null;
-  if ($translations === null) {
-    $translations = require __DIR__ . '/lang.php';
-  }
-  
-  if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-  }
-  $lang = $_SESSION['language'] ?? 'en';
-  
-  if (isset($translations[$lang][$text])) {
-    return $translations[$lang][$text];
-  }
   return $text;
 }
-
-// Output buffering translation filter
-ob_start(function($buffer) {
-  if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-  }
-  $lang = $_SESSION['language'] ?? 'en';
-  if ($lang !== 'hi') {
-    return $buffer;
-  }
-  
-  static $translations = null;
-  if ($translations === null) {
-    $translations = require __DIR__ . '/lang.php';
-  }
-  
-  if (empty($translations['hi'])) {
-    return $buffer;
-  }
-  
-  $transMap = $translations['hi'];
-  uksort($transMap, function($a, $b) {
-    return strlen($b) - strlen($a);
-  });
-  
-  foreach ($transMap as $english => $hindi) {
-    $buffer = str_replace('>' . $english . '<', '>' . $hindi . '<', $buffer);
-    $buffer = str_replace('>' . $english . "\n", '>' . $hindi . "\n", $buffer);
-    $buffer = str_replace('>' . $english . "\r", '>' . $hindi . "\r", $buffer);
-    $buffer = str_replace('placeholder="' . $english . '"', 'placeholder="' . $hindi . '"', $buffer);
-    $buffer = str_replace('value="' . $english . '"', 'value="' . $hindi . '"', $buffer);
-    $buffer = str_replace(' ' . $english . ' ', ' ' . $hindi . ' ', $buffer);
-    $buffer = str_replace('>' . $english . ' ', '>' . $hindi . ' ', $buffer);
-    $buffer = str_replace(' ' . $english . '<', ' ' . $hindi . '<', $buffer);
-    $buffer = str_replace('>' . $english . '(', '>' . $hindi . '(', $buffer);
-  }
-  
-  return $buffer;
-});
 ?>

@@ -1,0 +1,885 @@
+[2026-07-24 12:33:48] [ERROR: SMTP Error: data not accepted.] TO: jayesh < mohitspatil255@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear jayesh,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: The following From address failed: mohitspatil255@gmail.com : MAIL FROM command failed,,0, SMTP server error: MAIL FROM command failed] TO: shreyash shedge <shedgeshreyash@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear shreyash shedge,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Siddharth Joshi <siddharth.joshi@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Siddharth Joshi,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Karan Mehta <karan.mehta@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Karan Mehta,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: ishwari  <ishwari@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear ishwari ,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Preeti Sen <preeti.sen@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Preeti Sen,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Test Candidate <candidate@uni.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Test Candidate,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: mohit <mohitspatil25@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear mohit,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: google@recruiting.com <mohitasunilapatila@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear google@recruiting.com,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: jayesh patil <mohitpatil255@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear jayesh patil,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: shreyash shedge <shedgeshreyash@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear shreyash shedge,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Rahul Sharma <rahul.sharma@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Rahul Sharma,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Priya Patil <priya.patil@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Priya Patil,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: ishwari  <ishwari@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear ishwari ,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Aman Singh <aman.singh@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Aman Singh,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Test Candidate <candidate@uni.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Test Candidate,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: google@recruiting.com <mohitasunilapatila@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear google@recruiting.com,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Rohan Patil <rohan.patil@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Rohan Patil,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Rahul Sharma <rahul.sharma@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Rahul Sharma,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: jayeshd3rf <ishwa522ri@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear jayeshd3rf,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Priya Patil <priya.patil@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Priya Patil,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Aman Singh <aman.singh@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Aman Singh,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Neha Joshi <neha.joshi@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Neha Joshi,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: Rohan Patil <rohan.patil@university.edu> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Rohan Patil,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-24 12:33:48] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO: jayeshd3rf <ishwa522ri@gmail.com> | SUBJECT: New Placement Drive: coder and developer at Google Inc.
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear jayeshd3rf,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>coder and developer</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>9 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>9</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-07-31</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------
+[2026-07-25 19:20:04] [ERROR: SMTP Error: Could not connect to SMTP host. Failed to connect to server] TO:  <> | SUBJECT: New Placement Drive: trdhjytyt at Google Inc.
+BCC: mohit patil updated <aarav.sharma@university.edu>, Ananya Gupta <ananya.gupta@university.edu>, Harsh Patel <harsh.patel@university.edu>, jayesh < mohitspatil255@gmail.com>, Siddharth Joshi <siddharth.joshi@university.edu>, Karan Mehta <karan.mehta@university.edu>, Preeti Sen <preeti.sen@university.edu>, mohit <mohitspatil25@gmail.com>, jayesh patil <mohitpatil255@gmail.com>, shreyash shedge <shedgeshreyash@gmail.com>, ishwari  <ishwari@gmail.com>, Test Candidate <candidate@uni.edu>, google@recruiting.com <mohitasunilapatila@gmail.com>, Rahul Sharma <rahul.sharma@university.edu>, Priya Patil <priya.patil@university.edu>, Aman Singh <aman.singh@university.edu>, Neha Joshi <neha.joshi@university.edu>, Rohan Patil <rohan.patil@university.edu>, viraj <Virajcollab01@gmail.com>, shreyash shedge <shrey@gmail.com>, Satyam Pawar <satyampawar9923@gmail.com>
+BODY:
+
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Student,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>Google Inc.</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>trdhjytyt</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>76 LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>7.8</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>2026-08-07</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        
+--------------------------------------------------------------------------------

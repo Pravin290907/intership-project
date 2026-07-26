@@ -95,11 +95,11 @@ body {
   overflow: hidden;
 }
 
-/* --- SIDEBAR --- */
+/* --- SIDEBAR (Elegant Dark Theme) --- */
 .recruiter-sidebar {
   width: 280px;
-  background-color: var(--bg-sidebar);
-  border-right: 1px solid var(--border-color);
+  background: linear-gradient(180deg, #0f172a 0%, #0b0f19 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -107,6 +107,29 @@ body {
   z-index: 100;
   transition: width var(--transition-normal);
   flex-shrink: 0;
+  color: #94a3b8;
+
+  /* Scoped variables override for inner components */
+  --bg-sidebar: #0f172a;
+  --border-color: rgba(255, 255, 255, 0.06);
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+}
+
+/* Custom Scrollbar for Recruiter Sidebar */
+.recruiter-sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+.recruiter-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.recruiter-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+.recruiter-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .recruiter-sidebar.collapsed {
@@ -118,7 +141,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .logo-container {
@@ -127,17 +150,18 @@ body {
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
   border-radius: var(--radius-md);
   color: white;
   flex-shrink: 0;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
 }
 
 .logo-text {
   font-weight: 700;
   font-size: 18px;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   white-space: nowrap;
@@ -161,7 +185,7 @@ body {
 .sidebar-section-title {
   font-size: 11px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: #64748b;
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-top: 24px;
@@ -178,7 +202,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  color: var(--text-secondary);
+  color: #94a3b8;
   border-radius: var(--radius-md);
   margin-bottom: 4px;
   font-weight: 500;
@@ -187,26 +211,37 @@ body {
   border: 1px solid transparent;
 }
 
-.nav-item-link:hover {
-  background-color: var(--primary-light);
-  color: var(--primary);
-}
-
-.nav-item-link.active {
-  background-color: var(--primary);
-  color: white;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-}
-
 .nav-item-link .icon {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  color: #94a3b8;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.nav-item-link:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+
+.nav-item-link:hover .icon {
+  color: #ffffff !important;
+  transform: scale(1.05);
+}
+
+.nav-item-link.active {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+}
+
+.nav-item-link.active .icon {
+  color: #ffffff !important;
 }
 
 .sidebar-footer-profile {
   padding: 16px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   gap: 12px;

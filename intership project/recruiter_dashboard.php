@@ -164,6 +164,7 @@ $placementHistory = $stmtPlacementHistory->fetchAll();
 // Fetch company released offers
 $stmtOffers = $db->prepare("
   SELECT o.id, o.application_id, o.salary_lpa, o.designation, o.joining_date, o.location, o.status, o.offer_letter_path,
+         o.offer_date, o.expiry_date, o.sent_date, o.viewed_date, o.accepted_date, o.rejected_date,
          u.name as studentName, u.email as studentEmail, s.department, s.cgpa
   FROM offers o
   JOIN applications a ON o.application_id = a.id
@@ -246,14 +247,16 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
   <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/design-system.css">
   <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/recruiter_style.css">
   
+  
+  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   
   <script>
     window.API_BASE_URL = "<?php echo BASE_URL; ?>api/";
-    window.crmsTranslations = <?php echo json_encode(require __DIR__ . '/config/lang.php'); ?>;
-    window.currentLanguage = "<?php echo $_SESSION['language'] ?? 'en'; ?>";
+    window.crmsTranslations = {};
+    window.currentLanguage = "en";
     window.campusRecruitmentData = {
       students: <?php echo json_encode($allStudents); ?>,
       drives: <?php echo json_encode($recruiterDrives); ?>,
@@ -312,6 +315,10 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
             <i class="icon" data-lucide="calendar"></i>
             <span class="nav-item-label">Interviews</span>
           </div>
+          <div class="nav-item-link" data-target="aptitude" data-tooltip="Aptitude Tests">
+            <i class="icon" data-lucide="brain"></i>
+            <span class="nav-item-label">Aptitude Tests</span>
+          </div>
         </div>
 
         <div class="sidebar-section">
@@ -319,10 +326,6 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
           <div class="nav-item-link" data-target="offers" data-tooltip="Offer Letters">
             <i class="icon" data-lucide="award"></i>
             <span class="nav-item-label">Offer Letter</span>
-          </div>
-          <div class="nav-item-link" data-target="messages" data-tooltip="Messages">
-            <i class="icon" data-lucide="message-square"></i>
-            <span class="nav-item-label">Messages</span>
           </div>
         </div>
 
@@ -352,6 +355,10 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
           <div class="nav-item-link" data-target="settings" data-tooltip="Settings">
             <i class="icon" data-lucide="settings"></i>
             <span class="nav-item-label">Settings</span>
+          </div>
+          <div class="nav-item-link" data-target="footer" data-tooltip="Footer">
+            <i class="icon" data-lucide="layout-template"></i>
+            <span class="nav-item-label">Footer</span>
           </div>
         </div>
       </nav>
@@ -395,10 +402,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
             <span class="navbar-badge" id="recruiter-header-notif-badge" style="display: none;">0</span>
           </button>
 
-          <!-- Chat messages button -->
-          <button class="navbar-btn-icon" onclick="window.switchRecruiterView('messages')">
-            <i data-lucide="mail" style="width:20px; height:20px;"></i>
-          </button>
+          <!-- Chat messages button removed -->
 
           <!-- Profile Dropdown Trigger -->
           <div class="recruiter-profile-trigger" id="recruiter-avatar-trigger">
@@ -894,16 +898,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
                 </div>
               </div>
 
-              <!-- 7. Candidate Messaging -->
-              <div class="dashboard-card quick-action-card-premium lift" onclick="window.switchRecruiterView('messages')" style="cursor:pointer; padding:18px; border-radius:14px; background:#FFFFFF; border:1px solid #E2E8F0; display:flex; align-items:center; gap:14px; transition:all 0.2s ease;">
-                <div style="width:42px; height:42px; border-radius:10px; background-color:rgba(124,58,237,0.08); color:#7C3AED; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                  <i data-lucide="mail-open" style="width:20px; height:20px;"></i>
-                </div>
-                <div>
-                  <h4 style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:2px;">Messages</h4>
-                  <p style="font-size:11px; color:#64748B;">Chat with applicants</p>
-                </div>
-              </div>
+              <!-- Quick action card 7 removed -->
 
               <!-- 8. Portal Settings -->
               <div class="dashboard-card quick-action-card-premium lift" onclick="window.switchRecruiterView('settings')" style="cursor:pointer; padding:18px; border-radius:14px; background:#FFFFFF; border:1px solid #E2E8F0; display:flex; align-items:center; gap:14px; transition:all 0.2s ease;">
@@ -962,9 +957,6 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
             <div class="sub-tab-nav-bar" role="tablist" aria-label="Student Module Navigation" style="display:flex; gap:10px; overflow-x:auto;">
               <button class="sub-tab-btn student-tab active" id="tab-student-list" data-tab="student-list" onclick="switchStudentTab('student-list')" role="tab" aria-selected="true" tabindex="0">
                 Student List Directory
-              </button>
-              <button class="sub-tab-btn student-tab" id="tab-add-student" data-tab="add-student" onclick="switchStudentTab('add-student')" role="tab" aria-selected="false" tabindex="-1">
-                Add Student Profile
               </button>
               <button class="sub-tab-btn student-tab" id="tab-department-enrollments" data-tab="department-enrollments" onclick="switchStudentTab('department-enrollments')" role="tab" aria-selected="false" tabindex="-1">
                 Department Enrollments
@@ -1035,67 +1027,6 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
                   <?php endforeach; ?>
                 </tbody>
               </table>
-            </div>
-          </div>
-
-          <!-- Sub-Tab 2: Add Student Form -->
-          <div class="sub-tab-panel" id="add-student">
-            <div class="dashboard-card" style="max-width:700px; margin:0 auto;">
-              <h3 style="font-size:16px; font-weight:700; margin-bottom:20px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Register Student Profile</h3>
-              <form id="form-recruiter-add-student" onsubmit="submitAddStudentForm(event)" autocomplete="off">
-                <!-- Dummy hidden inputs to confuse autocompletion algorithms -->
-                <input type="text" name="prevent_autofill" style="display:none;" />
-                <input type="password" name="prevent_autofill_pwd" style="display:none;" />
-                
-                <div class="grid-container">
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Student Name *</label>
-                    <input type="text" class="input-field-custom" name="name" placeholder="Example: Rahul Sharma" required autocomplete="off">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Email Address *</label>
-                    <input type="email" class="input-field-custom" name="email" placeholder="Example: rahul@gmail.com" required autocomplete="off">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Setup Password *</label>
-                    <input type="password" class="input-field-custom" name="password" placeholder="Min 6 characters" required autocomplete="new-password">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Roll Number *</label>
-                    <input type="text" class="input-field-custom" name="roll_number" placeholder="Example: 2026CS102" required>
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Department Branch *</label>
-                    <select class="input-field-custom" name="department" required>
-                      <option value="">Select Branch</option>
-                      <option value="Information Technology (IT)">Information Technology (IT)</option>
-                      <option value="Computer Engineering (CE)">Computer Engineering (CE)</option>
-                      <option value="Artificial Intelligence & Data Science (AIDS)">Artificial Intelligence & Data Science (AIDS)</option>
-                      <option value="Artificial Intelligence & Machine Learning (AIML)">Artificial Intelligence & Machine Learning (AIML)</option>
-                      <option value="Electronics & Telecommunication (ENTC)">Electronics & Telecommunication (ENTC)</option>
-                      <option value="Mechanical Engineering">Mechanical Engineering</option>
-                      <option value="Civil Engineering">Civil Engineering</option>
-                      <option value="Electrical Engineering">Electrical Engineering</option>
-                    </select>
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Cumulative CGPA (1.00 - 10.00) *</label>
-                    <input type="number" class="input-field-custom" name="cgpa" placeholder="Example: 8.75" step="0.01" min="1.00" max="10.00" required>
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Mobile Phone (10 Digits) *</label>
-                    <input type="text" class="input-field-custom" name="phone" placeholder="Example: 9876543210" required>
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Academic Year *</label>
-                    <input type="text" class="input-field-custom" name="academic_year" placeholder="Example: 2024" pattern="\d{4}" maxlength="4" minlength="4" required>
-                  </div>
-                </div>
-                <button type="submit" class="btn btn-primary" style="margin-top:16px;">
-                  <i data-lucide="check-circle" style="width:14px; height:14px; vertical-align:middle; margin-right:6px;"></i>
-                  Save Student Profile
-                </button>
-              </form>
             </div>
           </div>
 
@@ -1538,6 +1469,95 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
         </div>
 
+        <!-- ==================== APTITUDE TESTS VIEW ==================== -->
+        <div class="page-view-section" id="aptitude">
+          <div class="header-action-container" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+            <div>
+              <h2 style="font-size:22px; font-weight:800; color:var(--text-primary);">Aptitude Tests & Online Evaluations</h2>
+              <p style="font-size:13px; color:var(--text-secondary);">Create MCQs, set duration, schedule online tests, assign to drive applicants, and evaluate rankings.</p>
+            </div>
+            <button class="btn btn-primary" onclick="openCreateAptitudeTestModal()">
+              <i data-lucide="plus" style="width:16px; height:16px; margin-right:6px;"></i> Create Aptitude Test
+            </button>
+          </div>
+
+          <!-- Aptitude KPIs -->
+          <div class="grid-container" style="margin-bottom:24px;">
+            <div class="dashboard-card col-3 col-md-6" style="padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Total Tests</span>
+                <i data-lucide="brain" style="width:18px; height:18px; color:var(--primary);"></i>
+              </div>
+              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="aptitude-kpi-total-tests">0</div>
+            </div>
+
+            <div class="dashboard-card col-3 col-md-6" style="padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Active Scheduled</span>
+                <i data-lucide="calendar" style="width:18px; height:18px; color:#10B981;"></i>
+              </div>
+              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="aptitude-kpi-active-tests">0</div>
+            </div>
+
+            <div class="dashboard-card col-3 col-md-6" style="padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Assigned Candidates</span>
+                <i data-lucide="users" style="width:18px; height:18px; color:#3B82F6;"></i>
+              </div>
+              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="aptitude-kpi-assigned-candidates">0</div>
+            </div>
+
+            <div class="dashboard-card col-3 col-md-6" style="padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Avg Pass Rate</span>
+                <i data-lucide="award" style="width:18px; height:18px; color:#F59E0B;"></i>
+              </div>
+              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="aptitude-kpi-pass-rate">0%</div>
+            </div>
+          </div>
+
+          <!-- Filter Toolbar -->
+          <div class="dashboard-card" style="margin-bottom:16px; padding:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+              <div class="nav-search-bar" style="flex:1; max-width:320px; margin:0;">
+                <i class="search-icon" data-lucide="search"></i>
+                <input type="search" id="aptitude-test-search" placeholder="Search test title or description..." oninput="renderAptitudeTestsTable()">
+              </div>
+              <div style="display:flex; gap:12px;">
+                <select class="input-field-custom" id="aptitude-status-filter" style="width:160px; height:38px; font-size:12px; padding:0 12px;" onchange="renderAptitudeTestsTable()">
+                  <option value="All">All Statuses</option>
+                  <option value="Draft">Draft</option>
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="Active">Active</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tests Table Container -->
+          <div class="dashboard-card" style="padding:0; overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Test Details</th>
+                  <th>Questions</th>
+                  <th>Total Marks</th>
+                  <th>Pass Criteria</th>
+                  <th>Duration</th>
+                  <th>Schedule Window</th>
+                  <th>Status</th>
+                  <th>Assigned / Evaluated</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="aptitude-tests-tbody">
+                <!-- Rendered dynamically via js/recruiter_app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- ==================== MESSAGES VIEW ==================== -->
         <div class="page-view-section" id="messages">
           <div class="chat-viewport-layout">
@@ -1569,64 +1589,46 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
         <!-- ==================== ANALYTICS VIEW ==================== -->
         <div class="page-view-section" id="analytics">
-          <!-- Row of 9 KPI panels -->
+          <!-- Row of 8 Recruiter-Centric KPI panels -->
           <div class="grid-container" style="margin-bottom:24px;">
-            <!-- 1. Total Students -->
-            <div class="dashboard-card col-4 col-md-6 lift" onclick="window.switchRecruiterView('student_management')" style="cursor:pointer; padding:16px;">
+            <!-- 1. Active Campaigns -->
+            <div class="dashboard-card col-3 col-md-6 lift" onclick="window.switchRecruiterView('drives')" style="cursor:pointer; padding:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Total Students</span>
-                <i data-lucide="users" style="width:16px; height:16px; color:var(--primary);"></i>
-              </div>
-              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-total-students">0</div>
-            </div>
-            
-            <!-- 2. Total Companies -->
-            <div class="dashboard-card col-4 col-md-6 lift" onclick="window.switchRecruiterView('profile')" style="cursor:pointer; padding:16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Total Companies</span>
-                <i data-lucide="building" style="width:16px; height:16px; color:var(--primary);"></i>
-              </div>
-              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-total-companies">0</div>
-            </div>
-
-            <!-- 3. Active Drives -->
-            <div class="dashboard-card col-4 col-md-6 lift" onclick="window.switchRecruiterView('drives')" style="cursor:pointer; padding:16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Active Drives</span>
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Active Campaigns</span>
                 <i data-lucide="briefcase" style="width:16px; height:16px; color:var(--primary);"></i>
               </div>
               <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-active-drives">0</div>
             </div>
 
-            <!-- 4. Applications -->
-            <div class="dashboard-card col-4 col-md-6 lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer; padding:16px;">
+            <!-- 2. Total Applications -->
+            <div class="dashboard-card col-3 col-md-6 lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer; padding:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Applications</span>
-                <i data-lucide="file-text" style="width:16px; height:16px; color:var(--primary);"></i>
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Total Applications</span>
+                <i data-lucide="users" style="width:16px; height:16px; color:var(--primary);"></i>
               </div>
               <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-applications">0</div>
             </div>
 
-            <!-- 5. Interviews -->
-            <div class="dashboard-card col-4 col-md-6 lift" onclick="window.switchRecruiterView('interviews')" style="cursor:pointer; padding:16px;">
+            <!-- 3. Shortlisted Candidates -->
+            <div class="dashboard-card col-3 col-md-6 lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer; padding:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Interviews</span>
-                <i data-lucide="calendar" style="width:16px; height:16px; color:var(--primary);"></i>
-              </div>
-              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-interviews">0</div>
-            </div>
-
-            <!-- 6. Shortlisted -->
-            <div class="dashboard-card col-4 col-md-6 lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer; padding:16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Shortlisted</span>
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Shortlisted Candidates</span>
                 <i data-lucide="user-check" style="width:16px; height:16px; color:var(--primary);"></i>
               </div>
               <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-shortlisted">0</div>
             </div>
 
-            <!-- 7. Offers Released -->
-            <div class="dashboard-card col-4 col-md-6 lift" onclick="window.switchRecruiterView('offers')" style="cursor:pointer; padding:16px;">
+            <!-- 4. Interviews Scheduled -->
+            <div class="dashboard-card col-3 col-md-6 lift" onclick="window.switchRecruiterView('interviews')" style="cursor:pointer; padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Interviews Scheduled</span>
+                <i data-lucide="calendar" style="width:16px; height:16px; color:var(--primary);"></i>
+              </div>
+              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-interviews">0</div>
+            </div>
+
+            <!-- 5. Offers Released -->
+            <div class="dashboard-card col-3 col-md-6 lift" onclick="window.switchRecruiterView('offers')" style="cursor:pointer; padding:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Offers Released</span>
                 <i data-lucide="award" style="width:16px; height:16px; color:var(--primary);"></i>
@@ -1634,22 +1636,31 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
               <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-offers">0</div>
             </div>
 
-            <!-- 8. Hired Students -->
-            <div class="dashboard-card col-4 col-md-6 lift" onclick="window.switchRecruiterView('pipeline')" style="cursor:pointer; padding:16px;">
+            <!-- 6. Hired Candidates -->
+            <div class="dashboard-card col-3 col-md-6 lift" onclick="window.switchRecruiterView('pipeline')" style="cursor:pointer; padding:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Hired Students</span>
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Hired Candidates</span>
                 <i data-lucide="check-circle" style="width:16px; height:16px; color:var(--primary);"></i>
               </div>
               <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-hired">0</div>
             </div>
 
-            <!-- 9. Placement Percentage -->
-            <div class="dashboard-card col-4 col-md-6 lift" onclick="window.switchRecruiterView('analytics')" style="cursor:pointer; padding:16px;">
+            <!-- 7. Hiring Yield (%) -->
+            <div class="dashboard-card col-3 col-md-6 lift" onclick="window.switchRecruiterView('applications')" style="cursor:pointer; padding:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Placement Percentage</span>
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Hiring Yield</span>
                 <i data-lucide="trending-up" style="width:16px; height:16px; color:var(--primary);"></i>
               </div>
-              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-placement-rate">0%</div>
+              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-hiring-yield">0%</div>
+            </div>
+
+            <!-- 8. Avg Candidate CGPA -->
+            <div class="dashboard-card col-3 col-md-6 lift" onclick="window.switchRecruiterView('student_management')" style="cursor:pointer; padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Avg Candidate CGPA</span>
+                <i data-lucide="graduation-cap" style="width:16px; height:16px; color:var(--primary);"></i>
+              </div>
+              <div style="font-size:24px; font-weight:700; color:var(--text-primary);" id="analytics-kpi-avg-cgpa">0.00</div>
             </div>
           </div>
 
@@ -1682,16 +1693,16 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
               <h3 style="font-size:14px; font-weight:700; margin-bottom:12px;">Candidate CGPA Distribution</h3>
               <div style="display:flex; flex-direction:column; gap:10px; font-size:13px; margin-top:12px;">
                 <div>
-                  <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>CGPA &ge; 9.0 (Outstanding Profiles)</span><strong>45%</strong></div>
-                  <div style="height:6px; background-color:#F1F5F9; border-radius:10px; overflow:hidden;"><div style="height:100%; width:45%; background-color:#10B981;"></div></div>
+                  <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>CGPA &ge; 9.0 (Outstanding Profiles)</span><strong id="cgpa-outstanding-pct">45%</strong></div>
+                  <div style="height:6px; background-color:#F1F5F9; border-radius:10px; overflow:hidden;"><div id="cgpa-outstanding-bar" style="height:100%; width:45%; background-color:#10B981;"></div></div>
                 </div>
                 <div>
-                  <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>8.0 &le; CGPA &lt; 9.0 (Distinction Profiles)</span><strong>40%</strong></div>
-                  <div style="height:6px; background-color:#F1F5F9; border-radius:10px; overflow:hidden;"><div style="height:100%; width:40%; background-color:#2563EB;"></div></div>
+                  <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>8.0 &le; CGPA &lt; 9.0 (Distinction Profiles)</span><strong id="cgpa-distinction-pct">40%</strong></div>
+                  <div style="height:6px; background-color:#F1F5F9; border-radius:10px; overflow:hidden;"><div id="cgpa-distinction-bar" style="height:100%; width:40%; background-color:#2563EB;"></div></div>
                 </div>
                 <div>
-                  <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>CGPA &lt; 8.0 (Eligible Profiles)</span><strong>15%</strong></div>
-                  <div style="height:6px; background-color:#F1F5F9; border-radius:10px; overflow:hidden;"><div style="height:100%; width:15%; background-color:#F59E0B;"></div></div>
+                  <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>CGPA &lt; 8.0 (Eligible Profiles)</span><strong id="cgpa-eligible-pct">15%</strong></div>
+                  <div style="height:6px; background-color:#F1F5F9; border-radius:10px; overflow:hidden;"><div id="cgpa-eligible-bar" style="height:100%; width:15%; background-color:#F59E0B;"></div></div>
                 </div>
               </div>
             </div>
@@ -1722,7 +1733,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
             <div class="grid-container">
               <div class="form-input-wrapper col-4 col-md-12">
                 <label class="form-input-label">Select Campaign Date Range</label>
-                <input type="date" class="input-field-custom" id="report-filter-date" min="<?php echo date('Y-m-d'); ?>" max="2030-12-31" value="2026-07-01">
+                <input type="date" class="input-field-custom" id="report-filter-date" value="2026-07-01">
               </div>
               <div class="form-input-wrapper col-4 col-md-12">
                 <label class="form-input-label">Filter Drive Status</label>
@@ -1737,6 +1748,30 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
               </div>
             </div>
           </div>
+
+          <!-- Generated Reports History -->
+          <div class="dashboard-card" style="margin-top:20px;">
+            <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Generated Reports History</h3>
+            <div class="table-responsive-custom">
+              <table class="table-custom">
+                <thead>
+                  <tr>
+                    <th>Report ID</th>
+                    <th>Report Name</th>
+                    <th>Date Filter</th>
+                    <th>Status Filter</th>
+                    <th>Format</th>
+                    <th>Generated Date</th>
+                  </tr>
+                </thead>
+                <tbody id="reports-history-tbody">
+                  <tr>
+                    <td colspan="6" style="text-align:center; padding:16px; color:var(--text-muted);">Loading report history...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- ==================== COMPANY PROFILE VIEW ==================== -->
@@ -1745,12 +1780,11 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
           <!-- Sub-Tab Header for Profile -->
           <div class="dashboard-card" style="margin-bottom:20px; padding:12px 16px;">
             <div class="sub-tab-nav-bar" role="tablist" style="display:flex; gap:10px; overflow-x:auto;">
-              <button type="button" class="sub-tab-btn active" onclick="switchProfileTab('sec-branding')">1. Company Branding</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-corporate')">2. Corporate Info</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-location')">3. Office Location</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-preferences')">4. Hiring Preferences</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-social')">5. Social Media</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-documents')">6. Verification Docs</button>
+              <button type="button" class="sub-tab-btn active" onclick="switchProfileTab('sec-branding')">Company Branding</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-corporate')">Corporate Info</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-location')">Office Location</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-preferences')">Hiring Preferences</button>
+              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-social')">Social Media</button>
               <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-password')">Security & Password</button>
               <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-audit')">Activity Audit Timeline</button>
             </div>
@@ -2055,58 +2089,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
             </div>
           </div>
 
-          <!-- SECTION 6: Company Verification Documents -->
-          <div class="profile-sub-panel" id="sec-documents" style="display:none;">
-            <div class="dashboard-card" style="margin-bottom:20px;">
-              <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-                <span>Corporate Verification Certificates & Documents</span>
-                <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('company-doc-file-input').click()">
-                  <i data-lucide="upload" style="width:14px; height:14px; margin-right:4px;"></i> Upload Document
-                </button>
-              </h3>
-              
-              <input type="file" id="company-doc-file-input" accept="application/pdf,image/png,image/jpeg" style="display:none;" onchange="uploadCompanyVerificationDoc(event)">
 
-              <div class="dashboard-card" style="padding:0; overflow-x:auto;">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Document Title</th>
-                      <th>File Size</th>
-                      <th>Uploaded Timestamp</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="company-docs-tbody">
-                    <?php if (empty($companyDocs)): ?>
-                      <tr>
-                        <td colspan="4" style="text-align:center; padding:32px; color:var(--text-muted);">
-                          No verification documents uploaded. Please upload GST Certificate, PAN, or Company Registration.
-                        </td>
-                      </tr>
-                    <?php endif; ?>
-                    <?php foreach ($companyDocs as $doc): ?>
-                      <tr>
-                        <td><strong><?php echo htmlspecialchars($doc['name']); ?></strong></td>
-                        <td><code><?php echo htmlspecialchars($doc['size'] ?? 'PDF'); ?></code></td>
-                        <td><?php echo htmlspecialchars($doc['uploaded_at'] ?? date('Y-m-d')); ?></td>
-                        <td>
-                          <div style="display:inline-flex; gap:6px;">
-                            <a href="<?php echo htmlspecialchars($doc['path']); ?>" target="_blank" class="btn btn-ghost btn-sm btn-icon-only" title="Preview / Download">
-                              <i data-lucide="eye" style="width:14px; height:14px;"></i>
-                            </a>
-                            <button type="button" class="btn btn-ghost btn-sm btn-icon-only" onclick="deleteCompanyDoc('<?php echo $doc['id']; ?>')" style="color:var(--color-danger);" title="Delete Document">
-                              <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    <?php endforeach; ?>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
 
           <!-- SECURITY & PASSWORD SECTION -->
           <div class="profile-sub-panel" id="sec-password" style="display:none;">
@@ -2205,102 +2188,454 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
         <!-- ==================== SETTINGS VIEW ==================== -->
         <div class="page-view-section" id="settings">
+          
+          <!-- Sub-Tab Header for Settings -->
+          <div class="dashboard-card" style="margin-bottom:20px; padding:12px 16px;">
+            <div class="sub-tab-nav-bar" role="tablist" style="display:flex; gap:10px; overflow-x:auto;">
+              <button type="button" class="sub-tab-btn active" onclick="switchSettingsTab('set-ui')"><i data-lucide="palette" style="width:14px; height:14px; margin-right:4px;"></i> 1. UI & Theme</button>
+              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-automation')"><i data-lucide="zap" style="width:14px; height:14px; margin-right:4px;"></i> 2. Campaign Automation</button>
+              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-notifications')"><i data-lucide="bell" style="width:14px; height:14px; margin-right:4px;"></i> 3. Notifications & Sound</button>
+              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-security')"><i data-lucide="shield" style="width:14px; height:14px; margin-right:4px;"></i> 4. Security & Compliance</button>
+              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-api')"><i data-lucide="code" style="width:14px; height:14px; margin-right:4px;"></i> 5. API Keys & Webhooks</button>
+              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-maintenance')"><i data-lucide="cpu" style="width:14px; height:14px; margin-right:4px;"></i> 6. System Health</button>
+            </div>
+          </div>
+
           <form id="recruiter-settings-form" onsubmit="submitRecruiterSettingsForm(event)">
-            <div class="grid-container">
-              <!-- Column 1: UI & Theme Preferences -->
-              <div class="dashboard-card col-6 col-lg-12">
-                <h3 style="font-size:14px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
-                  <i data-lucide="settings" style="width:18px; height:18px; color:var(--primary);"></i>
-                  Workspace UI & Theme Preferences
-                </h3>
-                
-                <div class="form-input-wrapper">
-                  <label class="form-input-label">Workspace Theme Mode *</label>
-                  <select class="input-field-custom" name="theme" id="settings-theme-select" required>
-                    <option value="light" <?php echo $userSettings['theme'] === 'light' ? 'selected' : ''; ?>>Light Mode Default</option>
-                    <option value="dark" <?php echo $userSettings['theme'] === 'dark' ? 'selected' : ''; ?>>Dark Mode Override</option>
-                  </select>
-                </div>
+            
+            <!-- SECTION 1: UI & Theme Preferences -->
+            <div class="settings-sub-panel active" id="set-ui">
+              <div class="grid-container">
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="sliders" style="width:18px; height:18px; color:var(--primary);"></i>
+                    Visual Theme & Accent Customization
+                  </h3>
+                  
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Workspace Theme Mode *</label>
+                    <select class="input-field-custom" name="theme" id="settings-theme-select">
+                      <option value="light" <?php echo ($userSettings['theme'] ?? 'light') === 'light' ? 'selected' : ''; ?>>Light Mode Default</option>
+                      <option value="dark" <?php echo ($userSettings['theme'] ?? '') === 'dark' ? 'selected' : ''; ?>>Dark Mode Override</option>
+                    </select>
+                  </div>
 
-                <div class="form-input-wrapper">
-                  <label class="form-input-label">Default Interface Language *</label>
-                  <select class="input-field-custom" name="language" id="settings-language-select" required>
-                    <option value="en" <?php echo $userSettings['language'] === 'en' ? 'selected' : ''; ?>>English (United States)</option>
-                    <option value="hi" <?php echo $userSettings['language'] === 'hi' ? 'selected' : ''; ?>>Hindi (India)</option>
-                    <option value="es" <?php echo $userSettings['language'] === 'es' ? 'selected' : ''; ?>>Español (España)</option>
-                  </select>
-                </div>
-              </div>
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Primary Brand Accent Color</label>
+                    <select class="input-field-custom" name="accent_color">
+                      <option value="blue" <?php echo ($extraConfig['accent_color'] ?? 'blue') === 'blue' ? 'selected' : ''; ?>>Corporate Royal Blue (#2563EB)</option>
+                      <option value="indigo" <?php echo ($extraConfig['accent_color'] ?? '') === 'indigo' ? 'selected' : ''; ?>>Deep Indigo (#4F46E5)</option>
+                      <option value="emerald" <?php echo ($extraConfig['accent_color'] ?? '') === 'emerald' ? 'selected' : ''; ?>>Emerald Green (#059669)</option>
+                      <option value="purple" <?php echo ($extraConfig['accent_color'] ?? '') === 'purple' ? 'selected' : ''; ?>>Violet Purple (#7C3AED)</option>
+                    </select>
+                  </div>
 
-              <!-- Column 2: Notification & Security Configurations -->
-              <div class="dashboard-card col-6 col-lg-12">
-                <h3 style="font-size:14px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
-                  <i data-lucide="shield" style="width:18px; height:18px; color:var(--primary);"></i>
-                  Notification & Security Settings
-                </h3>
-                
-                <div class="form-input-wrapper">
-                  <label class="form-input-label" style="margin-bottom:8px;">System Notifications Delivery</label>
-                  <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:12px;">
-                    <input type="checkbox" name="notifications_enabled" id="settings-notifications-enabled" value="1" style="width:16px; height:16px;" <?php echo $userSettings['notifications_enabled'] ? 'checked' : ''; ?>>
-                    <label for="settings-notifications-enabled">Enable In-App Activity & Broadcast Notifications</label>
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label" style="margin-bottom:8px;">Grid Layout Density</label>
+                    <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600;">
+                      <input type="checkbox" name="compact_mode" value="1" id="settings-compact-mode" style="width:16px; height:16px;" <?php echo !empty($extraConfig['compact_mode']) ? 'checked' : ''; ?>>
+                      <label for="settings-compact-mode">Enable Compact Data Table & Card Density</label>
+                    </div>
                   </div>
                 </div>
 
-                <div class="form-input-wrapper">
-                  <label class="form-input-label">Email Subscription Level *</label>
-                  <select class="input-field-custom" name="email_preferences" required>
-                    <option value="all" <?php echo $userSettings['email_preferences'] === 'all' ? 'selected' : ''; ?>>Send all updates (Drives, Applications, Chats)</option>
-                    <option value="important" <?php echo $userSettings['email_preferences'] === 'important' ? 'selected' : ''; ?>>Important alerts only (Interviews, Offers)</option>
-                    <option value="none" <?php echo $userSettings['email_preferences'] === 'none' ? 'selected' : ''; ?>>Do not send any emails</option>
-                  </select>
-                </div>
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="globe" style="width:18px; height:18px; color:var(--primary);"></i>
+                    Regional & Startup Preferences
+                  </h3>
 
-                <div class="form-input-wrapper">
-                  <label class="form-input-label" style="margin-bottom:8px;">Security Settings (Two-Factor Auth)</label>
-                  <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:12px;">
-                    <input type="checkbox" name="security_settings" id="settings-2fa-enabled" value="2fa_totp" style="width:16px; height:16px;" <?php echo $userSettings['security_settings'] === '2fa_totp' ? 'checked' : ''; ?>>
-                    <label for="settings-2fa-enabled">Require TOTP 2FA Verification Codes on Login</label>
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Default Landing View on Login</label>
+                    <select class="input-field-custom" name="default_tab">
+                      <option value="dashboard" <?php echo ($extraConfig['default_tab'] ?? 'dashboard') === 'dashboard' ? 'selected' : ''; ?>>Main Executive Dashboard</option>
+                      <option value="drives" <?php echo ($extraConfig['default_tab'] ?? '') === 'drives' ? 'selected' : ''; ?>>Placement Drives Directory</option>
+                      <option value="applications" <?php echo ($extraConfig['default_tab'] ?? '') === 'applications' ? 'selected' : ''; ?>>Candidate ATS Applications</option>
+                      <option value="pipeline" <?php echo ($extraConfig['default_tab'] ?? '') === 'pipeline' ? 'selected' : ''; ?>>Selection Pipeline Kanban</option>
+                      <option value="interviews" <?php echo ($extraConfig['default_tab'] ?? '') === 'interviews' ? 'selected' : ''; ?>>Interview Schedule Calendar</option>
+                      <option value="aptitude" <?php echo ($extraConfig['default_tab'] ?? '') === 'aptitude' ? 'selected' : ''; ?>>Aptitude Test Bank</option>
+                    </select>
                   </div>
-                </div>
 
-                <div class="form-input-wrapper">
-                  <label class="form-input-label" style="margin-bottom:8px;">Privacy Settings</label>
-                  <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600;">
-                    <input type="checkbox" name="privacy_settings" id="settings-privacy-enabled" value="privacy_public" style="width:16px; height:16px;" <?php echo $userSettings['privacy_settings'] === 'privacy_public' ? 'checked' : ''; ?>>
-                    <label for="settings-privacy-enabled">Make corporate recruitment status public to search engines</label>
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Workspace Timezone</label>
+                    <select class="input-field-custom" name="timezone">
+                      <option value="Asia/Kolkata" <?php echo ($userSettings['timezone'] ?? 'Asia/Kolkata') === 'Asia/Kolkata' ? 'selected' : ''; ?>>Asia/Kolkata (IST +05:30)</option>
+                      <option value="UTC" <?php echo ($userSettings['timezone'] ?? '') === 'UTC' ? 'selected' : ''; ?>>UTC (Coordinated Universal Time)</option>
+                      <option value="America/New_York" <?php echo ($userSettings['timezone'] ?? '') === 'America/New_York' ? 'selected' : ''; ?>>America/New_York (EST -05:00)</option>
+                      <option value="Europe/London" <?php echo ($userSettings['timezone'] ?? '') === 'Europe/London' ? 'selected' : ''; ?>>Europe/London (GMT +00:00)</option>
+                    </select>
+                  </div>
+
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Date Display Format</label>
+                    <select class="input-field-custom" name="date_format">
+                      <option value="Y-m-d" <?php echo ($userSettings['date_format'] ?? 'Y-m-d') === 'Y-m-d' ? 'selected' : ''; ?>>YYYY-MM-DD (2026-07-25)</option>
+                      <option value="d/m/Y" <?php echo ($userSettings['date_format'] ?? '') === 'd/m/Y' ? 'selected' : ''; ?>>DD/MM/YYYY (25/07/2026)</option>
+                      <option value="m/d/Y" <?php echo ($userSettings['date_format'] ?? '') === 'm/d/Y' ? 'selected' : ''; ?>>MM/DD/YYYY (07/25/2026)</option>
+                    </select>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Save settings action panel -->
+            <!-- SECTION 2: Campaign Automation Rules -->
+            <div class="settings-sub-panel" id="set-automation" style="display:none;">
+              <div class="grid-container">
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="zap" style="width:18px; height:18px; color:var(--primary);"></i>
+                    Automated Candidate Screening & Cutoffs
+                  </h3>
+
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Auto-Shortlist Minimum CGPA Cutoff</label>
+                    <input type="number" step="0.01" class="input-field-custom" name="auto_shortlist_cgpa" value="<?php echo htmlspecialchars($extraConfig['auto_shortlist_cgpa'] ?? '7.50'); ?>" placeholder="Example: 7.50">
+                    <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">Applicants meeting or exceeding this CGPA will automatically receive Aptitude invitations.</p>
+                  </div>
+
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Campaign Deadline Expiry Reminder Alert</label>
+                    <select class="input-field-custom" name="expiry_warning_days">
+                      <option value="1" <?php echo ($extraConfig['expiry_warning_days'] ?? 3) == 1 ? 'selected' : ''; ?>>1 Day Before Closing</option>
+                      <option value="3" <?php echo ($extraConfig['expiry_warning_days'] ?? 3) == 3 ? 'selected' : ''; ?>>3 Days Before Closing</option>
+                      <option value="7" <?php echo ($extraConfig['expiry_warning_days'] ?? 3) == 7 ? 'selected' : ''; ?>>7 Days Before Closing</option>
+                    </select>
+                  </div>
+
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Default Offer Letter Validity Period</label>
+                    <select class="input-field-custom" name="offer_validity_days">
+                      <option value="7" <?php echo ($extraConfig['offer_validity_days'] ?? 15) == 7 ? 'selected' : ''; ?>>7 Days Acceptance Deadline</option>
+                      <option value="15" <?php echo ($extraConfig['offer_validity_days'] ?? 15) == 15 ? 'selected' : ''; ?>>15 Days Acceptance Deadline</option>
+                      <option value="30" <?php echo ($extraConfig['offer_validity_days'] ?? 15) == 30 ? 'selected' : ''; ?>>30 Days Acceptance Deadline</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="mail" style="width:18px; height:18px; color:var(--primary);"></i>
+                    Automatic Email Triggers & Stage Progression
+                  </h3>
+
+                  <div class="form-input-wrapper">
+                    <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:12px;">
+                      <input type="checkbox" name="auto_send_interview_email" id="set-auto-email" value="1" style="width:16px; height:16px;" <?php echo !empty($extraConfig['auto_send_interview_email']) ? 'checked' : ''; ?>>
+                      <label for="set-auto-email">Auto-Send Interview Confirmation Email & Calendar Invite</label>
+                    </div>
+                    <p style="font-size:11px; color:var(--text-muted);">Dispatches formal invitation letter immediately upon interview schedule creation.</p>
+                  </div>
+
+                  <div class="form-input-wrapper">
+                    <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:12px;">
+                      <input type="checkbox" name="auto_promote_aptitude_pass" id="set-auto-promote" value="1" style="width:16px; height:16px;" <?php echo !empty($extraConfig['auto_promote_aptitude_pass']) ? 'checked' : ''; ?>>
+                      <label for="set-auto-promote">Auto-Promote Passed Candidates to Interview Round</label>
+                    </div>
+                    <p style="font-size:11px; color:var(--text-muted);">Automatically updates application status to 'Shortlisted' when online test is passed.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 3: Notifications & Sound Channels -->
+            <div class="settings-sub-panel" id="set-notifications" style="display:none;">
+              <div class="grid-container">
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="bell-ring" style="width:18px; height:18px; color:var(--primary);"></i>
+                    Notification Subscriptions & Desktop Push
+                  </h3>
+
+                  <div class="form-input-wrapper">
+                    <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:12px;">
+                      <input type="checkbox" name="notifications_enabled" id="settings-notifications-enabled" value="1" style="width:16px; height:16px;" <?php echo ($userSettings['notifications_enabled'] ?? 1) ? 'checked' : ''; ?>>
+                      <label for="settings-notifications-enabled">Enable In-App Activity Notifications & Badges</label>
+                    </div>
+                  </div>
+
+                  <div class="form-input-wrapper">
+                    <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:12px;">
+                      <input type="checkbox" name="desktop_push_notif" id="settings-desktop-push" value="1" style="width:16px; height:16px;" <?php echo !empty($extraConfig['desktop_push_notif']) ? 'checked' : ''; ?>>
+                      <label for="settings-desktop-push">Enable Desktop Web Push Toast Notifications</label>
+                    </div>
+                  </div>
+
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Email Digest Subscription Level *</label>
+                    <select class="input-field-custom" name="email_preferences" required>
+                      <option value="all" <?php echo ($userSettings['email_preferences'] ?? 'all') === 'all' ? 'selected' : ''; ?>>Instant Alerts (Drives, Applications, Chats, Interviews)</option>
+                      <option value="important" <?php echo ($userSettings['email_preferences'] ?? '') === 'important' ? 'selected' : ''; ?>>Important Alerts Only (Interviews, Offer Responses)</option>
+                      <option value="daily" <?php echo ($userSettings['email_preferences'] ?? '') === 'daily' ? 'selected' : ''; ?>>Daily Morning Summary Digest</option>
+                      <option value="none" <?php echo ($userSettings['email_preferences'] ?? '') === 'none' ? 'selected' : ''; ?>>Do Not Send Any Emails</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="volume-2" style="width:18px; height:18px; color:var(--primary);"></i>
+                    Sound Alert Preferences
+                  </h3>
+
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Application Sound Effect</label>
+                    <select class="input-field-custom" name="sound_alert">
+                      <option value="chime" <?php echo ($extraConfig['sound_alert'] ?? 'chime') === 'chime' ? 'selected' : ''; ?>>Soft Chime (Recommended)</option>
+                      <option value="bell" <?php echo ($extraConfig['sound_alert'] ?? '') === 'bell' ? 'selected' : ''; ?>>Classic Bell Ring</option>
+                      <option value="pop" <?php echo ($extraConfig['sound_alert'] ?? '') === 'pop' ? 'selected' : ''; ?>>Subtle Pop Sound</option>
+                      <option value="mute" <?php echo ($extraConfig['sound_alert'] ?? '') === 'mute' ? 'selected' : ''; ?>>Mute All Audio Alerts</option>
+                    </select>
+                  </div>
+
+                  <div class="form-input-wrapper" style="margin-top:16px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="playTestNotificationSound()">
+                      <i data-lucide="play" style="width:12px; height:12px; margin-right:4px;"></i> Test Sound Playback
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 4: Security & Compliance -->
+            <div class="settings-sub-panel" id="set-security" style="display:none;">
+              <div class="grid-container">
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="shield-check" style="width:18px; height:18px; color:var(--primary);"></i>
+                    Authentication & Session Governance
+                  </h3>
+
+                  <div class="form-input-wrapper">
+                    <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:12px;">
+                      <input type="checkbox" name="security_settings" id="settings-2fa-enabled" value="2fa_totp" style="width:16px; height:16px;" <?php echo ($userSettings['security_settings'] ?? '') === '2fa_totp' ? 'checked' : ''; ?>>
+                      <label for="settings-2fa-enabled">Require TOTP 2-Factor Authentication Codes on Login</label>
+                    </div>
+                  </div>
+
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Inactivity Session Timeout</label>
+                    <select class="input-field-custom" name="session_timeout_mins">
+                      <option value="15" <?php echo ($extraConfig['session_timeout_mins'] ?? 30) == 15 ? 'selected' : ''; ?>>15 Minutes Inactivity</option>
+                      <option value="30" <?php echo ($extraConfig['session_timeout_mins'] ?? 30) == 30 ? 'selected' : ''; ?>>30 Minutes Inactivity</option>
+                      <option value="60" <?php echo ($extraConfig['session_timeout_mins'] ?? 30) == 60 ? 'selected' : ''; ?>>60 Minutes Inactivity</option>
+                      <option value="120" <?php echo ($extraConfig['session_timeout_mins'] ?? 30) == 120 ? 'selected' : ''; ?>>2 Hours Inactivity</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="lock" style="width:18px; height:18px; color:var(--primary);"></i>
+                    Privacy & Candidate Data Protection
+                  </h3>
+
+                  <div class="form-input-wrapper">
+                    <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:12px;">
+                      <input type="checkbox" name="privacy_settings" id="settings-privacy-enabled" value="privacy_public" style="width:16px; height:16px;" <?php echo ($userSettings['privacy_settings'] ?? '') === 'privacy_public' ? 'checked' : ''; ?>>
+                      <label for="settings-privacy-enabled">Make corporate recruitment status public to student search engines</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 5: API Keys & Webhook Integrations -->
+            <div class="settings-sub-panel" id="set-api" style="display:none;">
+              <div class="grid-container">
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+                    <span>Rest API Access Credentials</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="generateRecruiterApiKey()">
+                      <i data-lucide="refresh-cw" style="width:12px; height:12px; margin-right:4px;"></i> Generate New Key
+                    </button>
+                  </h3>
+
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Workspace Secret API Key</label>
+                    <div style="display:flex; gap:8px;">
+                      <input type="text" class="input-field-custom" id="settings-api-key" name="api_key" value="<?php echo htmlspecialchars($extraConfig['api_key'] ?? 'crms_live_sk_' . substr(md5($userId . 'crms_salt'), 0, 24)); ?>" readonly style="font-family:monospace; background-color:#F8FAFC;">
+                      <button type="button" class="btn btn-secondary" onclick="copyRecruiterApiKey()" style="white-space:nowrap;">Copy Key</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="webhook" style="width:18px; height:18px; color:var(--primary);"></i>
+                    Webhook Event Stream Callback URL
+                  </h3>
+
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Live Webhook Endpoint (HTTP POST)</label>
+                    <input type="url" class="input-field-custom" name="webhook_url" value="<?php echo htmlspecialchars($extraConfig['webhook_url'] ?? ''); ?>" placeholder="https://api.yourcompany.com/webhooks/crms">
+                    <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">Receives instant JSON payloads when candidate applies or completes interviews.</p>
+                  </div>
+
+                  <div class="form-input-wrapper">
+                    <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600;">
+                      <input type="checkbox" name="calendar_sync" id="settings-cal-sync" value="1" style="width:16px; height:16px;" <?php echo !empty($extraConfig['calendar_sync']) ? 'checked' : ''; ?>>
+                      <label for="settings-cal-sync">Synchronize Interview Schedules with Google Calendar & iCal</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 6: System Maintenance & Diagnostics -->
+            <div class="settings-sub-panel" id="set-maintenance" style="display:none;">
+              <div class="grid-container">
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="activity" style="width:18px; height:18px; color:var(--primary);"></i>
+                    Database & Cache Maintenance Diagnostics
+                  </h3>
+
+                  <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background-color:#F8FAFC; border-radius:10px; border:1px solid #E2E8F0;">
+                      <div>
+                        <strong style="font-size:13px;">MySQL Database Connection Status</strong>
+                        <p style="font-size:11px; color:var(--text-muted);">Host: localhost | Port: 3306 | Latency: 1.2 ms</p>
+                      </div>
+                      <span class="badge badge-success" style="font-size:11px;">Healthy</span>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background-color:#F8FAFC; border-radius:10px; border:1px solid #E2E8F0;">
+                      <div>
+                        <strong style="font-size:13px;">Local Storage & App Cache</strong>
+                        <p style="font-size:11px; color:var(--text-muted);">Session cache data and temporary states.</p>
+                      </div>
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="clearRecruiterLocalCache()">Clear Cache</button>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background-color:#F8FAFC; border-radius:10px; border:1px solid #E2E8F0;">
+                      <div>
+                        <strong style="font-size:13px;">Audit Trail Activity History</strong>
+                        <p style="font-size:11px; color:var(--text-muted);">Export full timestamped security audit log CSV.</p>
+                      </div>
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="exportAuditHistoryCSV()">Export Audit Logs</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="dashboard-card col-6 col-lg-12">
+                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="info" style="width:18px; height:18px; color:var(--primary);"></i>
+                    System Version & Information
+                  </h3>
+
+                  <table style="width:100%; font-size:13px; border-collapse:collapse;">
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                      <td style="padding:8px 0; color:var(--text-muted);">Portal Edition:</td>
+                      <td style="padding:8px 0; font-weight:600; text-align:right;">CampusRecruit Enterprise v3.5.0</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                      <td style="padding:8px 0; color:var(--text-muted);">PHP Engine Version:</td>
+                      <td style="padding:8px 0; font-weight:600; text-align:right;"><?php echo phpversion(); ?></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                      <td style="padding:8px 0; color:var(--text-muted);">Server OS Environment:</td>
+                      <td style="padding:8px 0; font-weight:600; text-align:right;">Windows XAMPP Apache</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 0; color:var(--text-muted);">Database Migration Build:</td>
+                      <td style="padding:8px 0; font-weight:600; text-align:right; color:var(--primary);">v2026.07.25-LATEST</td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Save settings action bar -->
             <div class="dashboard-card" style="margin-top:20px; display:flex; justify-content:flex-end; gap:12px; padding:16px;">
               <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Reset Changes</button>
-              <button type="submit" class="btn btn-primary" id="btn-save-settings-submit">Save Settings permanently</button>
+              <button type="submit" class="btn btn-primary" id="btn-save-settings-submit">
+                <i data-lucide="save" style="width:14px; height:14px; margin-right:6px;"></i> Save All Settings Permanently
+              </button>
             </div>
+
           </form>
         </div>
 
-        <!-- ==================== SYSTEM NOTIFICATIONS VIEW ==================== -->
-        <div class="page-view-section" id="notifications">
+        <!-- ==================== FOOTER VIEW SECTION ==================== -->
+        <div class="page-view-section" id="footer">
           <div class="dashboard-card" style="margin-bottom:24px;">
-            <h2 style="font-size:18px; font-weight:700; margin-bottom:4px;">Workspace System Notifications</h2>
-            <p style="font-size:13px; color:var(--text-secondary);">Manage system push alerts, deadlines and candidate selections updates.</p>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+              <div>
+                <h2 style="font-size:18px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="layout-template" style="width:20px; height:20px; color:var(--primary);"></i>
+                  Application Footer Section
+                </h2>
+                <p style="font-size:13px; color:var(--text-secondary); margin:0;">Standardized corporate footer layout, legal policy links, and social channel integration.</p>
+              </div>
+              <span class="badge badge-success" style="font-size:11px;">Status: Active</span>
+            </div>
           </div>
 
-          <div class="dashboard-card" style="padding:0;">
-            <div style="padding:16px;" id="recruiter-notifications-page-list">
-              <div class="empty-illustration-container">
-                <i data-lucide="bell" style="width:48px; height:48px; color:var(--text-muted); margin-bottom:12px;"></i>
-                <h4 class="empty-heading">No new notifications</h4>
-                <p class="empty-subtext">You are completely up to date with candidate registrations and campaigns.</p>
+          <!-- Live Footer Display Card matching user screenshot -->
+          <div class="dashboard-card" style="padding:0; overflow:hidden; border-radius:12px; margin-bottom:24px;">
+            <div style="padding:16px 20px; background:#F8FAFC; border-bottom:1px solid var(--border-color); font-size:13px; font-weight:700; color:var(--text-primary);">
+              Active Footer Layout Preview
+            </div>
+            
+            <div class="custom-dark-footer-bar">
+              <div class="footer-left-content">
+                <span>Copyright 2023-24</span>
+                <span class="footer-pipe-divider">|</span>
+                <span>All rights reserved</span>
+                <span class="footer-pipe-divider">|</span>
+                <a href="javascript:void(0)" onclick="openPrivacyPolicyModal()" class="dark-footer-link">Privacy Policy</a>
+                <span class="footer-pipe-divider">|</span>
+                <a href="javascript:void(0)" onclick="openTermsModal()" class="dark-footer-link">Terms of Service</a>
+                <span class="footer-pipe-divider">|</span>
+                <a href="javascript:void(0)" onclick="openRefundPolicyModal()" class="dark-footer-link">Refund Policy</a>
               </div>
+              
+              <div class="footer-right-socials">
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" class="dark-social-icon" title="Facebook" aria-label="Facebook">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                </a>
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="dark-social-icon" title="LinkedIn" aria-label="LinkedIn">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                </a>
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" class="dark-social-icon" title="Twitter / X" aria-label="Twitter">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Interactive Legal Policy Cards -->
+          <div class="grid-container">
+            <div class="dashboard-card col-4 col-md-12 lift" onclick="openPrivacyPolicyModal()" style="cursor:pointer; padding:20px;">
+              <h4 style="font-size:15px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="shield" style="width:18px; height:18px; color:var(--primary);"></i> Privacy Policy
+              </h4>
+              <p style="font-size:12px; color:var(--text-secondary); margin:0;">View data confidentiality, encryption, and candidate privacy parameters.</p>
+            </div>
+
+            <div class="dashboard-card col-4 col-md-12 lift" onclick="openTermsModal()" style="cursor:pointer; padding:20px;">
+              <h4 style="font-size:15px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="file-text" style="width:18px; height:18px; color:var(--primary);"></i> Terms of Service
+              </h4>
+              <p style="font-size:12px; color:var(--text-secondary); margin:0;">Review recruitment guidelines, single-offer rules, and campaign terms.</p>
+            </div>
+
+            <div class="dashboard-card col-4 col-md-12 lift" onclick="openRefundPolicyModal()" style="cursor:pointer; padding:20px;">
+              <h4 style="font-size:15px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="credit-card" style="width:18px; height:18px; color:var(--primary);"></i> Refund Policy
+              </h4>
+              <p style="font-size:12px; color:var(--text-secondary); margin:0;">Information regarding corporate drive enrollment fee terms & refunds.</p>
             </div>
           </div>
         </div>
 
+
+
       </div>
+
+      <!-- --- PROFESSIONAL DASHBOARD FOOTER --- -->
+      <?php include __DIR__ . '/includes/footer.php'; ?>
     </main>
 
     <!-- --- CREATE DRIVE DIALOG POPUP --- -->
@@ -2626,11 +2961,11 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
             <div class="form-input-wrapper">
               <label class="form-input-label">Round Date *</label>
-              <input type="date" class="input-field-custom" name="date" id="interview-date" min="<?php echo date('Y-m-d'); ?>" max="2030-12-31" required>
+              <input type="date" class="input-field-custom" name="date" id="interview-date" min="<?php echo date('Y-m-d'); ?>" value="<?php echo date('Y-m-d'); ?>" max="2030-12-31" required>
             </div>
             <div class="form-input-wrapper">
               <label class="form-input-label">Round Time Slot *</label>
-              <input type="time" class="input-field-custom" name="time" id="interview-time" required>
+              <input type="time" class="input-field-custom" name="time" id="interview-time" value="<?php echo date('H:i'); ?>" required>
             </div>
             <div class="form-input-wrapper">
               <label class="form-input-label">Location / Room Venue *</label>
@@ -2698,6 +3033,268 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
             <button type="submit" class="btn btn-primary" id="btn-feedback-submit">Submit Evaluation</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- --- CREATE / EDIT APTITUDE TEST MODAL --- -->
+    <div class="recruiter-modal-overlay" id="modal-create-aptitude-test">
+      <div class="recruiter-modal-content" style="max-width:650px;">
+        <div class="recruiter-modal-header">
+          <h3 class="recruiter-modal-title" id="aptitude-test-modal-title">Create Aptitude Test</h3>
+          <button type="button" class="recruiter-modal-close" onclick="closeRecruiterModal('modal-create-aptitude-test')">
+            <i data-lucide="x" style="width:18px; height:18px;"></i>
+          </button>
+        </div>
+        <form id="form-aptitude-test-api" onsubmit="submitAptitudeTestForm(event)">
+          <input type="hidden" name="test_id" id="aptitude-edit-id">
+          <div class="recruiter-modal-body">
+            <div class="form-input-wrapper">
+              <label class="form-input-label">Test Title *</label>
+              <input type="text" class="input-field-custom" name="title" id="aptitude-test-title" placeholder="e.g. General Aptitude & Logical Reasoning - 2026 Batch" required>
+            </div>
+
+            <div class="form-input-wrapper">
+              <label class="form-input-label">Target Placement Drive (Optional)</label>
+              <select class="input-field-custom" name="drive_id" id="aptitude-test-drive">
+                <option value="">All Candidates / General Test</option>
+                <?php foreach ($recruiterDrives as $d): ?>
+                  <option value="<?php echo $d['id']; ?>"><?php echo htmlspecialchars($d['jobRole']); ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+
+            <div class="form-input-wrapper">
+              <label class="form-input-label">Description / Syllabus Instructions</label>
+              <textarea class="textarea-field-custom" name="description" id="aptitude-test-description" rows="3" placeholder="Enter instructions, covered topics (Quantitative Aptitude, Logical Reasoning, Verbal Ability)..."></textarea>
+            </div>
+
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+              <div class="form-input-wrapper" style="flex:1;">
+                <label class="form-input-label">Duration (Minutes) *</label>
+                <input type="number" class="input-field-custom" name="duration_minutes" id="aptitude-test-duration" value="30" min="5" max="300" required>
+              </div>
+
+              <div class="form-input-wrapper" style="flex:1;">
+                <label class="form-input-label">Pass Marks Criteria *</label>
+                <input type="number" class="input-field-custom" name="pass_marks" id="aptitude-test-pass-marks" value="40" min="1" required>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+              <div class="form-input-wrapper" style="flex:1;">
+                <label class="form-input-label">Scheduled Date</label>
+                <input type="date" class="input-field-custom" name="scheduled_date" id="aptitude-test-date" min="<?php echo date('Y-m-d'); ?>" value="<?php echo date('Y-m-d'); ?>">
+              </div>
+              <div class="form-input-wrapper" style="flex:1;">
+                <label class="form-input-label">Start Time</label>
+                <input type="time" class="input-field-custom" name="start_time" id="aptitude-test-start-time" value="10:00">
+              </div>
+              <div class="form-input-wrapper" style="flex:1;">
+                <label class="form-input-label">End Time</label>
+                <input type="time" class="input-field-custom" name="end_time" id="aptitude-test-end-time" value="11:00">
+              </div>
+            </div>
+          </div>
+          <div class="recruiter-modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeRecruiterModal('modal-create-aptitude-test')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Test Details</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- --- MANAGE QUESTIONS MODAL --- -->
+    <div class="recruiter-modal-overlay" id="modal-manage-questions">
+      <div class="recruiter-modal-content" style="max-width:850px;">
+        <div class="recruiter-modal-header">
+          <h3 class="recruiter-modal-title" id="aptitude-questions-title">Manage Question Bank (MCQs)</h3>
+          <button type="button" class="recruiter-modal-close" onclick="closeRecruiterModal('modal-manage-questions')">
+            <i data-lucide="x" style="width:18px; height:18px;"></i>
+          </button>
+        </div>
+        <div class="recruiter-modal-body" style="max-height:70vh; overflow-y:auto;">
+          
+          <!-- Add / Edit Question Form Card -->
+          <div class="dashboard-card" style="padding:16px; margin-bottom:20px; background-color:var(--surface-color);">
+            <h4 style="font-size:14px; font-weight:700; margin-bottom:12px; color:var(--primary);" id="question-form-heading">+ Add New MCQ Question</h4>
+            <form id="form-aptitude-question-api" onsubmit="submitAptitudeQuestionForm(event)">
+              <input type="hidden" name="test_id" id="question-test-id">
+              <input type="hidden" name="question_id" id="question-edit-id">
+
+              <div class="form-input-wrapper">
+                <label class="form-input-label">Question Statement *</label>
+                <textarea class="textarea-field-custom" name="question_text" id="q-text" rows="3" placeholder="Enter question text here..." required></textarea>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-input-wrapper">
+                  <label class="form-input-label">Option A *</label>
+                  <input type="text" class="input-field-custom" name="option_a" id="q-opt-a" placeholder="Choice A" required>
+                </div>
+                <div class="form-input-wrapper">
+                  <label class="form-input-label">Option B *</label>
+                  <input type="text" class="input-field-custom" name="option_b" id="q-opt-b" placeholder="Choice B" required>
+                </div>
+                <div class="form-input-wrapper">
+                  <label class="form-input-label">Option C *</label>
+                  <input type="text" class="input-field-custom" name="option_c" id="q-opt-c" placeholder="Choice C" required>
+                </div>
+                <div class="form-input-wrapper">
+                  <label class="form-input-label">Option D *</label>
+                  <input type="text" class="input-field-custom" name="option_d" id="q-opt-d" placeholder="Choice D" required>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+                <div class="form-input-wrapper" style="flex:1;">
+                  <label class="form-input-label">Correct Option *</label>
+                  <select class="input-field-custom" name="correct_option" id="q-correct" required>
+                    <option value="A">Option A</option>
+                    <option value="B">Option B</option>
+                    <option value="C">Option C</option>
+                    <option value="D">Option D</option>
+                  </select>
+                </div>
+                <div class="form-input-wrapper" style="flex:1;">
+                  <label class="form-input-label">Marks for Question *</label>
+                  <input type="number" class="input-field-custom" name="marks" id="q-marks" value="1" min="1" required>
+                </div>
+              </div>
+
+              <div class="form-input-wrapper">
+                <label class="form-input-label">Solution Explanation (Optional)</label>
+                <input type="text" class="input-field-custom" name="explanation" id="q-explanation" placeholder="Short step-by-step logic for explanation...">
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="resetQuestionForm()">Reset Form</button>
+                <button type="submit" class="btn btn-primary btn-sm" id="btn-save-question">Save Question</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Existing Questions List Table -->
+          <h4 style="font-size:14px; font-weight:700; margin-bottom:12px;">Existing Questions</h4>
+          <div style="overflow-x:auto;">
+            <table class="data-table" style="font-size:12px;">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Question</th>
+                  <th>Options</th>
+                  <th>Correct Key</th>
+                  <th>Marks</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="aptitude-questions-list-tbody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+        <div class="recruiter-modal-footer">
+          <button class="btn btn-secondary" onclick="closeRecruiterModal('modal-manage-questions')">Close Panel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- --- SCHEDULE & ASSIGN TEST MODAL --- -->
+    <div class="recruiter-modal-overlay" id="modal-assign-aptitude-test">
+      <div class="recruiter-modal-content" style="max-width:550px;">
+        <div class="recruiter-modal-header">
+          <h3 class="recruiter-modal-title">Schedule & Assign Test to Candidates</h3>
+          <button type="button" class="recruiter-modal-close" onclick="closeRecruiterModal('modal-assign-aptitude-test')">
+            <i data-lucide="x" style="width:18px; height:18px;"></i>
+          </button>
+        </div>
+        <form id="form-assign-aptitude-test-api" onsubmit="submitAssignAptitudeTest(event)">
+          <input type="hidden" name="test_id" id="assign-test-id">
+          <div class="recruiter-modal-body">
+            <p style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;" id="assign-test-subtitle">Select candidate audience and broadcast test invitation notifications.</p>
+
+            <div class="form-input-wrapper">
+              <label class="form-input-label">Assign Audience Group *</label>
+              <select class="input-field-custom" name="drive_id" id="assign-drive-id" required>
+                <option value="0">All Registered Approved Students</option>
+                <?php foreach ($recruiterDrives as $d): ?>
+                  <option value="<?php echo $d['id']; ?>">Drive Applicants: <?php echo htmlspecialchars($d['jobRole']); ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div class="recruiter-modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeRecruiterModal('modal-assign-aptitude-test')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Dispatch & Assign Test</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- --- RESULTS & LEADERBOARD RANKINGS MODAL --- -->
+    <div class="recruiter-modal-overlay" id="modal-aptitude-results">
+      <div class="recruiter-modal-content" style="max-width:900px;">
+        <div class="recruiter-modal-header">
+          <h3 class="recruiter-modal-title" id="aptitude-results-title">Candidate Rankings & Test Performance</h3>
+          <button type="button" class="recruiter-modal-close" onclick="closeRecruiterModal('modal-aptitude-results')">
+            <i data-lucide="x" style="width:18px; height:18px;"></i>
+          </button>
+        </div>
+        <div class="recruiter-modal-body" style="max-height:75vh; overflow-y:auto;">
+          
+          <!-- Analytics KPI Header Summary -->
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:20px;">
+            <div style="background-color:var(--surface-color); padding:12px; border-radius:8px; text-align:center;">
+              <span style="font-size:11px; color:var(--text-secondary); display:block;">Total Assigned</span>
+              <strong style="font-size:18px;" id="res-kpi-assigned">0</strong>
+            </div>
+            <div style="background-color:var(--surface-color); padding:12px; border-radius:8px; text-align:center;">
+              <span style="font-size:11px; color:var(--text-secondary); display:block;">Evaluated</span>
+              <strong style="font-size:18px; color:var(--primary);" id="res-kpi-evaluated">0</strong>
+            </div>
+            <div style="background-color:var(--surface-color); padding:12px; border-radius:8px; text-align:center;">
+              <span style="font-size:11px; color:var(--text-secondary); display:block;">Passed Rate</span>
+              <strong style="font-size:18px; color:#10B981;" id="res-kpi-pass-pct">0%</strong>
+            </div>
+            <div style="background-color:var(--surface-color); padding:12px; border-radius:8px; text-align:center;">
+              <span style="font-size:11px; color:var(--text-secondary); display:block;">Highest Score</span>
+              <strong style="font-size:18px; color:#F59E0B;" id="res-kpi-highest">0</strong>
+            </div>
+          </div>
+
+          <!-- Leaderboard Table -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h4 style="font-size:14px; font-weight:700;">Score Leaderboard & Rankings</h4>
+            <button class="btn btn-secondary btn-sm" onclick="exportAptitudeLeaderboardCSV()">
+              <i data-lucide="download" style="width:14px; height:14px; margin-right:4px;"></i> Export Report (CSV)
+            </button>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table class="data-table" style="font-size:12px;">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Candidate Name</th>
+                  <th>Roll Number</th>
+                  <th>Branch</th>
+                  <th>Status</th>
+                  <th>Score Obtained</th>
+                  <th>Correct / Wrong</th>
+                  <th>Submitted At</th>
+                </tr>
+              </thead>
+              <tbody id="aptitude-leaderboard-tbody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+        <div class="recruiter-modal-footer">
+          <button class="btn btn-secondary" onclick="closeRecruiterModal('modal-aptitude-results')">Close Panel</button>
+        </div>
       </div>
     </div>
 

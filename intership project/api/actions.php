@@ -92,8 +92,13 @@ try {
 
       $driveId = (int)$_POST['drive_id'];
 
-      // Fetch drive details
-      $stmtDrive = $db->prepare("SELECT * FROM drives WHERE id = ?");
+      // Fetch drive details with company name joined
+      $stmtDrive = $db->prepare("
+        SELECT d.*, c.company_name 
+        FROM drives d 
+        JOIN companies c ON d.company_id = c.user_id 
+        WHERE d.id = ?
+      ");
       $stmtDrive->execute([$driveId]);
       $d = $stmtDrive->fetch();
 
@@ -160,6 +165,68 @@ try {
       );
 
       echo json_encode(['status' => 'success', 'message' => 'Drive cloned successfully as draft']);
+      break;
+
+    // 2.3 BULK ACTION ON PLACEMENT DRIVES (CLOSE, ARCHIVE, DELETE)
+    case 'bulk_drives':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+
+      $operation = trim($_POST['operation'] ?? '');
+      $driveIds = $_POST['drive_ids'] ?? [];
+
+      if (empty($driveIds) || !is_array($driveIds)) {
+        echo json_encode(['status' => 'error', 'message' => 'No drives selected.']);
+        exit;
+      }
+
+      // Sanitize drive IDs
+      $driveIds = array_map('intval', $driveIds);
+
+      // Verify that if company role is logged in, they only operate on their own drives
+      if ($role === 'company') {
+        $inQuery = implode(',', array_fill(0, count($driveIds), '?'));
+        $stmtCheck = $db->prepare("SELECT COUNT(*) FROM drives WHERE id IN ($inQuery) AND company_id != ?");
+        
+        $params = $driveIds;
+        $params[] = $userId;
+        $stmtCheck->execute($params);
+        $unauthorizedCount = $stmtCheck->fetchColumn();
+
+        if ($unauthorizedCount > 0) {
+          echo json_encode(['status' => 'error', 'message' => 'Unauthorized: Some selected drives do not belong to your company.']);
+          exit;
+        }
+      }
+
+      // Execute bulk action
+      if ($operation === 'delete') {
+        $inQuery = implode(',', array_fill(0, count($driveIds), '?'));
+        // Note: foreign keys are ON DELETE CASCADE, so applications, interviews, offers will cascadingly delete correctly!
+        $stmt = $db->prepare("DELETE FROM drives WHERE id IN ($inQuery)");
+        $stmt->execute($driveIds);
+
+        logActivity("Bulk deleted drives: " . implode(', ', $driveIds), "success");
+        echo json_encode(['status' => 'success', 'message' => 'Selected placement drives deleted successfully.']);
+      } else if ($operation === 'close') {
+        $inQuery = implode(',', array_fill(0, count($driveIds), '?'));
+        $stmt = $db->prepare("UPDATE drives SET status = 'closed' WHERE id IN ($inQuery)");
+        $stmt->execute($driveIds);
+
+        logActivity("Bulk closed drives: " . implode(', ', $driveIds), "success");
+        echo json_encode(['status' => 'success', 'message' => 'Selected placement drives closed successfully.']);
+      } else if ($operation === 'archive') {
+        $inQuery = implode(',', array_fill(0, count($driveIds), '?'));
+        $stmt = $db->prepare("UPDATE drives SET status = 'completed' WHERE id IN ($inQuery)");
+        $stmt->execute($driveIds);
+
+        logActivity("Bulk archived (completed) drives: " . implode(', ', $driveIds), "success");
+        echo json_encode(['status' => 'success', 'message' => 'Selected placement drives archived successfully.']);
+      } else {
+        echo json_encode(['status' => 'error', 'message' => 'Unsupported operation: ' . $operation]);
+      }
       break;
 
     // 2.5 CREATE PLACEMENT DRIVE
@@ -246,7 +313,8 @@ try {
       );
 
       // Broadcast to all active approved students
-      $students = $db->query("SELECT id FROM users WHERE role = 'student' AND status = 'approved'")->fetchAll();
+      $students = $db->query("SELECT id, email, name FROM users WHERE role = 'student' AND status = 'approved'")->fetchAll();
+      $bccList = [];
       foreach ($students as $stu) {
         createUserNotification(
           $stu['id'],
@@ -256,6 +324,44 @@ try {
           "medium",
           "drives"
         );
+        $bccList[] = ['email' => $stu['email'], 'name' => $stu['name']];
+      }
+
+      if (!empty($bccList)) {
+        // Send email notification to all students in a single BCC mail to avoid SMTP connect overhead/timeout
+        $emailSubject = "New Placement Drive: " . $job_role . " at " . $compName;
+        $emailBody = "
+          <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+            <h2 style='color: #2563EB;'>New Placement Drive Launched</h2>
+            <p>Dear Student,</p>
+            <p>A new placement drive has been published on the Campus Recruitment Management System.</p>
+            <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Company:</td>
+                <td style='padding: 10px;'>" . htmlspecialchars($compName) . "</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Job Role:</td>
+                <td style='padding: 10px;'>" . htmlspecialchars($job_role) . "</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Compensation:</td>
+                <td style='padding: 10px;'>" . htmlspecialchars($package_lpa) . " LPA</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px; font-weight: bold;'>Eligibility CGPA:</td>
+                <td style='padding: 10px;'>" . htmlspecialchars($eligibility_cgpa) . "</td>
+              </tr>
+              <tr style='background-color: #f3f4f6;'>
+                <td style='padding: 10px; font-weight: bold;'>Registration Deadline:</td>
+                <td style='padding: 10px;'>" . htmlspecialchars($registration_deadline) . "</td>
+              </tr>
+            </table>
+            <p>Please log into your dashboard to view the details and apply before the deadline.</p>
+            <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+          </div>
+        ";
+        sendSystemEmail('', '', $emailSubject, $emailBody, $bccList);
       }
 
       $db->commit();
@@ -450,6 +556,77 @@ try {
       echo json_encode(['status' => 'success', 'message' => 'Interview deleted successfully']);
       break;
 
+    // 3.75 EDIT STUDENT PROFILE
+    case 'edit_student':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+
+      $studentId = (int)($_POST['student_id'] ?? 0);
+      $name = trim($_POST['name'] ?? '');
+      $email = trim($_POST['email'] ?? '');
+      $rollNumber = trim($_POST['roll_number'] ?? '');
+      $department = trim($_POST['department'] ?? '');
+      $cgpa = (float)($_POST['cgpa'] ?? 0.0);
+      $academicYear = trim($_POST['academic_year'] ?? '');
+      $phone = trim($_POST['phone'] ?? '');
+
+      if (!$studentId || empty($name) || empty($email) || empty($rollNumber) || empty($department) || $cgpa <= 0 || empty($academicYear)) {
+        echo json_encode(['status' => 'error', 'message' => 'Please fill in all required fields.']);
+        exit;
+      }
+
+      $db->beginTransaction();
+
+      // Check if student exists in users table
+      $stmtCheck = $db->prepare("SELECT id FROM users WHERE id = ? AND role = 'student'");
+      $stmtCheck->execute([$studentId]);
+      if (!$stmtCheck->fetchColumn()) {
+        echo json_encode(['status' => 'error', 'message' => 'Student record not found in users.']);
+        exit;
+      }
+
+      // Check if email already taken by someone else
+      $stmtEmailCheck = $db->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+      $stmtEmailCheck->execute([$email, $studentId]);
+      if ($stmtEmailCheck->fetchColumn()) {
+        echo json_encode(['status' => 'error', 'message' => 'Email address is already in use by another account.']);
+        exit;
+      }
+
+      // Check if roll number already taken by someone else
+      $stmtRollCheck = $db->prepare("SELECT user_id FROM students WHERE roll_number = ? AND user_id != ?");
+      $stmtRollCheck->execute([$rollNumber, $studentId]);
+      if ($stmtRollCheck->fetchColumn()) {
+        echo json_encode(['status' => 'error', 'message' => 'Roll number is already in use by another student.']);
+        exit;
+      }
+
+      // Update users table
+      $stmtUser = $db->prepare("UPDATE users SET name = ?, email = ? WHERE id = ?");
+      $stmtUser->execute([$name, $email, $studentId]);
+
+      // Check if student record exists in students table
+      $stmtStudentExist = $db->prepare("SELECT user_id FROM students WHERE user_id = ?");
+      $stmtStudentExist->execute([$studentId]);
+      
+      if ($stmtStudentExist->fetchColumn()) {
+        // Update students table
+        $stmtStudent = $db->prepare("UPDATE students SET roll_number = ?, department = ?, cgpa = ?, phone = ?, academic_year = ? WHERE user_id = ?");
+        $stmtStudent->execute([$rollNumber, $department, $cgpa, $phone, $academicYear, $studentId]);
+      } else {
+        // Insert into students table if somehow missing
+        $stmtStudent = $db->prepare("INSERT INTO students (user_id, roll_number, department, cgpa, phone, academic_year) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmtStudent->execute([$studentId, $rollNumber, $department, $cgpa, $phone, $academicYear]);
+      }
+
+      $db->commit();
+
+      logActivity("Modified student profile: $name (ID: $studentId)", "success");
+      echo json_encode(['status' => 'success', 'message' => 'Profile Updated Successfully']);
+      break;
+
     // 3.8 DELETE STUDENT PROFILE
     case 'delete_student':
       if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
@@ -477,7 +654,7 @@ try {
       echo json_encode(['status' => 'success', 'message' => 'Student deleted successfully']);
       break;
 
-    // 4. PUBLISH RESULTS / GENERATE OFFER
+    // 4. PUBLISH RESULTS / GENERATE OFFER / UPDATE CANDIDATE FUNNEL
     case 'publish_selection':
       if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
         echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
@@ -485,7 +662,7 @@ try {
       }
 
       $appId = (int)$_POST['application_id'];
-      $result = $_POST['result']; // 'Selected', 'Rejected'
+      $result = $_POST['result']; // 'Applied', 'Eligible', 'Aptitude', 'Technical', 'HR', 'Selected', 'Rejected'
 
       $db->beginTransaction();
 
@@ -502,17 +679,30 @@ try {
       $stmtUpdate->execute([$result, $appId]);
 
       if ($result === 'Selected') {
-        // Increment hire count
-        $db->prepare("UPDATE companies SET students_hired = students_hired + 1 WHERE user_id = ?")->execute([$app['company_id']]);
+        // Increment hire count if not already selected before
+        if ($app['status'] !== 'Selected') {
+          $db->prepare("UPDATE companies SET students_hired = students_hired + 1 WHERE user_id = ?")->execute([$app['company_id']]);
+        }
         
-        // Generate draft offer
-        $stmtOffer = $db->prepare("INSERT INTO offers (application_id, salary_lpa, designation, joining_date, location, status) VALUES (?, ?, ?, ?, 'Bangalore Center', 'Released')");
-        $stmtOffer->execute([
-          $appId,
-          $app['package_lpa'],
-          $app['job_role'],
-          date('Y-m-d', strtotime('+30 days'))
-        ]);
+        // Generate draft offer or update existing offer
+        $stmtCheckOffer = $db->prepare("SELECT id FROM offers WHERE application_id = ?");
+        $stmtCheckOffer->execute([$appId]);
+        if ($stmtCheckOffer->fetchColumn()) {
+          $stmtOffer = $db->prepare("UPDATE offers SET salary_lpa = ?, designation = ?, status = 'Released', offer_date = COALESCE(offer_date, CURDATE()), expiry_date = COALESCE(expiry_date, DATE_ADD(CURDATE(), INTERVAL 15 DAY)), sent_date = COALESCE(sent_date, NOW()) WHERE application_id = ?");
+          $stmtOffer->execute([
+            $app['package_lpa'],
+            $app['job_role'],
+            $appId
+          ]);
+        } else {
+          $stmtOffer = $db->prepare("INSERT INTO offers (application_id, salary_lpa, designation, joining_date, location, status, offer_date, expiry_date, sent_date) VALUES (?, ?, ?, ?, 'Bangalore Center', 'Released', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 15 DAY), NOW())");
+          $stmtOffer->execute([
+            $appId,
+            $app['package_lpa'],
+            $app['job_role'],
+            date('Y-m-d', strtotime('+30 days'))
+          ]);
+        }
 
         // Notify student: application accepted and offer released
         createUserNotification(
@@ -531,12 +721,22 @@ try {
           "high",
           "applications"
         );
-      } else {
+      } else if ($result === 'Rejected') {
         // Notify student: application rejected
         createUserNotification(
           $app['student_id'],
-          "Application Rejected",
-          "We regret to inform you that your application for the role '{$app['job_role']}' at '{$app['company_name']}' was not accepted.",
+          "Application Status Update",
+          "We regret to inform you that your application for the role '{$app['job_role']}' at '{$app['company_name']}' was marked as Rejected.",
+          "application_status",
+          "medium",
+          "applications"
+        );
+      } else {
+        // Round progression (Eligible, Aptitude, Technical, HR)
+        createUserNotification(
+          $app['student_id'],
+          "Application Round Progression",
+          "Your application for '{$app['job_role']}' at '{$app['company_name']}' has progressed to the {$result} round.",
           "application_status",
           "medium",
           "applications"
@@ -547,12 +747,12 @@ try {
 
       createAdminNotification(
         "Placement Selection Result Published",
-        "Student {$app['student_name']} marked as $result by {$app['company_name']}.",
+        "Student {$app['student_name']} status updated to $result by {$app['company_name']}.",
         "selection",
         "high"
       );
 
-      echo json_encode(['status' => 'success', 'message' => 'Selection result updated successfully']);
+      echo json_encode(['status' => 'success', 'message' => 'Candidate status updated successfully to ' . $result]);
       break;
 
     // 4.5 OFFER MANAGEMENT CRUD
@@ -574,7 +774,14 @@ try {
       }
 
       // Check application
-      $stmtCheck = $db->prepare("SELECT a.*, d.company_id FROM applications a JOIN drives d ON a.drive_id = d.id WHERE a.id = ?");
+      $stmtCheck = $db->prepare("
+        SELECT a.*, d.company_id, u.email as student_email, u.name as student_name, c.company_name
+        FROM applications a 
+        JOIN drives d ON a.drive_id = d.id 
+        JOIN users u ON a.student_id = u.id
+        JOIN companies c ON d.company_id = c.user_id
+        WHERE a.id = ?
+      ");
       $stmtCheck->execute([$appId]);
       $app = $stmtCheck->fetch();
 
@@ -624,11 +831,11 @@ try {
 
       if ($existingOfferId) {
         // Update existing offer
-        $stmtOffer = $db->prepare("UPDATE offers SET salary_lpa = ?, designation = ?, joining_date = ?, location = ?, status = 'Released', offer_letter_path = ?, offer_date = CURDATE() WHERE id = ?");
+        $stmtOffer = $db->prepare("UPDATE offers SET salary_lpa = ?, designation = ?, joining_date = ?, location = ?, status = 'Released', offer_letter_path = ?, offer_date = COALESCE(offer_date, CURDATE()), expiry_date = COALESCE(expiry_date, DATE_ADD(CURDATE(), INTERVAL 15 DAY)), sent_date = COALESCE(sent_date, NOW()) WHERE id = ?");
         $stmtOffer->execute([$salaryLpa, $designation, $joiningDate, $location, $offerLetterPath, $existingOfferId]);
       } else {
         // Insert new offer
-        $stmtOffer = $db->prepare("INSERT INTO offers (application_id, salary_lpa, designation, joining_date, location, status, offer_letter_path, offer_date) VALUES (?, ?, ?, ?, ?, 'Released', ?, CURDATE())");
+        $stmtOffer = $db->prepare("INSERT INTO offers (application_id, salary_lpa, designation, joining_date, location, status, offer_letter_path, offer_date, expiry_date, sent_date) VALUES (?, ?, ?, ?, ?, 'Released', ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 15 DAY), NOW())");
         $stmtOffer->execute([$appId, $salaryLpa, $designation, $joiningDate, $location, $offerLetterPath]);
       }
 
@@ -649,6 +856,37 @@ try {
         "high",
         "applications"
       );
+
+      // Send email notification to student about the offer letter
+      $emailSubject = "Congratulations! Offer Letter Released - " . $app['company_name'];
+      $emailBody = "
+        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+          <h2 style='color: #10B981;'>Congratulations!</h2>
+          <p>Dear " . htmlspecialchars($app['student_name']) . ",</p>
+          <p>We are pleased to inform you that <strong>" . htmlspecialchars($app['company_name']) . "</strong> has released an official offer letter for you!</p>
+          <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+            <tr style='background-color: #f3f4f6;'>
+              <td style='padding: 10px; font-weight: bold;'>Role:</td>
+              <td style='padding: 10px;'>" . htmlspecialchars($designation) . "</td>
+            </tr>
+            <tr>
+              <td style='padding: 10px; font-weight: bold;'>Compensation (LPA):</td>
+              <td style='padding: 10px;'>" . htmlspecialchars($salaryLpa) . " LPA</td>
+            </tr>
+            <tr style='background-color: #f3f4f6;'>
+              <td style='padding: 10px; font-weight: bold;'>Location:</td>
+              <td style='padding: 10px;'>" . htmlspecialchars($location) . "</td>
+            </tr>
+            <tr>
+              <td style='padding: 10px; font-weight: bold;'>Joining Date:</td>
+              <td style='padding: 10px;'>" . htmlspecialchars($joiningDate) . "</td>
+            </tr>
+          </table>
+          <p>Please log into the student portal to review the offer letter document, accept or decline the offer, and complete any required onboarding steps.</p>
+          <p style='margin-top: 30px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 15px;'>This is an automated notification from CampusRecruit. Please do not reply directly to this email.</p>
+        </div>
+      ";
+      sendSystemEmail($app['student_email'], $app['student_name'], $emailSubject, $emailBody);
 
       $db->commit();
 
@@ -717,9 +955,11 @@ try {
 
       $db->beginTransaction();
 
+      $offerDate = trim($_POST['offer_date'] ?? '');
+
       // Update offer
-      $stmtUpdate = $db->prepare("UPDATE offers SET salary_lpa = ?, designation = ?, joining_date = ?, location = ?, status = ?, expiry_date = ?, offer_letter_path = ? WHERE id = ?");
-      $stmtUpdate->execute([$salaryLpa, $designation, $joiningDate, $location, $status, empty($expiryDate) ? null : $expiryDate, $offerLetterPath, $offerId]);
+      $stmtUpdate = $db->prepare("UPDATE offers SET salary_lpa = ?, designation = ?, joining_date = ?, location = ?, status = ?, offer_date = COALESCE(NULLIF(?, ''), offer_date, CURDATE()), expiry_date = COALESCE(NULLIF(?, ''), expiry_date, DATE_ADD(CURDATE(), INTERVAL 15 DAY)), sent_date = COALESCE(sent_date, NOW()), offer_letter_path = ? WHERE id = ?");
+      $stmtUpdate->execute([$salaryLpa, $designation, $joiningDate, $location, $status, $offerDate, $expiryDate, $offerLetterPath, $offerId]);
 
       // If status changed to Rejected/Declined, update application status
       if ($status === 'Declined') {
@@ -777,6 +1017,146 @@ try {
       logActivity("Deleted offer letter ID: $offerId", "success");
 
       echo json_encode(['status' => 'success', 'message' => 'Offer letter deleted successfully']);
+      break;
+
+    case 'update_company_profile':
+      if ($role !== 'company' && $role !== 'admin' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+      $targetUserId = $_SESSION['user_id'];
+
+      // Fetch existing company record
+      $stmtExisting = $db->prepare("SELECT * FROM companies WHERE user_id = ?");
+      $stmtExisting->execute([$targetUserId]);
+      $comp = $stmtExisting->fetch();
+
+      $companyName = trim($_POST['company_name'] ?? ($comp['company_name'] ?? ''));
+      $industry = trim($_POST['industry'] ?? ($comp['industry'] ?? ''));
+      $recruiterName = trim($_POST['recruiter_name'] ?? ($comp['recruiter_name'] ?? ''));
+      $designation = trim($_POST['designation'] ?? ($comp['designation'] ?? ''));
+      $companySize = trim($_POST['company_size'] ?? ($comp['company_size'] ?? ''));
+      $website = trim($_POST['website'] ?? ($comp['website'] ?? ''));
+      $phone = trim($_POST['phone'] ?? ($comp['phone'] ?? ''));
+      $gst = trim($_POST['gst'] ?? ($comp['gst'] ?? ''));
+      $pan = trim($_POST['pan'] ?? ($comp['pan'] ?? ''));
+      $officeAddress = trim($_POST['office_address'] ?? ($comp['office_address'] ?? ''));
+      $description = trim($_POST['description'] ?? ($comp['description'] ?? ''));
+      $vision = trim($_POST['vision'] ?? ($comp['vision'] ?? ''));
+      $mission = trim($_POST['mission'] ?? ($comp['mission'] ?? ''));
+      $country = trim($_POST['country'] ?? ($comp['country'] ?? 'India'));
+      $state = trim($_POST['state'] ?? ($comp['state'] ?? ''));
+      $city = trim($_POST['city'] ?? ($comp['city'] ?? ''));
+      $pincode = trim($_POST['pincode'] ?? ($comp['pincode'] ?? ''));
+      $foundedYear = isset($_POST['founded_year']) && $_POST['founded_year'] !== '' ? (int)$_POST['founded_year'] : ($comp['founded_year'] ?? null);
+      $employeeCount = trim($_POST['employee_count'] ?? ($comp['employee_count'] ?? ''));
+
+      // Construct JSON blobs if present
+      $hiringPreferences = json_decode($comp['hiring_preferences'] ?? '{}', true) ?: [];
+      if (isset($_POST['eligible_branches'])) $hiringPreferences['eligible_branches'] = trim($_POST['eligible_branches']);
+      if (isset($_POST['min_cgpa'])) $hiringPreferences['min_cgpa'] = trim($_POST['min_cgpa']);
+      if (isset($_POST['max_backlogs'])) $hiringPreferences['max_backlogs'] = trim($_POST['max_backlogs']);
+      if (isset($_POST['salary_range'])) $hiringPreferences['salary_range'] = trim($_POST['salary_range']);
+      if (isset($_POST['work_mode'])) $hiringPreferences['work_mode'] = trim($_POST['work_mode']);
+      if (isset($_POST['job_type'])) $hiringPreferences['job_type'] = trim($_POST['job_type']);
+      if (isset($_POST['bond'])) $hiringPreferences['bond'] = trim($_POST['bond']);
+
+      $socialLinks = json_decode($comp['social_links'] ?? '{}', true) ?: [];
+      if (isset($_POST['social_linkedin'])) $socialLinks['linkedin'] = trim($_POST['social_linkedin']);
+      if (isset($_POST['social_twitter'])) $socialLinks['twitter'] = trim($_POST['social_twitter']);
+      if (isset($_POST['social_facebook'])) $socialLinks['facebook'] = trim($_POST['social_facebook']);
+      if (isset($_POST['social_instagram'])) $socialLinks['instagram'] = trim($_POST['social_instagram']);
+      if (isset($_POST['social_github'])) $socialLinks['github'] = trim($_POST['social_github']);
+      if (isset($_POST['social_youtube'])) $socialLinks['youtube'] = trim($_POST['social_youtube']);
+
+      if ($comp) {
+        $stmtUp = $db->prepare("
+          UPDATE companies SET 
+            company_name = ?, industry = ?, recruiter_name = ?, designation = ?, company_size = ?,
+            website = ?, phone = ?, gst = ?, pan = ?, office_address = ?, description = ?,
+            vision = ?, mission = ?, country = ?, state = ?, city = ?, pincode = ?,
+            founded_year = ?, employee_count = ?, hiring_preferences = ?, social_links = ?
+          WHERE user_id = ?
+        ");
+        $stmtUp->execute([
+          $companyName, $industry, $recruiterName, $designation, $companySize,
+          $website, $phone, $gst, $pan, $officeAddress, $description,
+          $vision, $mission, $country, $state, $city, $pincode,
+          $foundedYear, $employeeCount, json_encode($hiringPreferences), json_encode($socialLinks),
+          $targetUserId
+        ]);
+      } else {
+        $stmtIns = $db->prepare("
+          INSERT INTO companies (user_id, company_name, industry, recruiter_name, designation, company_size, website, phone, gst, pan, office_address, description, vision, mission, country, state, city, pincode, founded_year, employee_count, hiring_preferences, social_links)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmtIns->execute([
+          $targetUserId, $companyName, $industry, $recruiterName, $designation, $companySize,
+          $website, $phone, $gst, $pan, $officeAddress, $description,
+          $vision, $mission, $country, $state, $city, $pincode,
+          $foundedYear, $employeeCount, json_encode($hiringPreferences), json_encode($socialLinks)
+        ]);
+      }
+
+      logActivity("Updated company profile details", "success");
+      echo json_encode(['status' => 'success', 'message' => 'Company profile updated successfully!']);
+      break;
+
+    case 'save_recruiter_settings':
+      if ($role !== 'company' && $role !== 'admin' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+      $targetUserId = $_SESSION['user_id'];
+      $theme = trim($_POST['theme'] ?? 'light');
+      $language = trim($_POST['language'] ?? 'en');
+      $notifEnabled = isset($_POST['notifications_enabled']) ? 1 : 0;
+      $timezone = trim($_POST['timezone'] ?? 'Asia/Kolkata');
+      $dateFormat = trim($_POST['date_format'] ?? 'Y-m-d');
+      $emailPrefs = trim($_POST['email_preferences'] ?? 'all');
+      $privacySettings = trim($_POST['privacy_settings'] ?? 'private');
+      $securitySettings = trim($_POST['security_settings'] ?? 'standard');
+
+      $extraConfig = [
+        'accent_color' => trim($_POST['accent_color'] ?? 'blue'),
+        'compact_mode' => isset($_POST['compact_mode']) ? 1 : 0,
+        'default_tab' => trim($_POST['default_tab'] ?? 'dashboard'),
+        'auto_shortlist_cgpa' => trim($_POST['auto_shortlist_cgpa'] ?? '7.50'),
+        'expiry_warning_days' => (int)($_POST['expiry_warning_days'] ?? 3),
+        'offer_validity_days' => (int)($_POST['offer_validity_days'] ?? 15),
+        'auto_send_interview_email' => isset($_POST['auto_send_interview_email']) ? 1 : 0,
+        'auto_promote_aptitude_pass' => isset($_POST['auto_promote_aptitude_pass']) ? 1 : 0,
+        'desktop_push_notif' => isset($_POST['desktop_push_notif']) ? 1 : 0,
+        'sound_alert' => trim($_POST['sound_alert'] ?? 'chime'),
+        'session_timeout_mins' => (int)($_POST['session_timeout_mins'] ?? 30),
+        'api_key' => trim($_POST['api_key'] ?? ''),
+        'webhook_url' => trim($_POST['webhook_url'] ?? ''),
+        'calendar_sync' => isset($_POST['calendar_sync']) ? 1 : 0
+      ];
+
+      // Check if user_settings record exists
+      $stmtCheck = $db->prepare("SELECT user_id FROM user_settings WHERE user_id = ?");
+      $stmtCheck->execute([$targetUserId]);
+      if ($stmtCheck->fetchColumn()) {
+        $stmtUp = $db->prepare("
+          UPDATE user_settings SET 
+            theme = ?, language = ?, notifications_enabled = ?, timezone = ?,
+            date_format = ?, email_preferences = ?, privacy_settings = ?,
+            security_settings = ?, extra_config = ?
+          WHERE user_id = ?
+        ");
+        $stmtUp->execute([$theme, $language, $notifEnabled, $timezone, $dateFormat, $emailPrefs, $privacySettings, $securitySettings, json_encode($extraConfig), $targetUserId]);
+      } else {
+        $stmtIns = $db->prepare("
+          INSERT INTO user_settings (user_id, theme, language, notifications_enabled, timezone, date_format, email_preferences, privacy_settings, security_settings, extra_config)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmtIns->execute([$targetUserId, $theme, $language, $notifEnabled, $timezone, $dateFormat, $emailPrefs, $privacySettings, $securitySettings, json_encode($extraConfig)]);
+      }
+
+      $_SESSION['recruiter_theme'] = $theme;
+      logActivity("Updated recruiter workspace settings", "success");
+      echo json_encode(['status' => 'success', 'message' => 'Workspace settings saved successfully!']);
       break;
 
     // 5. DATABASE BACKUP UTILITY (SQL Exporter)
@@ -990,6 +1370,519 @@ try {
 
       logActivity("Updated system preferences (language: $language, theme: $theme)", "success");
       echo json_encode(['status' => 'success', 'message' => 'Settings updated successfully!']);
+      break;
+
+    case 'save_report':
+      $reportName = trim($_POST['report_name'] ?? '');
+      $dateRange = trim($_POST['date_range'] ?? '');
+      $filterStatus = trim($_POST['filter_status'] ?? '');
+      $format = trim($_POST['format'] ?? '');
+
+      if (empty($reportName) || empty($dateRange) || empty($filterStatus) || empty($format)) {
+        echo json_encode(['status' => 'error', 'message' => 'Missing report details.']);
+        exit;
+      }
+
+      $stmt = $db->prepare("INSERT INTO reports (user_id, report_name, date_range, filter_status, format, generated_at) VALUES (?, ?, ?, ?, ?, NOW())");
+      $stmt->execute([$_SESSION['user_id'], $reportName, $dateRange, $filterStatus, $format]);
+
+      logActivity("Generated and saved placement report: $reportName", "success");
+      echo json_encode(['status' => 'success', 'message' => 'Report saved successfully.']);
+      break;
+
+    case 'get_reports':
+      if ($role === 'admin' || $role === 'tpo') {
+        $stmt = $db->query("SELECT r.*, u.name as generated_by FROM reports r JOIN users u ON r.user_id = u.id ORDER BY r.id DESC");
+      } else {
+        $stmt = $db->prepare("SELECT r.*, u.name as generated_by FROM reports r JOIN users u ON r.user_id = u.id WHERE r.user_id = ? ORDER BY r.id DESC");
+        $stmt->execute([$_SESSION['user_id']]);
+      }
+      $reports = $stmt->fetchAll();
+      echo json_encode(['status' => 'success', 'reports' => $reports]);
+      break;
+
+    // --- 9. APTITUDE TEST MODULE API ENDPOINTS ---
+    case 'create_aptitude_test':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+      $title = trim($_POST['title'] ?? '');
+      $description = trim($_POST['description'] ?? '');
+      $duration = (int)($_POST['duration_minutes'] ?? 30);
+      $totalMarks = (int)($_POST['total_marks'] ?? 100);
+      $passMarks = (int)($_POST['pass_marks'] ?? 40);
+      $scheduledDate = !empty($_POST['scheduled_date']) ? $_POST['scheduled_date'] : null;
+      $startTime = !empty($_POST['start_time']) ? $_POST['start_time'] : null;
+      $endTime = !empty($_POST['end_time']) ? $_POST['end_time'] : null;
+      $driveId = !empty($_POST['drive_id']) ? (int)$_POST['drive_id'] : null;
+      $status = !empty($scheduledDate) ? 'Scheduled' : 'Draft';
+
+      if (empty($title)) {
+        echo json_encode(['status' => 'error', 'message' => 'Test title is required.']);
+        exit;
+      }
+
+      $stmt = $db->prepare("INSERT INTO aptitude_tests (company_id, drive_id, title, description, duration_minutes, total_marks, pass_marks, status, scheduled_date, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+      $stmt->execute([$_SESSION['user_id'], $driveId, $title, $description, $duration, $totalMarks, $passMarks, $status, $scheduledDate, $startTime, $endTime]);
+      $testId = $db->lastInsertId();
+
+      logActivity("Created Aptitude Test: $title (ID: $testId)", "success");
+      echo json_encode(['status' => 'success', 'message' => 'Aptitude Test created successfully!', 'test_id' => $testId]);
+      break;
+
+    case 'edit_aptitude_test':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+      $testId = (int)($_POST['test_id'] ?? 0);
+      $title = trim($_POST['title'] ?? '');
+      $description = trim($_POST['description'] ?? '');
+      $duration = (int)($_POST['duration_minutes'] ?? 30);
+      $totalMarks = (int)($_POST['total_marks'] ?? 100);
+      $passMarks = (int)($_POST['pass_marks'] ?? 40);
+      $scheduledDate = !empty($_POST['scheduled_date']) ? $_POST['scheduled_date'] : null;
+      $startTime = !empty($_POST['start_time']) ? $_POST['start_time'] : null;
+      $endTime = !empty($_POST['end_time']) ? $_POST['end_time'] : null;
+      $status = $_POST['status'] ?? 'Draft';
+
+      if (!$testId || empty($title)) {
+        echo json_encode(['status' => 'error', 'message' => 'Test ID and Title are required.']);
+        exit;
+      }
+
+      $stmt = $db->prepare("UPDATE aptitude_tests SET title = ?, description = ?, duration_minutes = ?, total_marks = ?, pass_marks = ?, status = ?, scheduled_date = ?, start_time = ?, end_time = ? WHERE id = ?");
+      $stmt->execute([$title, $description, $duration, $totalMarks, $passMarks, $status, $scheduledDate, $startTime, $endTime, $testId]);
+
+      echo json_encode(['status' => 'success', 'message' => 'Aptitude Test details updated.']);
+      break;
+
+    case 'delete_aptitude_test':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+      $testId = (int)($_POST['test_id'] ?? 0);
+      $stmt = $db->prepare("DELETE FROM aptitude_tests WHERE id = ?");
+      $stmt->execute([$testId]);
+
+      echo json_encode(['status' => 'success', 'message' => 'Aptitude Test deleted.']);
+      break;
+
+    case 'get_aptitude_tests':
+      if ($role === 'student') {
+        $stmt = $db->prepare("
+          SELECT t.*, c.company_name, a.status as candidate_status, a.score, a.rank, a.id as assignment_id
+          FROM aptitude_assignments a
+          JOIN aptitude_tests t ON a.test_id = t.id
+          JOIN users c ON t.company_id = c.id
+          WHERE a.student_id = ?
+          ORDER BY t.id DESC
+        ");
+        $stmt->execute([$_SESSION['user_id']]);
+      } else {
+        $stmt = $db->prepare("
+          SELECT t.*,
+                 (SELECT COUNT(*) FROM aptitude_questions q WHERE q.test_id = t.id) as question_count,
+                 (SELECT COUNT(*) FROM aptitude_assignments a WHERE a.test_id = t.id) as assigned_count,
+                 (SELECT COUNT(*) FROM aptitude_assignments a WHERE a.test_id = t.id AND a.status = 'Evaluated') as evaluated_count
+          FROM aptitude_tests t
+          WHERE t.company_id = ? OR ? IN ('admin', 'tpo')
+          ORDER BY t.id DESC
+        ");
+        $stmt->execute([$_SESSION['user_id'], $role]);
+      }
+      $tests = $stmt->fetchAll();
+      echo json_encode(['status' => 'success', 'tests' => $tests]);
+      break;
+
+    case 'get_aptitude_questions':
+      $testId = (int)($_GET['test_id'] ?? $_POST['test_id'] ?? 0);
+      $stmt = $db->prepare("SELECT * FROM aptitude_questions WHERE test_id = ? ORDER BY id ASC");
+      $stmt->execute([$testId]);
+      $questions = $stmt->fetchAll();
+      echo json_encode(['status' => 'success', 'questions' => $questions]);
+      break;
+
+    case 'save_aptitude_question':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+      $testId = (int)($_POST['test_id'] ?? 0);
+      $questionId = (int)($_POST['question_id'] ?? 0);
+      $questionText = trim($_POST['question_text'] ?? '');
+      $optionA = trim($_POST['option_a'] ?? '');
+      $optionB = trim($_POST['option_b'] ?? '');
+      $optionC = trim($_POST['option_c'] ?? '');
+      $optionD = trim($_POST['option_d'] ?? '');
+      $correctOption = strtoupper(trim($_POST['correct_option'] ?? 'A'));
+      $marks = (int)($_POST['marks'] ?? 1);
+      $explanation = trim($_POST['explanation'] ?? '');
+
+      if (!$testId || empty($questionText) || empty($optionA) || empty($optionB) || empty($optionC) || empty($optionD)) {
+        echo json_encode(['status' => 'error', 'message' => 'All question details and options A-D are required.']);
+        exit;
+      }
+
+      if ($questionId > 0) {
+        $stmt = $db->prepare("UPDATE aptitude_questions SET question_text = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_option = ?, marks = ?, explanation = ? WHERE id = ?");
+        $stmt->execute([$questionText, $optionA, $optionB, $optionC, $optionD, $correctOption, $marks, $explanation, $questionId]);
+        $msg = 'Question updated successfully.';
+      } else {
+        $stmt = $db->prepare("INSERT INTO aptitude_questions (test_id, question_text, option_a, option_b, option_c, option_d, correct_option, marks, explanation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$testId, $questionText, $optionA, $optionB, $optionC, $optionD, $correctOption, $marks, $explanation]);
+        $msg = 'Question added to test.';
+      }
+
+      // Re-calculate total marks of test
+      $stmtSum = $db->prepare("SELECT SUM(marks) FROM aptitude_questions WHERE test_id = ?");
+      $stmtSum->execute([$testId]);
+      $total = (int)$stmtSum->fetchColumn();
+      if ($total > 0) {
+        $db->prepare("UPDATE aptitude_tests SET total_marks = ? WHERE id = ?")->execute([$total, $testId]);
+      }
+
+      echo json_encode(['status' => 'success', 'message' => $msg]);
+      break;
+
+    case 'delete_aptitude_question':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+      $questionId = (int)($_POST['question_id'] ?? 0);
+      $stmtCheck = $db->prepare("SELECT test_id FROM aptitude_questions WHERE id = ?");
+      $stmtCheck->execute([$questionId]);
+      $testId = $stmtCheck->fetchColumn();
+
+      if ($testId) {
+        $stmt = $db->prepare("DELETE FROM aptitude_questions WHERE id = ?");
+        $stmt->execute([$questionId]);
+
+        // Recalculate test marks
+        $stmtSum = $db->prepare("SELECT SUM(marks) FROM aptitude_questions WHERE test_id = ?");
+        $stmtSum->execute([$testId]);
+        $total = (int)($stmtSum->fetchColumn() ?: 0);
+        $db->prepare("UPDATE aptitude_tests SET total_marks = ? WHERE id = ?")->execute([$total, $testId]);
+      }
+
+      echo json_encode(['status' => 'success', 'message' => 'Question deleted.']);
+      break;
+
+    case 'assign_aptitude_test':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+      $testId = (int)($_POST['test_id'] ?? 0);
+      $driveId = !empty($_POST['drive_id']) ? (int)$_POST['drive_id'] : 0;
+
+      // Get test info
+      $stmtTest = $db->prepare("SELECT t.*, u.name as company_name FROM aptitude_tests t JOIN users u ON t.company_id = u.id WHERE t.id = ?");
+      $stmtTest->execute([$testId]);
+      $test = $stmtTest->fetch();
+
+      if (!$test) {
+        echo json_encode(['status' => 'error', 'message' => 'Aptitude Test not found.']);
+        exit;
+      }
+
+      $studentTargets = [];
+      if ($driveId > 0) {
+        // Fetch candidates who applied to this drive
+        $stmtApps = $db->prepare("SELECT student_id, id as app_id FROM applications WHERE drive_id = ? AND status NOT IN ('Rejected')");
+        $stmtApps->execute([$driveId]);
+        $studentTargets = $stmtApps->fetchAll();
+      } else {
+        // Assign to all approved active students
+        $stmtStus = $db->query("SELECT id as student_id, NULL as app_id FROM users WHERE role = 'student' AND status = 'approved'");
+        $studentTargets = $stmtStus->fetchAll();
+      }
+
+      if (empty($studentTargets)) {
+        echo json_encode(['status' => 'error', 'message' => 'No eligible candidates found to assign this test.']);
+        exit;
+      }
+
+      $count = 0;
+      $stmtAssign = $db->prepare("INSERT INTO aptitude_assignments (test_id, student_id, application_id, status) VALUES (?, ?, ?, 'Assigned') ON DUPLICATE KEY UPDATE status = VALUES(status)");
+
+      foreach ($studentTargets as $target) {
+        $stmtAssign->execute([$testId, $target['student_id'], $target['app_id']]);
+        $count++;
+
+        // Send notification to student
+        createUserNotification(
+          $target['student_id'],
+          "Aptitude Test Scheduled",
+          "You have been assigned the Aptitude Test '{$test['title']}' by {$test['company_name']}. Duration: {$test['duration_minutes']} mins.",
+          "aptitude_test",
+          "high",
+          "aptitude"
+        );
+
+        // Update application status to Aptitude if applicable
+        if (!empty($target['app_id'])) {
+          $db->prepare("UPDATE applications SET status = 'Aptitude' WHERE id = ? AND status = 'Applied'")->execute([$target['app_id']]);
+        }
+      }
+
+      // Mark test as Active/Scheduled
+      $db->prepare("UPDATE aptitude_tests SET status = 'Active' WHERE id = ?")->execute([$testId]);
+
+      logActivity("Assigned Aptitude Test '{$test['title']}' to $count candidates", "success");
+      echo json_encode(['status' => 'success', 'message' => "Successfully assigned aptitude test to $count candidates."]);
+      break;
+
+    case 'get_student_tests':
+      $stmt = $db->prepare("
+        SELECT a.id as assignment_id, a.status as assignment_status, a.score, a.rank, a.total_questions, a.correct_answers, a.wrong_answers, a.unanswered, a.submit_time,
+               t.id as test_id, t.title, t.description, t.duration_minutes, t.total_marks, t.pass_marks, t.scheduled_date, t.start_time, t.end_time,
+               u.name as company_name
+        FROM aptitude_assignments a
+        JOIN aptitude_tests t ON a.test_id = t.id
+        JOIN users u ON t.company_id = u.id
+        WHERE a.student_id = ?
+        ORDER BY a.id DESC
+      ");
+      $stmt->execute([$_SESSION['user_id']]);
+      $tests = $stmt->fetchAll();
+      echo json_encode(['status' => 'success', 'tests' => $tests]);
+      break;
+
+    case 'start_aptitude_test':
+      $assignmentId = (int)($_POST['assignment_id'] ?? 0);
+      $stmtAssign = $db->prepare("
+        SELECT a.*, t.title, t.duration_minutes, t.total_marks
+        FROM aptitude_assignments a
+        JOIN aptitude_tests t ON a.test_id = t.id
+        WHERE a.id = ? AND a.student_id = ?
+      ");
+      $stmtAssign->execute([$assignmentId, $_SESSION['user_id']]);
+      $assign = $stmtAssign->fetch();
+
+      if (!$assign) {
+        echo json_encode(['status' => 'error', 'message' => 'Test assignment not found.']);
+        exit;
+      }
+
+      if ($assign['status'] === 'Evaluated' || $assign['status'] === 'Submitted') {
+        echo json_encode(['status' => 'error', 'message' => 'You have already submitted this test.']);
+        exit;
+      }
+
+      // Mark in progress & record start time
+      $db->prepare("UPDATE aptitude_assignments SET status = 'In Progress', start_time = NOW() WHERE id = ? AND start_time IS NULL")->execute([$assignmentId]);
+
+      // Fetch questions (omit correct_option from candidate payload)
+      $stmtQ = $db->prepare("SELECT id, question_text, option_a, option_b, option_c, option_d, marks FROM aptitude_questions WHERE test_id = ? ORDER BY id ASC");
+      $stmtQ->execute([$assign['test_id']]);
+      $questions = $stmtQ->fetchAll();
+
+      echo json_encode([
+        'status' => 'success',
+        'assignment_id' => $assignmentId,
+        'title' => $assign['title'],
+        'duration_minutes' => (int)$assign['duration_minutes'],
+        'total_marks' => (int)$assign['total_marks'],
+        'questions' => $questions
+      ]);
+      break;
+
+    case 'submit_aptitude_test':
+      $assignmentId = (int)($_POST['assignment_id'] ?? 0);
+      $rawAnswers = $_POST['answers'] ?? '{}';
+      $userAnswers = is_string($rawAnswers) ? json_decode($rawAnswers, true) : (array)$rawAnswers;
+
+      $stmtAssign = $db->prepare("
+        SELECT a.*, t.id as test_id, t.pass_marks, t.total_marks, t.title, u.name as student_name
+        FROM aptitude_assignments a
+        JOIN aptitude_tests t ON a.test_id = t.id
+        JOIN users u ON a.student_id = u.id
+        WHERE a.id = ? AND a.student_id = ?
+      ");
+      $stmtAssign->execute([$assignmentId, $_SESSION['user_id']]);
+      $assign = $stmtAssign->fetch();
+
+      if (!$assign) {
+        echo json_encode(['status' => 'error', 'message' => 'Assignment record not found.']);
+        exit;
+      }
+
+      if ($assign['status'] === 'Evaluated') {
+        echo json_encode(['status' => 'error', 'message' => 'This test score has already been evaluated.']);
+        exit;
+      }
+
+      // Fetch all questions with correct option
+      $stmtQ = $db->prepare("SELECT * FROM aptitude_questions WHERE test_id = ?");
+      $stmtQ->execute([$assign['test_id']]);
+      $questions = $stmtQ->fetchAll();
+
+      $totalQuestions = count($questions);
+      $correctCount = 0;
+      $wrongCount = 0;
+      $unansweredCount = 0;
+      $totalScore = 0.0;
+
+      $db->beginTransaction();
+
+      // Delete existing responses for this assignment
+      $db->prepare("DELETE FROM aptitude_responses WHERE assignment_id = ?")->execute([$assignmentId]);
+
+      $stmtResp = $db->prepare("INSERT INTO aptitude_responses (assignment_id, question_id, selected_option, is_correct, marks_obtained) VALUES (?, ?, ?, ?, ?)");
+
+      foreach ($questions as $q) {
+        $qId = $q['id'];
+        $selectedOpt = isset($userAnswers[$qId]) ? strtoupper(trim($userAnswers[$qId])) : null;
+
+        if (empty($selectedOpt) || !in_array($selectedOpt, ['A', 'B', 'C', 'D'])) {
+          $unansweredCount++;
+          $stmtResp->execute([$assignmentId, $qId, null, 0, 0]);
+        } else {
+          $isCorrect = ($selectedOpt === strtoupper($q['correct_option'])) ? 1 : 0;
+          if ($isCorrect) {
+            $correctCount++;
+            $marksObtained = (float)$q['marks'];
+            $totalScore += $marksObtained;
+          } else {
+            $wrongCount++;
+            $marksObtained = 0.0;
+          }
+          $stmtResp->execute([$assignmentId, $qId, $selectedOpt, $isCorrect, $marksObtained]);
+        }
+      }
+
+      // Update assignment
+      $stmtUpdateAssign = $db->prepare("
+        UPDATE aptitude_assignments
+        SET status = 'Evaluated', score = ?, total_questions = ?, correct_answers = ?, wrong_answers = ?, unanswered = ?, submit_time = NOW()
+        WHERE id = ?
+      ");
+      $stmtUpdateAssign->execute([$totalScore, $totalQuestions, $correctCount, $wrongCount, $unansweredCount, $assignmentId]);
+
+      // Calculate ranks for this test
+      $stmtAllScores = $db->prepare("SELECT id, score FROM aptitude_assignments WHERE test_id = ? AND status = 'Evaluated' ORDER BY score DESC, submit_time ASC");
+      $stmtAllScores->execute([$assign['test_id']]);
+      $allScores = $stmtAllScores->fetchAll();
+      
+      $rank = 1;
+      $stmtRank = $db->prepare("UPDATE aptitude_assignments SET rank = ? WHERE id = ?");
+      foreach ($allScores as $row) {
+        $stmtRank->execute([$rank, $row['id']]);
+        if ($row['id'] == $assignmentId) {
+          $currentRank = $rank;
+        }
+        $rank++;
+      }
+
+      // If test linked to application, update status based on pass/fail
+      $isPassed = ($totalScore >= (float)$assign['pass_marks']);
+      if (!empty($assign['application_id'])) {
+        if ($isPassed) {
+          $db->prepare("UPDATE applications SET status = 'Technical' WHERE id = ? AND status = 'Aptitude'")->execute([$assign['application_id']]);
+        }
+      }
+
+      $db->commit();
+
+      // Notify candidate
+      $resultText = $isPassed ? "PASSED" : "FAILED";
+      createUserNotification(
+        $_SESSION['user_id'],
+        "Aptitude Test Results Evaluated",
+        "Your score for '{$assign['title']}' is $totalScore / {$assign['total_marks']} ($resultText). Rank: #{$currentRank}.",
+        "aptitude_result",
+        "high",
+        "aptitude"
+      );
+
+      logActivity("Completed Aptitude Test '{$assign['title']}': Score $totalScore", "success");
+
+      echo json_encode([
+        'status' => 'success',
+        'message' => 'Test submitted and evaluated successfully!',
+        'score' => $totalScore,
+        'total_marks' => (float)$assign['total_marks'],
+        'pass_marks' => (float)$assign['pass_marks'],
+        'is_passed' => $isPassed,
+        'correct_answers' => $correctCount,
+        'wrong_answers' => $wrongCount,
+        'unanswered' => $unansweredCount,
+        'rank' => $currentRank
+      ]);
+      break;
+
+    case 'get_test_results_analytics':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+      $testId = (int)($_GET['test_id'] ?? $_POST['test_id'] ?? 0);
+
+      $stmtTest = $db->prepare("SELECT * FROM aptitude_tests WHERE id = ?");
+      $stmtTest->execute([$testId]);
+      $test = $stmtTest->fetch();
+
+      if (!$test) {
+        echo json_encode(['status' => 'error', 'message' => 'Aptitude Test not found.']);
+        exit;
+      }
+
+      // Fetch leaderboard rankings
+      $stmtLeaderboard = $db->prepare("
+        SELECT a.id as assignment_id, a.score, a.rank, a.status, a.total_questions, a.correct_answers, a.wrong_answers, a.unanswered, a.submit_time,
+               u.name as student_name, u.email as student_email, s.roll_number, s.department
+        FROM aptitude_assignments a
+        JOIN users u ON a.student_id = u.id
+        LEFT JOIN students s ON u.id = s.user_id
+        WHERE a.test_id = ?
+        ORDER BY a.rank ASC, a.score DESC
+      ");
+      $stmtLeaderboard->execute([$testId]);
+      $leaderboard = $stmtLeaderboard->fetchAll();
+
+      // Compute analytics
+      $totalAssigned = count($leaderboard);
+      $evaluatedCount = 0;
+      $passedCount = 0;
+      $failedCount = 0;
+      $sumScore = 0.0;
+      $maxScore = 0.0;
+
+      foreach ($leaderboard as $row) {
+        if ($row['status'] === 'Evaluated') {
+          $evaluatedCount++;
+          $score = (float)$row['score'];
+          $sumScore += $score;
+          if ($score > $maxScore) $maxScore = $score;
+          if ($score >= (float)$test['pass_marks']) {
+            $passedCount++;
+          } else {
+            $failedCount++;
+          }
+        }
+      }
+
+      $avgScore = $evaluatedCount > 0 ? round($sumScore / $evaluatedCount, 2) : 0;
+      $passPercentage = $evaluatedCount > 0 ? round(($passedCount / $evaluatedCount) * 100, 1) : 0;
+
+      echo json_encode([
+        'status' => 'success',
+        'test' => $test,
+        'leaderboard' => $leaderboard,
+        'analytics' => [
+          'total_assigned' => $totalAssigned,
+          'evaluated_count' => $evaluatedCount,
+          'passed_count' => $passedCount,
+          'failed_count' => $failedCount,
+          'pass_percentage' => $passPercentage,
+          'avg_score' => $avgScore,
+          'highest_score' => $maxScore
+        ]
+      ]);
       break;
 
     default:

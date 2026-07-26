@@ -7,12 +7,12 @@
   overflow: hidden;
 }
 
-/* --- SIDEBAR --- */
+/* --- SIDEBAR (Elegant Dark Theme) --- */
 .sidebar {
   width: 260px;
   height: 100vh;
-  background-color: var(--bg-sidebar);
-  border-right: 1px solid var(--border-color);
+  background: linear-gradient(180deg, #0f172a 0%, #0b0f19 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -22,6 +22,21 @@
   flex-shrink: 0;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+/* Custom Scrollbar for Dark Sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .sidebar.collapsed {
@@ -34,8 +49,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-15);
-  border-bottom: 1px solid var(--border-color);
-  color: var(--primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #ffffff;
   font-weight: var(--font-bold);
   font-size: 18px;
   flex-shrink: 0;
@@ -45,9 +60,20 @@
   width: 28px;
   height: 28px;
   flex-shrink: 0;
+  stroke: #3b82f6;
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
+  transition: filter var(--transition-normal);
+}
+
+.sidebar-brand:hover svg {
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.7));
 }
 
 .brand-text {
+  font-weight: 700;
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   transition: opacity var(--transition-fast);
   white-space: nowrap;
 }
@@ -68,16 +94,16 @@
 
 .nav-divider {
   height: 1px;
-  background-color: var(--border-color);
+  background-color: rgba(255, 255, 255, 0.06);
   margin: var(--space-2) 0;
 }
 
 .nav-section-title {
   font-size: 11px;
   font-weight: var(--font-bold);
-  color: var(--text-muted);
+  color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   padding: var(--space-1) var(--space-1);
   margin-top: var(--space-1);
   white-space: nowrap;
@@ -94,22 +120,24 @@
   justify-content: space-between;
   padding: 10px var(--space-15);
   border-radius: var(--radius-md);
-  color: var(--text-secondary);
+  color: #94a3b8;
   font-weight: var(--font-medium);
   cursor: pointer;
   transition: all var(--transition-fast);
   user-select: none;
+  border: 1px solid transparent;
 }
 
 .nav-item:hover {
-  background-color: var(--bg-app);
-  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
 }
 
 .nav-item.active {
-  background-color: var(--primary-light);
-  color: var(--primary);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
   font-weight: var(--font-semibold);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
 .nav-item-left {
@@ -122,6 +150,17 @@
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  stroke: #94a3b8;
+  transition: stroke var(--transition-fast), transform var(--transition-fast);
+}
+
+.nav-item:hover svg {
+  stroke: #ffffff;
+  transform: scale(1.05);
+}
+
+.nav-item.active svg {
+  stroke: #ffffff !important;
 }
 
 .nav-label {
@@ -143,6 +182,7 @@
   padding: 2px 6px;
   border-radius: var(--radius-full);
   transition: opacity var(--transition-fast);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
 }
 
 .sidebar.collapsed .nav-badge {
@@ -151,8 +191,27 @@
 
 .sidebar-footer {
   padding: var(--space-2) var(--space-15);
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
+}
+
+/* Custom Styles for Sign Out Link inside Footer */
+.sidebar-footer .nav-item {
+  color: #f87171;
+}
+
+.sidebar-footer .nav-item svg {
+  stroke: #f87171;
+}
+
+.sidebar-footer .nav-item:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.sidebar-footer .nav-item:hover svg {
+  stroke: #ef4444;
+  transform: translateX(3px);
 }
 
 /* --- HEADER --- */

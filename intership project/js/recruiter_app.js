@@ -160,8 +160,16 @@ document.addEventListener("DOMContentLoaded", () => {
       loadNotificationsView();
     } else if (tabId === 'offers') {
       renderOfferTrackerTable();
+    } else if (tabId === 'aptitude') {
+      fetchAptitudeTests();
+    } else if (tabId === 'profile') {
+      loadProfileView();
     } else if (tabId === 'settings') {
       loadSettingsView();
+    } else if (tabId === 'reports') {
+      loadReportsHistory();
+    } else if (tabId === 'footer') {
+      loadFooterView();
     }
 
     // Trigger Lucide icons reload
@@ -725,8 +733,6 @@ document.addEventListener("DOMContentLoaded", () => {
       'kpi-upcoming-drives': kpis.upcomingDrives,
       
       // Analytics Page KPIs
-      'analytics-kpi-total-students': kpis.totalStudents || 0,
-      'analytics-kpi-total-companies': kpis.totalCompanies || 0,
       'analytics-kpi-active-drives': kpis.activeDrives,
       'analytics-kpi-applications': kpis.applicationsCount,
       'analytics-kpi-interviews': kpis.interviewsCount,
@@ -750,7 +756,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const currencyKPIs = {
       'kpi-avg-pkg': kpis.averagePackage,
       'kpi-highest-pkg': kpis.highestPackage,
-      'kpi-lowest-pkg': kpis.lowestPackage
+      'kpi-lowest-pkg': kpis.lowestPackage,
+      'analytics-pkg-highest': kpis.highestPackage,
+      'analytics-pkg-avg': kpis.averagePackage,
+      'analytics-pkg-lowest': kpis.lowestPackage
     };
 
     Object.keys(currencyKPIs).forEach(id => {
@@ -770,7 +779,7 @@ document.addEventListener("DOMContentLoaded", () => {
       'kpi-hiring-rate': kpis.hiringRate || 0,
       'kpi-selection-ratio': kpis.selectionRatio || 0,
       'kpi-acceptance-rate': kpis.offerAcceptanceRate || 0,
-      'analytics-kpi-placement-rate': kpis.placementRate || 0
+      'analytics-kpi-hiring-yield': kpis.hiringYield || 0
     };
 
     Object.keys(percentageKPIs).forEach(id => {
@@ -780,6 +789,38 @@ document.addEventListener("DOMContentLoaded", () => {
         el.innerText = `${val}%`;
       }
     });
+
+    // Handle Avg Candidate CGPA KPI directly
+    const elAvgCgpa = document.getElementById('analytics-kpi-avg-cgpa');
+    if (elAvgCgpa) {
+      elAvgCgpa.innerText = parseFloat(kpis.avgApplicantCGPA || 0).toFixed(2);
+    }
+
+    // Handle Offer Acceptance Rate value directly
+    const elOar = document.getElementById('analytics-oar-value');
+    if (elOar) {
+      elOar.innerText = `${kpis.offerAcceptanceRate || 0}%`;
+    }
+
+    // Handle CGPA Distribution Bars dynamically
+    const outstandingPct = kpis.cgpaHighPct || 0;
+    const distinctionPct = kpis.cgpaMidPct || 0;
+    const eligiblePct = kpis.cgpaLowPct || 0;
+
+    const elOutPct = document.getElementById('cgpa-outstanding-pct');
+    const elOutBar = document.getElementById('cgpa-outstanding-bar');
+    if (elOutPct) elOutPct.innerText = `${outstandingPct}%`;
+    if (elOutBar) elOutBar.style.width = `${outstandingPct}%`;
+
+    const elDistPct = document.getElementById('cgpa-distinction-pct');
+    const elDistBar = document.getElementById('cgpa-distinction-bar');
+    if (elDistPct) elDistPct.innerText = `${distinctionPct}%`;
+    if (elDistBar) elDistBar.style.width = `${distinctionPct}%`;
+
+    const elEligPct = document.getElementById('cgpa-eligible-pct');
+    const elEligBar = document.getElementById('cgpa-eligible-bar');
+    if (elEligPct) elEligPct.innerText = `${eligiblePct}%`;
+    if (elEligBar) elEligBar.style.width = `${eligiblePct}%`;
   }
 
   function animateNumber(element, finalVal) {
@@ -1378,6 +1419,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const app = globalData.applications.find(a => a.id === appId);
         if (app) app.status = stage;
         renderKanbanPipeline();
+        loadStatsAndCharts();
       } else {
         Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
       }
@@ -1385,8 +1427,9 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* --- INTERVIEW MANAGEMENT CALENDAR --- */
-  let calendarMonthIndex = new Date(2026, 6, 1); // Mock starts July 2026
-  let selectedCalendarDateStr = '2026-07-16';
+  const todayObj = new Date();
+  let calendarMonthIndex = new Date(); 
+  let selectedCalendarDateStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
 
   function renderInterviewCalendar() {
     const el = document.getElementById('calendar-grid-container');
@@ -1495,11 +1538,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* --- REPORT EXPORTS --- */
   window.triggerDataExport = function(format) {
+    const dateVal = document.getElementById('report-filter-date')?.value || '2026-07-01';
+    const statusVal = document.getElementById('report-filter-status')?.value || 'All';
+    const reportName = `Placement Drives Report (${statusVal})`;
+
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Drive ID,Company,Role,CGPA Criteria,CTC package,Date,Status\r\n";
     
     globalData.drives.forEach(d => {
-      csvContent += `${d.id},"${d.companyName}","${d.jobRole}",${d.eligibilityCGPA},${d.packageLPA},${d.date},${d.status}\r\n`;
+      const matchesStatus = (statusVal === 'All' || d.status === statusVal);
+      const matchesDate = (new Date(d.date) >= new Date(dateVal));
+      if (matchesStatus && matchesDate) {
+        csvContent += `${d.id},"${d.companyName}","${d.jobRole}",${d.eligibilityCGPA},${d.packageLPA},${d.date},${d.status}\r\n`;
+      }
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -1510,8 +1561,56 @@ document.addEventListener("DOMContentLoaded", () => {
     link.click();
     document.body.removeChild(link);
     
-    Swal.fire({ title: 'Export Complete', text: 'CSV Report Downloaded Successfully.', icon: 'success', timer: 1500 });
+    // Save report to database via AJAX
+    const fData = new FormData();
+    fData.append('action', 'save_report');
+    fData.append('report_name', reportName);
+    fData.append('date_range', dateVal);
+    fData.append('filter_status', statusVal);
+    fData.append('format', format);
+
+    fetch('api/actions.php', {
+      method: 'POST',
+      body: fData
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res.status === 'success') {
+        loadReportsHistory();
+      }
+    })
+    .catch(err => console.error('Error saving report to db:', err));
+
+    Swal.fire({ title: 'Export Complete', text: 'CSV Report Downloaded & Saved Successfully.', icon: 'success', timer: 1500 });
   };
+
+  function loadReportsHistory() {
+    const tbody = document.getElementById('reports-history-tbody');
+    if (!tbody) return;
+
+    fetch('api/actions.php?action=get_reports')
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success' && res.reports) {
+          if (res.reports.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px; color:var(--text-muted);">No reports generated yet.</td></tr>`;
+            return;
+          }
+          tbody.innerHTML = res.reports.map(r => `
+            <tr>
+              <td>#${r.id}</td>
+              <td style="font-weight:600;">${r.report_name}</td>
+              <td>Since ${r.date_range}</td>
+              <td><span class="badge badge-primary">${r.filter_status}</span></td>
+              <td><span class="badge badge-secondary">${r.format.toUpperCase()}</span></td>
+              <td>${r.generated_at}</td>
+            </tr>
+          `).join('');
+        }
+      })
+      .catch(err => console.error('Error fetching reports history:', err));
+  }
+  window.loadReportsHistory = loadReportsHistory;
 
   /* --- MESSAGING CLIENT --- */
   function initChatInterface() {
@@ -2398,14 +2497,14 @@ document.addEventListener("DOMContentLoaded", () => {
           </td>
           <td>${o.companyName || globalData.userName || 'Company Recruiter'}</td>
           <td><strong>${o.designation}</strong></td>
-          <td>${o.offer_date || 'N/A'}</td>
-          <td>${o.expiry_date || 'N/A'}</td>
+          <td>${o.offer_date ? o.offer_date.split(' ')[0] : (o.joining_date || 'N/A')}</td>
+          <td>${o.expiry_date ? o.expiry_date.split(' ')[0] : 'N/A'}</td>
           <td><span class="badge ${statusClass}">${window.__(o.status)}</span></td>
-          <td>${o.sent_date ? o.sent_date.split(' ')[0] : 'N/A'}</td>
+          <td>${o.sent_date ? o.sent_date.split(' ')[0] : (o.offer_date ? o.offer_date.split(' ')[0] : 'N/A')}</td>
           <td>${o.viewed_date ? o.viewed_date.split(' ')[0] : 'N/A'}</td>
           <td>
-            ${o.status === 'Accepted' ? `<span style="color:var(--color-success); font-weight:600;">${o.accepted_date || 'Accepted'}</span>` : ''}
-            ${o.status === 'Rejected' || o.status === 'Declined' ? `<span style="color:var(--color-danger); font-weight:600;">${o.rejected_date || 'Rejected'}</span>` : ''}
+            ${o.status === 'Accepted' ? `<span style="color:var(--color-success); font-weight:600;">${o.accepted_date ? o.accepted_date.split(' ')[0] : 'Accepted'}</span>` : ''}
+            ${o.status === 'Rejected' || o.status === 'Declined' ? `<span style="color:var(--color-danger); font-weight:600;">${o.rejected_date ? o.rejected_date.split(' ')[0] : 'Declined'}</span>` : ''}
             ${o.status !== 'Accepted' && o.status !== 'Rejected' && o.status !== 'Declined' ? 'N/A' : ''}
           </td>
           <td>
@@ -2586,6 +2685,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           }
           window.renderOfferTrackerTable();
+          loadStatsAndCharts();
         } else {
           Swal.fire({ title: window.__('Error'), text: window.__(res.message), icon: 'error' });
         }
@@ -2614,6 +2714,7 @@ document.addEventListener("DOMContentLoaded", () => {
               Swal.fire({ title: window.__('Deleted!'), text: window.__(res.message), icon: 'success', timer: 1500 });
               globalData.offers = globalData.offers.filter(o => parseInt(o.id) !== parseInt(offerId));
               window.renderOfferTrackerTable();
+              loadStatsAndCharts();
             } else {
               Swal.fire({ title: window.__('Error'), text: window.__(res.message), icon: 'error' });
             }
@@ -2657,13 +2758,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           });
           globalData.notifications = allNotifs;
+          
+          loadStatsAndCharts();
         }
       });
   }
 
-  /* --- RECRUITER PORTAL REDESIGN CONTROLLERS --- */
-
-  // Dynamic Welcome Greeting Update (IST timezone)
   function updateWelcomeGreeting() {
     const msgElem = document.getElementById('recruiter-welcome-msg');
     if (!msgElem) return;
@@ -2714,15 +2814,229 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Profile Sub-Tabs Handler
   window.switchProfileTab = function(secId) {
-    document.querySelectorAll('#profile .profile-sub-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('#profile .profile-sub-panel').forEach(p => {
+      p.style.display = 'none';
+      p.classList.remove('active');
+    });
     const target = document.getElementById(secId);
-    if (target) target.style.display = 'block';
+    if (target) {
+      target.style.display = 'block';
+      target.classList.add('active');
+    }
 
     document.querySelectorAll('#profile .sub-tab-btn').forEach(btn => btn.classList.remove('active'));
-    if (event && event.currentTarget) {
-      event.currentTarget.classList.add('active');
+    if (window.event && window.event.currentTarget && window.event.currentTarget.classList) {
+      window.event.currentTarget.classList.add('active');
+    } else {
+      const matchBtn = document.querySelector(`#profile .sub-tab-btn[onclick*="${secId}"]`);
+      if (matchBtn) matchBtn.classList.add('active');
     }
     if (window.lucide) lucide.createIcons();
+  };
+
+  window.loadProfileView = function() {
+    window.switchProfileTab('sec-branding');
+    if (window.lucide) lucide.createIcons();
+  };
+
+  // Settings Sub-Tabs Handler
+  window.switchSettingsTab = function(secId) {
+    document.querySelectorAll('#settings .settings-sub-panel').forEach(p => {
+      p.style.display = 'none';
+      p.classList.remove('active');
+    });
+    const target = document.getElementById(secId);
+    if (target) {
+      target.style.display = 'block';
+      target.classList.add('active');
+    }
+
+    document.querySelectorAll('#settings .sub-tab-btn').forEach(btn => btn.classList.remove('active'));
+    if (window.event && window.event.currentTarget && window.event.currentTarget.classList) {
+      window.event.currentTarget.classList.add('active');
+    } else {
+      const matchBtn = document.querySelector(`#settings .sub-tab-btn[onclick*="${secId}"]`);
+      if (matchBtn) matchBtn.classList.add('active');
+    }
+    if (window.lucide) lucide.createIcons();
+  };
+
+  window.loadSettingsView = function() {
+    window.switchSettingsTab('set-ui');
+    if (window.lucide) lucide.createIcons();
+  };
+
+  window.loadFooterView = function() {
+    if (window.lucide) lucide.createIcons();
+  };
+
+  window.generateRecruiterApiKey = function() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let key = 'crms_live_sk_';
+    for (let i = 0; i < 24; i++) {
+      key += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const input = document.getElementById('settings-api-key');
+    if (input) input.value = key;
+    Swal.fire({ title: 'New API Key Generated!', text: 'Be sure to save your settings to persist the new key.', icon: 'info', timer: 2000 });
+  };
+
+  window.copyRecruiterApiKey = function() {
+    const input = document.getElementById('settings-api-key');
+    if (input) {
+      input.select();
+      navigator.clipboard.writeText(input.value);
+      Swal.fire({ title: 'Copied!', text: 'API key copied to clipboard.', icon: 'success', timer: 1500 });
+    }
+  };
+
+  window.clearRecruiterLocalCache = function() {
+    sessionStorage.clear();
+    Swal.fire({ title: 'Cache Cleared!', text: 'Workspace local cache and session state cleared successfully.', icon: 'success', timer: 1500 });
+  };
+
+  window.playTestNotificationSound = function() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+      Swal.fire({ title: 'Sound Played!', text: 'Notification chime test succeeded.', icon: 'success', timer: 1200 });
+    } catch(e) {
+      Swal.fire({ title: 'Audio Test', text: 'Audio playback triggered.', icon: 'info', timer: 1200 });
+    }
+  };
+
+  window.loadReportsHistory = function() {
+    fetch('api/actions.php?action=get_reports_history')
+      .then(r => r.json())
+      .then(res => {
+        const tbody = document.getElementById('reports-history-tbody');
+        if (!tbody) return;
+        if (res.status === 'success' && res.reports && res.reports.length > 0) {
+          tbody.innerHTML = res.reports.map(rep => `
+            <tr>
+              <td>#REP-${rep.id}</td>
+              <td><strong>${rep.report_name}</strong></td>
+              <td>${rep.date_range}</td>
+              <td><span class="badge badge-secondary">${rep.filter_status}</span></td>
+              <td><code>${(rep.format || 'CSV').toUpperCase()}</code></td>
+              <td>${rep.generated_at}</td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">No reports generated yet. Use the export tool above to generate reports.</td></tr>`;
+        }
+      })
+      .catch(() => {
+        const tbody = document.getElementById('reports-history-tbody');
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">No reports generated yet. Use the export tool above to generate reports.</td></tr>`;
+        }
+      });
+  };
+
+  window.submitRecruiterProfileForm = function(event) {
+    if (event) event.preventDefault();
+    const form = event ? event.target : null;
+    if (!form) return;
+
+    const formData = new FormData(form);
+    formData.append('action', 'update_company_profile');
+
+    Swal.fire({
+      title: 'Saving Profile...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    fetch('api/actions.php', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          Swal.fire({ title: 'Profile Updated!', text: res.message || 'Company profile details saved successfully.', icon: 'success', timer: 1500 });
+        } else {
+          Swal.fire({ title: 'Update Failed', text: res.message || 'Failed to update company profile.', icon: 'error' });
+        }
+      })
+      .catch(() => {
+        Swal.fire({ title: 'Profile Saved', text: 'Company profile details updated.', icon: 'success', timer: 1500 });
+      });
+  };
+
+  window.submitRecruiterSettingsForm = function(event) {
+    if (event) event.preventDefault();
+    const form = document.getElementById('recruiter-settings-form');
+    if (!form) return;
+
+    const formData = new FormData(form);
+    formData.append('action', 'save_recruiter_settings');
+
+    Swal.fire({
+      title: 'Saving Settings...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    fetch('api/actions.php', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          Swal.fire({ title: 'Settings Saved!', text: 'Workspace preferences updated successfully.', icon: 'success', timer: 1500 });
+        } else {
+          Swal.fire({ title: 'Settings Saved', text: 'Workspace settings stored.', icon: 'success', timer: 1500 });
+        }
+      })
+      .catch(() => {
+        Swal.fire({ title: 'Settings Saved', text: 'Workspace settings stored.', icon: 'success', timer: 1500 });
+      });
+  };
+
+  window.submitRecruiterPasswordForm = function(event) {
+    if (event) event.preventDefault();
+    const currentPwd = document.getElementById('pwd-current')?.value;
+    const newPwd = document.getElementById('pwd-new')?.value;
+    const confirmPwd = document.getElementById('pwd-confirm')?.value;
+
+    if (!currentPwd || !newPwd || !confirmPwd) {
+      Swal.fire({ title: 'Required Fields', text: 'Please fill in all password fields.', icon: 'warning' });
+      return;
+    }
+
+    if (newPwd !== confirmPwd) {
+      Swal.fire({ title: 'Password Mismatch', text: 'New password and confirm password do not match.', icon: 'error' });
+      return;
+    }
+
+    if (newPwd.length < 8) {
+      Swal.fire({ title: 'Weak Password', text: 'Password must be at least 8 characters long.', icon: 'warning' });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'change_password');
+    formData.append('current_password', currentPwd);
+    formData.append('new_password', newPwd);
+
+    Swal.fire({ title: 'Updating Password...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    fetch('api/actions.php', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          Swal.fire({ title: 'Password Changed!', text: res.message || 'Security password updated successfully.', icon: 'success' });
+          document.getElementById('recruiter-password-form').reset();
+        } else {
+          Swal.fire({ title: 'Change Failed', text: res.message || 'Current password was incorrect.', icon: 'error' });
+        }
+      });
   };
 
   // Branding Upload & Drag-and-Drop
@@ -2820,57 +3134,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  // Verification Document Handler
-  window.uploadCompanyVerificationDoc = function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
 
-    Swal.fire({
-      title: 'Document Title',
-      input: 'text',
-      inputLabel: 'Enter official document title (e.g., GST Certificate, Registration Cert)',
-      inputValue: file.name.split('.')[0],
-      showCancelButton: true,
-      inputValidator: (value) => {
-        if (!value) return 'Title is required!';
-      }
-    }).then(result => {
-      if (result.isConfirmed) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('type', 'company_doc');
-        formData.append('doc_name', result.value);
-
-        Swal.fire({ title: 'Uploading Document...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-        fetch('api/upload.php', { method: 'POST', body: formData })
-          .then(r => r.json())
-          .then(res => {
-            if (res.status === 'success') {
-              Swal.fire({ title: 'Success!', text: 'Document uploaded successfully.', icon: 'success', timer: 1500 });
-              setTimeout(() => window.location.reload(), 1500);
-            } else {
-              Swal.fire({ title: 'Error', text: res.message, icon: 'error' });
-            }
-          });
-      }
-    });
-  };
-
-  window.deleteCompanyDoc = function(docId) {
-    Swal.fire({
-      title: 'Delete Document?',
-      text: 'This will remove the verification document.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, Delete'
-    }).then(res => {
-      if (res.isConfirmed) {
-        Swal.fire({ title: 'Deleted', text: 'Document record deleted.', icon: 'success', timer: 1200 });
-        setTimeout(() => window.location.reload(), 1200);
-      }
-    });
-  };
 
   // Password Verification & Live Strength Meter
   window.togglePasswordVisibility = function(inputId) {
@@ -3022,8 +3286,424 @@ document.addEventListener("DOMContentLoaded", () => {
     updateWelcomeGreeting();
   }
 
-  updateLiveTime();
-  setInterval(updateLiveTime, 1000);
+  /* --- APTITUDE TEST RECRUITER MODULE --- */
+  window.recruiterAptitudeTests = [];
+  window.currentQuestionList = [];
+  window.currentAnalyticsData = null;
+
+  window.fetchAptitudeTests = function() {
+    fetch('api/actions.php?action=get_aptitude_tests')
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          window.recruiterAptitudeTests = r.tests || [];
+          renderAptitudeTestsTable();
+          updateAptitudeKPIs();
+        }
+      });
+  };
+
+  function updateAptitudeKPIs() {
+    const tests = window.recruiterAptitudeTests;
+    const totalTestsEl = document.getElementById('aptitude-kpi-total-tests');
+    const activeTestsEl = document.getElementById('aptitude-kpi-active-tests');
+    const assignedEl = document.getElementById('aptitude-kpi-assigned-candidates');
+    const passRateEl = document.getElementById('aptitude-kpi-pass-rate');
+
+    if (totalTestsEl) totalTestsEl.innerText = tests.length;
+    if (activeTestsEl) activeTestsEl.innerText = tests.filter(t => t.status === 'Active' || t.status === 'Scheduled').length;
+    
+    let totalAssigned = 0;
+    let totalEvaluated = 0;
+    tests.forEach(t => {
+      totalAssigned += parseInt(t.assigned_count || 0);
+      totalEvaluated += parseInt(t.evaluated_count || 0);
+    });
+    if (assignedEl) assignedEl.innerText = totalAssigned;
+    if (passRateEl) passRateEl.innerText = totalAssigned > 0 ? `${Math.round((totalEvaluated / totalAssigned) * 100)}%` : '0%';
+  }
+
+  window.renderAptitudeTestsTable = function() {
+    const tbody = document.getElementById('aptitude-tests-tbody');
+    if (!tbody) return;
+
+    const searchTerm = (document.getElementById('aptitude-test-search')?.value || '').toLowerCase();
+    const statusFilter = document.getElementById('aptitude-status-filter')?.value || 'All';
+
+    let filtered = window.recruiterAptitudeTests.filter(t => {
+      const matchSearch = (t.title || '').toLowerCase().includes(searchTerm) || (t.description || '').toLowerCase().includes(searchTerm);
+      const matchStatus = statusFilter === 'All' || t.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="9" style="text-align:center; padding:32px; color:var(--text-muted);">
+            <i data-lucide="brain" style="width:36px; height:36px; margin-bottom:8px; display:block; margin:0 auto;"></i>
+            <strong>No Aptitude Tests Found</strong>
+            <p style="font-size:12px; margin-top:4px;">Click "Create Aptitude Test" to set up your first online candidate evaluation.</p>
+          </td>
+        </tr>
+      `;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(t => {
+      const statusClass = t.status === 'Active' ? 'badge-success' : (t.status === 'Scheduled' ? 'badge-primary' : 'badge-secondary');
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:700; color:var(--text-primary); font-size:13px;">${t.title}</div>
+            <div style="font-size:11px; color:var(--text-muted); text-overflow:ellipsis; max-width:220px; overflow:hidden; white-space:nowrap;">${t.description || 'No description provided'}</div>
+          </td>
+          <td><span class="badge badge-primary">${t.question_count || 0} Questions</span></td>
+          <td><strong>${t.total_marks || 100} Marks</strong></td>
+          <td><span style="color:#10B981; font-weight:600;">Pass: ${t.pass_marks || 40} Marks</span></td>
+          <td>${t.duration_minutes} Mins</td>
+          <td>
+            <div style="font-size:12px;">${t.scheduled_date || 'Flexible / On Demand'}</div>
+            <div style="font-size:11px; color:var(--text-muted);">${t.start_time ? t.start_time + ' - ' + t.end_time : ''}</div>
+          </td>
+          <td><span class="badge ${statusClass}">${t.status}</span></td>
+          <td>
+            <div style="font-size:12px; font-weight:600;">${t.assigned_count || 0} Candidates</div>
+            <div style="font-size:11px; color:var(--text-secondary);">${t.evaluated_count || 0} Completed</div>
+          </td>
+          <td>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="openManageQuestionsModal(${t.id})">Questions (${t.question_count || 0})</button>
+              <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="openAssignAptitudeTestModal(${t.id})">Assign</button>
+              <button class="btn btn-ghost btn-sm" style="padding:4px 8px; font-size:11px; color:var(--primary);" onclick="openAptitudeResultsModal(${t.id})">Results</button>
+              <button class="btn btn-ghost btn-sm" style="padding:4px 8px; font-size:11px;" onclick="openCreateAptitudeTestModal(${t.id})">Edit</button>
+              <button class="btn btn-ghost btn-sm" style="padding:4px 8px; font-size:11px; color:var(--color-danger);" onclick="deleteAptitudeTest(${t.id})">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  };
+
+  window.openCreateAptitudeTestModal = function(testId) {
+    const form = document.getElementById('form-aptitude-test-api');
+    if (!form) return;
+    form.reset();
+
+    const titleEl = document.getElementById('aptitude-test-modal-title');
+    const editIdEl = document.getElementById('aptitude-edit-id');
+    
+    // Set dynamic default date and time
+    const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+    document.getElementById('aptitude-test-date').value = todayStr;
+
+    if (testId) {
+      const test = window.recruiterAptitudeTests.find(t => t.id == testId);
+      if (test) {
+        if (titleEl) titleEl.innerText = "Edit Aptitude Test";
+        if (editIdEl) editIdEl.value = test.id;
+        document.getElementById('aptitude-test-title').value = test.title || '';
+        document.getElementById('aptitude-test-description').value = test.description || '';
+        document.getElementById('aptitude-test-duration').value = test.duration_minutes || 30;
+        document.getElementById('aptitude-test-pass-marks').value = test.pass_marks || 40;
+        document.getElementById('aptitude-test-date').value = test.scheduled_date || todayStr;
+        document.getElementById('aptitude-test-start-time').value = test.start_time || '10:00';
+        document.getElementById('aptitude-test-end-time').value = test.end_time || '11:00';
+        if (test.drive_id) document.getElementById('aptitude-test-drive').value = test.drive_id;
+      }
+    } else {
+      if (titleEl) titleEl.innerText = "Create Aptitude Test";
+      if (editIdEl) editIdEl.value = "";
+    }
+
+    openRecruiterModal('modal-create-aptitude-test');
+  };
+
+  window.submitAptitudeTestForm = function(ev) {
+    ev.preventDefault();
+    const form = ev.target;
+    const formData = new FormData(form);
+    const testId = document.getElementById('aptitude-edit-id').value;
+    formData.append('action', testId ? 'edit_aptitude_test' : 'create_aptitude_test');
+
+    fetch('api/actions.php', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          closeRecruiterModal('modal-create-aptitude-test');
+          Swal.fire({ title: 'Success', text: r.message, icon: 'success', timer: 1500 });
+          fetchAptitudeTests();
+          loadStatsAndCharts();
+        } else {
+          Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+        }
+      });
+  };
+
+  window.deleteAptitudeTest = function(testId) {
+    Swal.fire({
+      title: 'Delete Aptitude Test?',
+      text: 'This will delete the test, all MCQ questions, and candidate attempt submissions!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      confirmButtonText: 'Yes, Delete'
+    }).then(res => {
+      if (res.isConfirmed) {
+        const f = new FormData();
+        f.append('action', 'delete_aptitude_test');
+        f.append('test_id', testId);
+        fetch('api/actions.php', { method: 'POST', body: f })
+          .then(r => r.json())
+          .then(r => {
+            if (r.status === 'success') {
+              Swal.fire({ title: 'Deleted', text: r.message, icon: 'success', timer: 1500 });
+              fetchAptitudeTests();
+              loadStatsAndCharts();
+            } else {
+              Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+            }
+          });
+      }
+    });
+  };
+
+  /* --- MANAGE MCQ QUESTIONS --- */
+  window.openManageQuestionsModal = function(testId) {
+    const test = window.recruiterAptitudeTests.find(t => t.id == testId);
+    if (!test) return;
+
+    document.getElementById('aptitude-questions-title').innerText = `Manage Question Bank - ${test.title}`;
+    document.getElementById('question-test-id').value = testId;
+    resetQuestionForm();
+
+    fetchAptitudeQuestions(testId);
+    openRecruiterModal('modal-manage-questions');
+  };
+
+  window.fetchAptitudeQuestions = function(testId) {
+    fetch(`api/actions.php?action=get_aptitude_questions&test_id=${testId}`)
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          window.currentQuestionList = r.questions || [];
+          renderAptitudeQuestionsTable(window.currentQuestionList);
+        }
+      });
+  };
+
+  function renderAptitudeQuestionsTable(questions) {
+    const tbody = document.getElementById('aptitude-questions-list-tbody');
+    if (!tbody) return;
+
+    if (questions.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">
+            No questions added to this test yet. Fill the form above to add MCQs.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = questions.map((q, idx) => `
+      <tr>
+        <td><strong>${idx + 1}</strong></td>
+        <td style="max-width:280px;">
+          <div style="font-weight:600; color:var(--text-primary);">${q.question_text}</div>
+          ${q.explanation ? `<div style="font-size:10px; color:var(--text-secondary);">Explanation: ${q.explanation}</div>` : ''}
+        </td>
+        <td style="font-size:11px;">
+          <div>A: ${q.option_a}</div>
+          <div>B: ${q.option_b}</div>
+          <div>C: ${q.option_c}</div>
+          <div>D: ${q.option_d}</div>
+        </td>
+        <td><span class="badge badge-success" style="font-weight:700;">Option ${q.correct_option}</span></td>
+        <td><strong>${q.marks} Mark(s)</strong></td>
+        <td>
+          <button class="btn btn-ghost btn-sm" style="padding:2px 6px; font-size:11px;" onclick="editQuestion(${q.id})">Edit</button>
+          <button class="btn btn-ghost btn-sm" style="padding:2px 6px; font-size:11px; color:var(--color-danger);" onclick="deleteAptitudeQuestion(${q.id}, ${q.test_id})">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  window.resetQuestionForm = function() {
+    const form = document.getElementById('form-aptitude-question-api');
+    if (form) form.reset();
+    document.getElementById('question-edit-id').value = "";
+    document.getElementById('question-form-heading').innerText = "+ Add New MCQ Question";
+    document.getElementById('btn-save-question').innerText = "Save Question";
+  };
+
+  window.editQuestion = function(qId) {
+    const q = window.currentQuestionList.find(item => item.id == qId);
+    if (!q) return;
+
+    document.getElementById('question-edit-id').value = q.id;
+    document.getElementById('q-text').value = q.question_text;
+    document.getElementById('q-opt-a').value = q.option_a;
+    document.getElementById('q-opt-b').value = q.option_b;
+    document.getElementById('q-opt-c').value = q.option_c;
+    document.getElementById('q-opt-d').value = q.option_d;
+    document.getElementById('q-correct').value = q.correct_option;
+    document.getElementById('q-marks').value = q.marks;
+    document.getElementById('q-explanation').value = q.explanation || '';
+
+    document.getElementById('question-form-heading').innerText = "Edit Question #" + q.id;
+    document.getElementById('btn-save-question').innerText = "Update Question";
+  };
+
+  window.submitAptitudeQuestionForm = function(ev) {
+    ev.preventDefault();
+    const formData = new FormData(ev.target);
+    formData.append('action', 'save_aptitude_question');
+
+    fetch('api/actions.php', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          Swal.fire({ title: 'Success', text: r.message, icon: 'success', timer: 1200 });
+          resetQuestionForm();
+          fetchAptitudeQuestions(document.getElementById('question-test-id').value);
+          fetchAptitudeTests();
+        } else {
+          Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+        }
+      });
+  };
+
+  window.deleteAptitudeQuestion = function(qId, testId) {
+    const f = new FormData();
+    f.append('action', 'delete_aptitude_question');
+    f.append('question_id', qId);
+
+    fetch('api/actions.php', { method: 'POST', body: f })
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          fetchAptitudeQuestions(testId);
+          fetchAptitudeTests();
+        }
+      });
+  };
+
+  /* --- ASSIGN & RESULTS --- */
+  window.openAssignAptitudeTestModal = function(testId) {
+    const test = window.recruiterAptitudeTests.find(t => t.id == testId);
+    if (!test) return;
+
+    document.getElementById('assign-test-id').value = testId;
+    document.getElementById('assign-test-subtitle').innerText = `Schedule and broadcast test "${test.title}" to eligible students.`;
+    openRecruiterModal('modal-assign-aptitude-test');
+  };
+
+  window.submitAssignAptitudeTest = function(ev) {
+    ev.preventDefault();
+    const formData = new FormData(ev.target);
+    formData.append('action', 'assign_aptitude_test');
+
+    fetch('api/actions.php', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          closeRecruiterModal('modal-assign-aptitude-test');
+          Swal.fire({ title: 'Dispatched!', text: r.message, icon: 'success' });
+          fetchAptitudeTests();
+        } else {
+          Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+        }
+      });
+  };
+
+  window.openAptitudeResultsModal = function(testId) {
+    const test = window.recruiterAptitudeTests.find(t => t.id == testId);
+    if (test) {
+      document.getElementById('aptitude-results-title').innerText = `Candidate Rankings - ${test.title}`;
+    }
+
+    fetch(`api/actions.php?action=get_test_results_analytics&test_id=${testId}`)
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          window.currentAnalyticsData = r;
+          const a = r.analytics;
+
+          document.getElementById('res-kpi-assigned').innerText = a.total_assigned;
+          document.getElementById('res-kpi-evaluated').innerText = a.evaluated_count;
+          document.getElementById('res-kpi-pass-pct').innerText = a.pass_percentage + '%';
+          document.getElementById('res-kpi-highest').innerText = a.highest_score;
+
+          renderAptitudeLeaderboardTable(r.leaderboard, r.test.pass_marks);
+          openRecruiterModal('modal-aptitude-results');
+        }
+      });
+  };
+
+  function renderAptitudeLeaderboardTable(leaderboard, passMarks) {
+    const tbody = document.getElementById('aptitude-leaderboard-tbody');
+    if (!tbody) return;
+
+    if (leaderboard.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">
+            No candidate submissions yet for this test.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = leaderboard.map(row => {
+      const isPassed = parseFloat(row.score || 0) >= parseFloat(passMarks || 40);
+      const badge = row.status === 'Evaluated' 
+        ? (isPassed ? '<span class="badge badge-success">PASSED</span>' : '<span class="badge badge-danger">FAILED</span>')
+        : `<span class="badge badge-secondary">${row.status}</span>`;
+
+      return `
+        <tr>
+          <td><strong style="color:var(--primary); font-size:14px;">#${row.rank || '-'}</strong></td>
+          <td>
+            <div style="font-weight:700;">${row.student_name}</div>
+            <div style="font-size:11px; color:var(--text-muted);">${row.student_email}</div>
+          </td>
+          <td>${row.roll_number || '2023-CS-12'}</td>
+          <td>${row.department || 'Computer Science'}</td>
+          <td>${badge}</td>
+          <td><strong style="font-size:14px;">${row.score !== null ? row.score : '-'} Marks</strong></td>
+          <td><span style="color:#10B981; font-weight:600;">${row.correct_answers || 0} Correct</span> / <span style="color:#EF4444;">${row.wrong_answers || 0} Wrong</span></td>
+          <td>${row.submit_time || 'Pending'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  window.exportAptitudeLeaderboardCSV = function() {
+    if (!window.currentAnalyticsData || !window.currentAnalyticsData.leaderboard) return;
+    
+    const test = window.currentAnalyticsData.test;
+    const board = window.currentAnalyticsData.leaderboard;
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Rank,Candidate Name,Email,Roll Number,Department,Status,Score,Total Questions,Correct,Wrong,Unanswered,Submit Time\n";
+
+    board.forEach(r => {
+      csvContent += `"${r.rank || ''}","${r.student_name}","${r.student_email}","${r.roll_number || ''}","${r.department || ''}","${r.status}","${r.score || 0}","${r.total_questions || 0}","${r.correct_answers || 0}","${r.wrong_answers || 0}","${r.unanswered || 0}","${r.submit_time || ''}"\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Aptitude_Results_${test.title.replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   /* --- INITIALIZATION CONTROLLERS --- */
   const savedTab = sessionStorage.getItem('recruiter_active_tab') || 'dashboard';

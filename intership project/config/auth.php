@@ -267,4 +267,82 @@ function getInitials($name) {
 
     return strtoupper($firstInitial . $lastInitial);
 }
+
+function sendSystemEmail($toEmail, $toName, $subject, $bodyHtml, $bccList = []) {
+  $smtpUser = trim(getenv('SMTP_USER') ?: '');
+  $smtpPass = trim(getenv('SMTP_PASS') ?: '');
+
+  if (empty($smtpUser) || empty($smtpPass)) {
+    // Local dev mode: Log the email to a file
+    $logDir = __DIR__ . '/../uploads/mail_logs';
+    if (!is_dir($logDir)) {
+      mkdir($logDir, 0755, true);
+    }
+    $logFile = $logDir . '/system_emails.log';
+    $logData = "[" . date('Y-m-d H:i:s') . "] TO: $toName <$toEmail> | SUBJECT: $subject\n";
+    if (!empty($bccList)) {
+      $logData .= "BCC: " . implode(', ', array_map(function($x) { return $x['name'] . ' <' . $x['email'] . '>'; }, $bccList)) . "\n";
+    }
+    $logData .= "BODY:\n$bodyHtml\n" . str_repeat('-', 80) . "\n";
+    file_put_contents($logFile, $logData, FILE_APPEND);
+    return true;
+  }
+
+  // Require PHPMailer classes manually or via autoload if not already defined
+  if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+  }
+
+  try {
+    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+    
+    // SMTP Configuration from environment
+    $mail->isSMTP();
+    $mail->Host       = getenv('SMTP_HOST') ?: 'smtp.gmail.com';
+    $mail->SMTPAuth   = true;
+    $mail->Username   = $smtpUser;
+    $mail->Password   = $smtpPass;
+    $mail->SMTPSecure = getenv('SMTP_SECURE') === 'ssl' ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->Port       = getenv('SMTP_PORT') ?: 587;
+    
+    $mail->SMTPDebug = 0; // Off
+    
+    $fromMail = getenv('MAIL_FROM') ?: 'support@university.edu';
+    $fromName = getenv('MAIL_FROM_NAME') ?: 'CampusRecruit Support';
+    $mail->setFrom($fromMail, $fromName);
+
+    if (!empty($toEmail)) {
+      $mail->addAddress($toEmail, $toName);
+    } else {
+      $mail->addAddress($fromMail, 'CampusRecruit Recipients');
+    }
+
+    foreach ($bccList as $bcc) {
+      if (!empty($bcc['email'])) {
+        $mail->addBCC($bcc['email'], $bcc['name']);
+      }
+    }
+    
+    $mail->isHTML(true);
+    $mail->Subject = $subject;
+    $mail->Body    = $bodyHtml;
+    
+    $mail->send();
+    return true;
+  } catch (\Exception $e) {
+    // If it fails, log it to mail logs as fallback
+    $logDir = __DIR__ . '/../uploads/mail_logs';
+    if (!is_dir($logDir)) {
+      mkdir($logDir, 0755, true);
+    }
+    $logFile = $logDir . '/system_emails.log';
+    $logData = "[" . date('Y-m-d H:i:s') . "] [ERROR: " . $e->getMessage() . "] TO: $toName <$toEmail> | SUBJECT: $subject\n";
+    if (!empty($bccList)) {
+      $logData .= "BCC: " . implode(', ', array_map(function($x) { return $x['name'] . ' <' . $x['email'] . '>'; }, $bccList)) . "\n";
+    }
+    $logData .= "BODY:\n$bodyHtml\n" . str_repeat('-', 80) . "\n";
+    file_put_contents($logFile, $logData, FILE_APPEND);
+    return false;
+  }
+}
 ?>

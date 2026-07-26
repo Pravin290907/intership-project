@@ -42,80 +42,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Load autoloader for PHPMailer
     require_once __DIR__ . '/vendor/autoload.php';
     
-    $mail = new PHPMailer(true);
-    
-    // SMTP Configuration from environment (.env)
-    $mail->isSMTP();
-    $mail->Host       = getenv('SMTP_HOST') ?: 'smtp.gmail.com';
-    $mail->SMTPAuth   = true;
-    $mail->Username   = getenv('SMTP_USER');
-    $mail->Password   = getenv('SMTP_PASS');
-    $mail->SMTPSecure = getenv('SMTP_SECURE') === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
-    $mail->Port       = getenv('SMTP_PORT') ?: 587;
-    
-    // Disable debug output for AJAX response compatibility, but capture logs if needed
-    $mail->SMTPDebug = SMTP::DEBUG_OFF;
-    
-    // Recipients
-    $mail->setFrom(getenv('MAIL_FROM') ?: 'support@university.edu', getenv('MAIL_FROM_NAME') ?: 'CampusRecruit Support');
-    $mail->addAddress($email, $user['name']);
-    
     // Generate absolute reset password link
     $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $absoluteResetLink = $protocol . "://" . $host . BASE_URL . "reset_password.php?token=" . $token;
-    
-    // Content
-    $mail->isHTML(true);
-    $mail->Subject = 'Reset Your Password - CRMS';
-    $mail->Body    = "
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset='UTF-8'>
-        <title>Reset Your Password</title>
-        <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0F172A; color: #F8FAFC; margin: 0; padding: 0; }
-          .container { max-width: 600px; margin: 40px auto; background-color: #1E293B; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-          .header { text-align: center; margin-bottom: 30px; }
-          .logo { font-size: 24px; font-weight: bold; color: #3B82F6; text-decoration: none; }
-          .title { font-size: 20px; font-weight: bold; color: #FFFFFF; margin-top: 20px; }
-          .content { line-height: 1.6; color: #94A3B8; font-size: 15px; }
-          .btn-container { text-align: center; margin: 35px 0; }
-          .btn { background-color: #3B82F6; color: #FFFFFF !important; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(59,130,246,0.3); transition: all 0.2s ease; }
-          .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #64748B; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px; }
-        </style>
-      </head>
-      <body>
-        <div class='container'>
-          <div class='header'>
-            <a href='#' class='logo'>CampusRecruit</a>
-            <div class='title'>Reset Your Password</div>
-          </div>
-          <div class='content'>
-            <p>Hello " . htmlspecialchars($user['name']) . ",</p>
-            <p>We received a request to reset the password for your account on the Campus Recruitment Management System.</p>
-            <p>Click the button below to set a new password. This link is valid for <strong>30 minutes</strong>.</p>
-            <div class='btn-container'>
-              <a href='{$absoluteResetLink}' target='_blank' class='btn'>Reset Password</a>
+
+    $smtpUser = trim(getenv('SMTP_USER') ?: '');
+    $smtpPass = trim(getenv('SMTP_PASS') ?: '');
+
+    if (empty($smtpUser) || empty($smtpPass)) {
+      echo json_encode([
+        'status' => 'error', 
+        'message' => 'SMTP credentials missing. Please configure SMTP_USER and SMTP_PASS in your .env file to send emails.'
+      ]);
+      exit;
+    }
+
+    try {
+      $mail = new PHPMailer(true);
+      
+      // SMTP Configuration from environment (.env)
+      $mail->isSMTP();
+      $mail->Host       = getenv('SMTP_HOST') ?: 'smtp.gmail.com';
+      $mail->SMTPAuth   = true;
+      $mail->Username   = $smtpUser;
+      $mail->Password   = $smtpPass;
+      $mail->SMTPSecure = getenv('SMTP_SECURE') === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+      $mail->Port       = getenv('SMTP_PORT') ?: 587;
+      
+      // Disable debug output for AJAX response compatibility
+      $mail->SMTPDebug = SMTP::DEBUG_OFF;
+      
+      // Recipients
+      $mail->setFrom(getenv('MAIL_FROM') ?: 'support@university.edu', getenv('MAIL_FROM_NAME') ?: 'CampusRecruit Support');
+      $mail->addAddress($email, $user['name']);
+      
+      // Content
+      $mail->isHTML(true);
+      $mail->Subject = 'Reset Your Password - CRMS';
+      $mail->Body    = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset='UTF-8'>
+          <title>Reset Your Password</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0F172A; color: #F8FAFC; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 40px auto; background-color: #1E293B; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+            .header { text-align: center; margin-bottom: 30px; }
+            .logo { font-size: 24px; font-weight: bold; color: #3B82F6; text-decoration: none; }
+            .title { font-size: 20px; font-weight: bold; color: #FFFFFF; margin-top: 20px; }
+            .content { line-height: 1.6; color: #94A3B8; font-size: 15px; }
+            .btn-container { text-align: center; margin: 35px 0; }
+            .btn { background-color: #3B82F6; color: #FFFFFF !important; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(59,130,246,0.3); transition: all 0.2s ease; }
+            .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #64748B; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class='container'>
+            <div class='header'>
+              <a href='#' class='logo'>CampusRecruit</a>
+              <div class='title'>Reset Your Password</div>
             </div>
-            <p>If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
+            <div class='content'>
+              <p>Hello " . htmlspecialchars($user['name']) . ",</p>
+              <p>We received a request to reset the password for your account on the Campus Recruitment Management System.</p>
+              <p>Click the button below to set a new password. This link is valid for <strong>30 minutes</strong>.</p>
+              <div class='btn-container'>
+                <a href='{$absoluteResetLink}' target='_blank' class='btn'>Reset Password</a>
+              </div>
+              <p>If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
+            </div>
+            <div class='footer'>
+              <p>This is an automated security message from CampusRecruit Portal.</p>
+              <p>&copy; " . date('Y') . " CampusRecruit. All rights reserved.</p>
+            </div>
           </div>
-          <div class='footer'>
-            <p>This is an automated security message from CampusRecruit Portal.</p>
-            <p>&copy; " . date('Y') . " CampusRecruit. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    ";
-    
-    $mail->send();
-    echo json_encode(['status' => 'success', 'message' => 'A password reset link has been sent to your email.']);
-    exit;
-  } catch (Exception $e) {
-    echo json_encode(['status' => 'error', 'message' => 'Mailer Error: ' . $mail->ErrorInfo]);
-    exit;
+        </body>
+        </html>
+      ";
+      
+      $mail->send();
+      echo json_encode(['status' => 'success', 'message' => 'A password reset link has been sent to your email address. Please check your inbox.']);
+      exit;
+    } catch (Exception $e) {
+      echo json_encode(['status' => 'error', 'message' => 'Mailer Error: Could not send email. Please verify SMTP credentials in .env. (' . $mail->ErrorInfo . ')']);
+      exit;
+    }
   } catch (PDOException $e) {
     echo json_encode(['status' => 'error', 'message' => 'Database error encountered during password reset request.']);
     exit;

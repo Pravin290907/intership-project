@@ -203,6 +203,7 @@ try {
   // 6. Fetch Offers
   $offersQueryStr = "
     SELECT o.id, o.application_id, o.salary_lpa as packageLPA, o.designation as role, o.joining_date as date, o.location, o.status,
+           o.offer_date, o.expiry_date, o.sent_date, o.viewed_date, o.accepted_date, o.rejected_date,
            u.name as studentName, s.department, c.company_name as companyName, o.offer_letter_path
     FROM offers o
     JOIN applications a ON o.application_id = a.id
@@ -387,8 +388,16 @@ try {
         exit;
       }
       
-      $stmtUpdate = $db->prepare("UPDATE offers SET status = ? WHERE id = ?");
-      $stmtUpdate->execute([$newStatus, $offerId]);
+      if ($newStatus === 'Accepted') {
+        $stmtUpdate = $db->prepare("UPDATE offers SET status = 'Accepted', accepted_date = NOW() WHERE id = ?");
+        $stmtUpdate->execute([$offerId]);
+      } else if ($newStatus === 'Declined' || $newStatus === 'Rejected') {
+        $stmtUpdate = $db->prepare("UPDATE offers SET status = 'Declined', rejected_date = NOW() WHERE id = ?");
+        $stmtUpdate->execute([$offerId]);
+      } else {
+        $stmtUpdate = $db->prepare("UPDATE offers SET status = ? WHERE id = ?");
+        $stmtUpdate->execute([$newStatus, $offerId]);
+      }
       
       // Notify student
       createUserNotification(
@@ -422,6 +431,8 @@ try {
   <link rel="stylesheet" href="css/design-system.css">
   <link rel="stylesheet" href="css/dashboard.css">
   
+  
+  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -437,10 +448,7 @@ try {
       offers: <?php echo json_encode($offers); ?>,
       role: '<?php echo $role; ?>',
       userId: <?php echo $userId; ?>,
-      translations: <?php 
-        $allTrans = require __DIR__ . '/config/lang.php';
-        echo json_encode($allTrans[$_SESSION['language'] ?? 'en'] ?? []); 
-      ?>,
+      translations: [],
       csrfToken: '<?php echo getCsrfToken(); ?>'
     };
   </script>
@@ -511,6 +519,13 @@ try {
           <div class="nav-item-left">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             <span class="nav-label">Interviews</span>
+          </div>
+        </div>
+
+        <div class="nav-item" data-target="aptitude" role="link" aria-label="Aptitude Tests">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/></svg>
+            <span class="nav-label">Aptitude Tests</span>
           </div>
         </div>
 
@@ -3523,6 +3538,18 @@ try {
           </div>
         </div>
 
+        <!-- ==================== APTITUDE TESTS STUDENT VIEW ==================== -->
+        <div class="page-view" id="aptitude">
+          <div class="card" style="margin-bottom: var(--space-3);">
+            <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">Assigned Aptitude & Online Evaluations</h3>
+            <p style="color: var(--text-secondary); font-size: 13px;">Take assigned online tests, view instant automated evaluation scores, and track your campus rankings.</p>
+          </div>
+
+          <div id="student-aptitude-container">
+            <!-- Rendered dynamically by js/app.js -->
+          </div>
+        </div>
+
         <!-- ==================== NOTIFICATIONS VIEW ==================== -->
         <div class="page-view" id="notifications">
           <div class="card" style="margin-bottom: var(--space-3);">
@@ -3990,6 +4017,67 @@ try {
       }
     });
   </script>
+
+    <!-- --- ONLINE APTITUDE TEST TAKING MODAL OVERLAY --- -->
+    <div class="modal-overlay" id="modal-take-aptitude-test" style="display:none; align-items:center; justify-content:center; z-index:1100; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(15,23,42,0.85); backdrop-filter:blur(4px);">
+      <div class="modal-card" style="max-width:900px; width:95%; height:90vh; border-radius:var(--radius-lg); background:var(--bg-card); display:flex; flex-direction:column; overflow:hidden; box-shadow:var(--shadow-lg);">
+        
+        <!-- Header with Live Timer -->
+        <div style="padding:16px 24px; background:var(--primary); color:#FFFFFF; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 id="test-runner-title" style="font-size:18px; font-weight:700; margin:0; color:#FFFFFF;">Online Aptitude Test</h3>
+            <span style="font-size:12px; opacity:0.9;" id="test-runner-meta">Duration: 30 Mins</span>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:16px;">
+            <div style="background:rgba(255,255,255,0.2); padding:6px 16px; border-radius:20px; font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px;">
+              ⏱ Remaining Time: <span id="test-live-timer" style="font-size:16px; color:#FDE047;">30:00</span>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="confirmSubmitTest()">Finish & Submit Test</button>
+          </div>
+        </div>
+
+        <!-- Test Body Layout (Question View + Navigation Palette) -->
+        <div style="display:flex; flex:1; overflow:hidden;">
+          
+          <!-- Question Content Space -->
+          <div style="flex:1; padding:24px; overflow-y:auto; display:flex; flex-direction:column; justify-content:space-between;">
+            <div id="test-question-container">
+              <!-- Rendered dynamically via js/app.js -->
+            </div>
+
+            <!-- Bottom Question Controls -->
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:16px; margin-top:20px;">
+              <button class="btn btn-secondary btn-sm" id="btn-prev-question" onclick="navigateTestQuestion(-1)">← Previous</button>
+              <span style="font-size:12px; font-weight:600; color:var(--text-secondary);" id="question-progress-indicator">Question 1 of 10</span>
+              <button class="btn btn-primary btn-sm" id="btn-next-question" onclick="navigateTestQuestion(1)">Next →</button>
+            </div>
+          </div>
+
+          <!-- Question Palette Sidebar -->
+          <div style="width:240px; border-left:1px solid var(--border-color); padding:16px; background:var(--bg-card); display:flex; flex-direction:column;">
+            <h4 style="font-size:13px; font-weight:700; margin-bottom:12px;">Question Navigation</h4>
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; overflow-y:auto; flex:1;" id="test-question-palette">
+              <!-- Question buttons rendered dynamically -->
+            </div>
+
+            <div style="margin-top:16px; font-size:11px; color:var(--text-secondary); display:flex; flex-direction:column; gap:6px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="width:12px; height:12px; border-radius:50%; background:#10B981; display:inline-block;"></span> Answered
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="width:12px; height:12px; border-radius:50%; background:var(--border-color); display:inline-block;"></span> Unanswered
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="width:12px; height:12px; border-radius:50%; background:var(--primary); display:inline-block;"></span> Current Question
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
 
   <!-- Load client app logic -->
   <script src="js/app.js"></script>

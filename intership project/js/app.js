@@ -83,6 +83,8 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           renderCalendar();
         }
+      } else if (viewId === "aptitude") {
+        studentAptitudeRender();
       } else if (viewId === "dashboard") {
         refreshCharts();
       } else if (viewId === "notifications") {
@@ -2292,6 +2294,345 @@ Date generated: ${new Date().toLocaleDateString()}
         });
       });
     }
+  }
+
+  /* --- STUDENT ONLINE APTITUDE TEST MODULE --- */
+  window.studentAssignedTests = [];
+  window.currentTestState = {
+    assignmentId: null,
+    title: '',
+    durationMinutes: 30,
+    questions: [],
+    currentIndex: 0,
+    userAnswers: {},
+    timerInterval: null,
+    secondsLeft: 0
+  };
+
+  window.studentAptitudeRender = function() {
+    fetch('api/actions.php?action=get_student_tests')
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          window.studentAssignedTests = r.tests || [];
+          renderStudentAptitudeList(window.studentAssignedTests);
+        }
+      });
+  };
+
+  function renderStudentAptitudeList(tests) {
+    const container = document.getElementById('student-aptitude-container');
+    if (!container) return;
+
+    if (tests.length === 0) {
+      container.innerHTML = `
+        <div class="card" style="padding:48px; text-align:center;">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin:0 auto 12px auto; display:block;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/></svg>
+          <h4 style="font-size:16px; font-weight:700;">No Aptitude Tests Assigned</h4>
+          <p style="font-size:13px; color:var(--text-secondary); margin-top:4px;">You have no pending or scheduled aptitude tests right now. Test invitations from recruiters will appear here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="grid-12">
+        ${tests.map(t => {
+          const isEvaluated = t.assignment_status === 'Evaluated';
+          const isPassed = parseFloat(t.score || 0) >= parseFloat(t.pass_marks || 40);
+          
+          let statusBadge = '<span class="badge badge-primary">Assigned</span>';
+          if (isEvaluated) {
+            statusBadge = isPassed 
+              ? '<span class="badge badge-success" style="font-weight:700;">PASSED</span>' 
+              : '<span class="badge badge-danger" style="font-weight:700;">FAILED</span>';
+          } else if (t.assignment_status === 'In Progress') {
+            statusBadge = '<span class="badge badge-warning">In Progress</span>';
+          }
+
+          return `
+            <div class="col-6 col-lg-12">
+              <div class="card" style="padding:20px; display:flex; flex-direction:column; justify-content:space-between; height:100%;">
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                    <span class="badge badge-secondary">${t.company_name}</span>
+                    ${statusBadge}
+                  </div>
+                  <h4 style="font-size:16px; font-weight:700; color:var(--text-primary); margin-bottom:6px;">${t.title}</h4>
+                  <p style="font-size:12px; color:var(--text-secondary); margin-bottom:16px; line-height:1.4;">${t.description || 'General Quantitative & Analytical aptitude screening.'}</p>
+                  
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px; background:var(--bg-card); padding:10px; border-radius:8px; margin-bottom:16px; border:1px solid var(--border-color);">
+                    <div>Duration: <strong>${t.duration_minutes} Mins</strong></div>
+                    <div>Pass Criteria: <strong style="color:#10B981;">${t.pass_marks} Marks</strong></div>
+                    <div>Total Marks: <strong>${t.total_marks}</strong></div>
+                    <div>Date: <strong>${t.scheduled_date || 'Anytime'}</strong></div>
+                  </div>
+                </div>
+
+                <div>
+                  ${isEvaluated ? `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16,185,129,0.08); padding:12px; border-radius:8px; border:1px solid rgba(16,185,129,0.2);">
+                      <div>
+                        <span style="font-size:11px; color:var(--text-secondary); display:block;">Your Final Score</span>
+                        <strong style="font-size:18px; color:var(--primary);">${t.score} / ${t.total_marks}</strong>
+                      </div>
+                      <div style="text-align:right;">
+                        <span style="font-size:11px; color:var(--text-secondary); display:block;">Leaderboard Rank</span>
+                        <strong style="font-size:16px; color:#F59E0B;">#${t.rank || '-'}</strong>
+                      </div>
+                    </div>
+                  ` : `
+                    <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="startStudentAptitudeTest(${t.assignment_id})">
+                      ⚡ Start Online Test
+                    </button>
+                  `}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  window.startStudentAptitudeTest = function(assignmentId) {
+    Swal.fire({
+      title: 'Start Aptitude Test?',
+      text: 'The countdown timer will begin immediately upon opening the test window. Make sure you have a stable internet connection.',
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonColor: '#2563EB',
+      confirmButtonText: 'Start Test Now'
+    }).then(res => {
+      if (res.isConfirmed) {
+        Swal.fire({ title: 'Loading Test Questions...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        const f = new FormData();
+        f.append('action', 'start_aptitude_test');
+        f.append('assignment_id', assignmentId);
+
+        fetch('api/actions.php', { method: 'POST', body: f })
+          .then(r => r.json())
+          .then(r => {
+            Swal.close();
+            if (r.status === 'success') {
+              window.currentTestState = {
+                assignmentId: assignmentId,
+                title: r.title,
+                durationMinutes: r.duration_minutes,
+                questions: r.questions || [],
+                currentIndex: 0,
+                userAnswers: {},
+                secondsLeft: (r.duration_minutes || 30) * 60,
+                timerInterval: null
+              };
+
+              document.getElementById('test-runner-title').innerText = r.title;
+              document.getElementById('test-runner-meta').innerText = `Duration: ${r.duration_minutes} Mins | Total Questions: ${r.questions.length}`;
+
+              // Show Modal
+              document.getElementById('modal-take-aptitude-test').style.display = 'flex';
+              
+              startTestTimer();
+              renderCurrentQuestion();
+              renderQuestionPalette();
+            } else {
+              Swal.fire({ title: 'Cannot Start Test', text: r.message, icon: 'error' });
+            }
+          });
+      }
+    });
+  };
+
+  function startTestTimer() {
+    stopTestTimer();
+    updateTimerDisplay();
+
+    window.currentTestState.timerInterval = setInterval(() => {
+      window.currentTestState.secondsLeft--;
+      updateTimerDisplay();
+
+      if (window.currentTestState.secondsLeft <= 0) {
+        stopTestTimer();
+        Swal.fire({
+          title: 'Time Expired!',
+          text: 'Your test duration has ended. Submitting your current answers automatically now.',
+          icon: 'warning',
+          timer: 2000,
+          showConfirmButton: false
+        }).then(() => {
+          submitTestAnswers();
+        });
+      }
+    }, 1000);
+  }
+
+  function stopTestTimer() {
+    if (window.currentTestState.timerInterval) {
+      clearInterval(window.currentTestState.timerInterval);
+      window.currentTestState.timerInterval = null;
+    }
+  }
+
+  function updateTimerDisplay() {
+    const el = document.getElementById('test-live-timer');
+    if (!el) return;
+    const secs = Math.max(0, window.currentTestState.secondsLeft);
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    el.innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  function renderCurrentQuestion() {
+    const state = window.currentTestState;
+    const q = state.questions[state.currentIndex];
+    const container = document.getElementById('test-question-container');
+    const indicator = document.getElementById('question-progress-indicator');
+    
+    if (!q || !container) return;
+
+    if (indicator) indicator.innerText = `Question ${state.currentIndex + 1} of ${state.questions.length}`;
+
+    const selected = state.userAnswers[q.id] || '';
+
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <span class="badge badge-primary" style="font-size:12px;">Question #${state.currentIndex + 1}</span>
+        <span style="font-size:13px; font-weight:700; color:var(--primary);">${q.marks} Mark(s)</span>
+      </div>
+
+      <h3 style="font-size:17px; font-weight:700; color:var(--text-primary); line-height:1.5; margin-bottom:24px;">
+        ${q.question_text}
+      </h3>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        ${['A', 'B', 'C', 'D'].map(optKey => {
+          const optText = q[`option_${optKey.toLowerCase()}`];
+          const isChecked = selected === optKey;
+          return `
+            <label style="display:flex; align-items:center; gap:12px; padding:14px 18px; border:2px solid ${isChecked ? 'var(--primary)' : 'var(--border-color)'}; background:${isChecked ? 'rgba(37,99,235,0.06)' : 'var(--bg-card)'}; border-radius:10px; cursor:pointer; transition:all 0.2s ease;">
+              <input type="radio" name="opt_choice" value="${optKey}" ${isChecked ? 'checked' : ''} onchange="selectTestOption(${q.id}, '${optKey}')" style="width:18px; height:18px; accent-color:var(--primary);">
+              <span style="font-weight:700; width:24px; color:var(--primary); font-size:15px;">${optKey}.</span>
+              <span style="font-size:14px; color:var(--text-primary); flex:1;">${optText}</span>
+            </label>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function renderQuestionPalette() {
+    const state = window.currentTestState;
+    const container = document.getElementById('test-question-palette');
+    if (!container) return;
+
+    container.innerHTML = state.questions.map((q, idx) => {
+      const isCurrent = idx === state.currentIndex;
+      const isAnswered = !!state.userAnswers[q.id];
+
+      let bg = 'var(--border-color)';
+      let color = 'var(--text-secondary)';
+
+      if (isAnswered) {
+        bg = '#10B981';
+        color = '#FFFFFF';
+      }
+      if (isCurrent) {
+        bg = 'var(--primary)';
+        color = '#FFFFFF';
+      }
+
+      return `
+        <button onclick="jumpToTestQuestion(${idx})" style="padding:10px 0; border:none; border-radius:6px; background:${bg}; color:${color}; font-weight:700; font-size:13px; cursor:pointer;">
+          ${idx + 1}
+        </button>
+      `;
+    }).join('');
+  }
+
+  window.selectTestOption = function(qId, optionKey) {
+    window.currentTestState.userAnswers[qId] = optionKey;
+    renderCurrentQuestion();
+    renderQuestionPalette();
+  };
+
+  window.navigateTestQuestion = function(step) {
+    const state = window.currentTestState;
+    const newIdx = state.currentIndex + step;
+    if (newIdx >= 0 && newIdx < state.questions.length) {
+      state.currentIndex = newIdx;
+      renderCurrentQuestion();
+      renderQuestionPalette();
+    }
+  };
+
+  window.jumpToTestQuestion = function(idx) {
+    window.currentTestState.currentIndex = idx;
+    renderCurrentQuestion();
+    renderQuestionPalette();
+  };
+
+  window.confirmSubmitTest = function() {
+    const answeredCount = Object.keys(window.currentTestState.userAnswers).length;
+    const totalCount = window.currentTestState.questions.length;
+
+    Swal.fire({
+      title: 'Submit Aptitude Test?',
+      text: `You have answered ${answeredCount} of ${totalCount} questions. Once submitted, your score will be calculated automatically.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10B981',
+      confirmButtonText: 'Yes, Submit Answers'
+    }).then(res => {
+      if (res.isConfirmed) {
+        submitTestAnswers();
+      }
+    });
+  };
+
+  function submitTestAnswers() {
+    stopTestTimer();
+    Swal.fire({ title: 'Evaluating Test Answers...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    const state = window.currentTestState;
+    const f = new FormData();
+    f.append('action', 'submit_aptitude_test');
+    f.append('assignment_id', state.assignmentId);
+    f.append('answers', JSON.stringify(state.userAnswers));
+
+    fetch('api/actions.php', { method: 'POST', body: f })
+      .then(r => r.json())
+      .then(r => {
+        document.getElementById('modal-take-aptitude-test').style.display = 'none';
+        Swal.close();
+
+        if (r.status === 'success') {
+          const passIcon = r.is_passed ? 'success' : 'info';
+          const passText = r.is_passed ? 'CONGRATULATIONS! YOU PASSED' : 'TEST COMPLETED';
+
+          Swal.fire({
+            title: passText,
+            html: `
+              <div style="padding:10px 0; text-align:center;">
+                <div style="font-size:32px; font-weight:800; color:var(--primary); margin-bottom:8px;">${r.score} / ${r.total_marks}</div>
+                <div style="font-size:14px; margin-bottom:16px;">Pass Threshold: <strong>${r.pass_marks} Marks</strong></div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; font-size:12px; background:rgba(0,0,0,0.04); padding:12px; border-radius:8px;">
+                  <div><span style="color:#10B981; font-weight:700;">${r.correct_answers}</span> Correct</div>
+                  <div><span style="color:#EF4444; font-weight:700;">${r.wrong_answers}</span> Wrong</div>
+                  <div><span>${r.unanswered}</span> Unanswered</div>
+                </div>
+                <div style="margin-top:16px; font-size:14px; font-weight:700; color:#F59E0B;">Campus Rank: #${r.rank}</div>
+              </div>
+            `,
+            icon: passIcon,
+            confirmButtonText: 'Great!'
+          });
+
+          studentAptitudeRender();
+        } else {
+          Swal.fire({ title: 'Submission Error', text: r.message, icon: 'error' });
+        }
+      });
   }
 
   // Start polling

@@ -20,7 +20,7 @@ require_once __DIR__ . '/../config/db.php';
 <body class="auth-body">
 
   <div class="auth-wrapper wide">
-    <div class="auth-card">
+    <div class="auth-card" id="main-auth-card">
       
       <div class="auth-logo-section">
         <div class="auth-brand-name">
@@ -192,9 +192,76 @@ require_once __DIR__ . '/../config/db.php';
       .then(res => res.json())
       .then(res => {
         if (res.status === 'success') {
-          form.style.display = "none";
-          successMsg.innerText = res.message;
-          successBanner.style.display = "flex";
+          const mainCard = document.getElementById("main-auth-card");
+          mainCard.innerHTML = `
+            <style>
+              @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(15px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              @keyframes drawCheck {
+                to { stroke-dashoffset: 0; }
+              }
+              .checkmark-path {
+                stroke-dasharray: 50;
+                stroke-dashoffset: 50;
+                animation: drawCheck 0.6s ease-in-out 0.3s forwards;
+              }
+              .success-checkmark-wrapper {
+                animation: pulseShadow 2s infinite alternate;
+              }
+              @keyframes pulseShadow {
+                0% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.15); }
+                100% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.4); }
+              }
+            </style>
+            <div class="success-card-content" style="animation: fadeIn 0.6s ease-out forwards; padding: var(--space-2) 0; text-align: center;">
+              <div class="success-checkmark-wrapper" style="margin: 0 auto var(--space-3) auto; width: 80px; height: 80px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); border: 2px solid var(--color-success); display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);">
+                <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="var(--color-success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12" class="checkmark-path"></polyline>
+                </svg>
+              </div>
+
+              <div class="auth-brand-name" style="justify-content: center; margin-bottom: var(--space-2); font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+                CampusRecruit
+              </div>
+
+              <h2 class="auth-title" style="margin-bottom: var(--space-15); font-size: 24px; font-weight: 700; color: var(--text-primary);">Registration Successful</h2>
+              
+              <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; max-width: 460px; margin: 0 auto var(--space-3) auto;">
+                <p style="margin-bottom: 12px;">Your company profile has been submitted successfully.</p>
+                <p style="margin-bottom: 12px;">Your account is currently under verification by the Placement Cell.</p>
+                <p style="margin-bottom: 0;">Once approved, you will receive an email notification and can log in to access the recruiter dashboard.</p>
+              </div>
+
+              <p id="countdown-text" style="font-size: 13px; color: var(--text-muted); margin-bottom: var(--space-3); font-weight: 500;">
+                Redirecting to Login in <span id="countdown-seconds" style="font-weight: 700; color: var(--primary);">8</span>...
+              </p>
+
+              <div style="display: flex; flex-direction: column; gap: var(--space-15); max-width: 320px; margin: 0 auto;">
+                <a href="login.php" class="btn btn-primary" style="width: 100%; font-weight: 700; text-decoration: none; display: inline-block; padding: 12px; border-radius: var(--radius-md); text-align: center;">
+                  Go to Company Login
+                </a>
+                <a href="../index.php" class="btn btn-ghost" style="width: 100%; font-weight: 600; text-decoration: none; display: inline-block; padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); color: var(--text-secondary); text-align: center; background: transparent;">
+                  Return to Home
+                </a>
+              </div>
+            </div>
+          `;
+
+          let seconds = 8;
+          const counterSpan = document.getElementById("countdown-seconds");
+          const interval = setInterval(() => {
+            seconds--;
+            if (counterSpan) {
+              counterSpan.innerText = seconds;
+            }
+            if (seconds <= 0) {
+              clearInterval(interval);
+              window.location.href = "login.php";
+            }
+          }, 1000);
         } else {
           errorMsg.innerText = res.message;
           errorBanner.classList.add("active");

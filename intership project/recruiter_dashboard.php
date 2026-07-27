@@ -85,7 +85,7 @@ if (!$lastLoginTime) {
 $stmtDrives = $db->prepare("
   SELECT d.id, d.company_id, d.job_role as jobRole, d.eligibility_cgpa as eligibilityCGPA,
          d.package_lpa as packageLPA, d.drive_date as date, d.status, d.skills_required,
-         d.registration_deadline, d.departments, c.company_name as companyName,
+         d.registration_deadline, d.departments, c.company_name as companyName, c.company_logo as companyLogo,
          (SELECT COUNT(*) FROM applications a WHERE a.drive_id = d.id) as registrationCount,
          (SELECT COUNT(*) FROM applications a WHERE a.drive_id = d.id AND a.status = 'Selected') as shortlistedCount,
          (SELECT COUNT(*) FROM interviews i JOIN applications a ON i.application_id = a.id WHERE a.drive_id = d.id) as interviewCount
@@ -240,6 +240,15 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 <!DOCTYPE html>
 <html lang="en" data-theme="<?php echo htmlspecialchars($userSettings['theme'] ?? 'light'); ?>">
 <head>
+  <script>
+    // Overwrite fetch globally to ensure SameSite credentials are sent
+    const originalFetch = window.fetch;
+    window.fetch = function (url, options) {
+      options = options || {};
+      options.credentials = 'same-origin';
+      return originalFetch(url, options);
+    };
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRMS Recruiter Dashboard Workspace</title>
@@ -258,6 +267,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
     window.crmsTranslations = {};
     window.currentLanguage = "en";
     window.campusRecruitmentData = {
+      baseUrl: '<?php echo BASE_URL; ?>',
       students: <?php echo json_encode($allStudents); ?>,
       drives: <?php echo json_encode($recruiterDrives); ?>,
       applications: <?php echo json_encode($recruiterApps); ?>,
@@ -281,7 +291,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
         <div class="logo-container">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
         </div>
-        <span class="logo-text">CampusRecruit</span>
+        <span class="logo-text">Campus Reqruitment</span>
       </div>
 
       <nav class="sidebar-navigation">
@@ -355,10 +365,6 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
           <div class="nav-item-link" data-target="settings" data-tooltip="Settings">
             <i class="icon" data-lucide="settings"></i>
             <span class="nav-item-label">Settings</span>
-          </div>
-          <div class="nav-item-link" data-target="footer" data-tooltip="Footer">
-            <i class="icon" data-lucide="layout-template"></i>
-            <span class="nav-item-label">Footer</span>
           </div>
         </div>
       </nav>
@@ -2192,95 +2198,26 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
           <!-- Sub-Tab Header for Settings -->
           <div class="dashboard-card" style="margin-bottom:20px; padding:12px 16px;">
             <div class="sub-tab-nav-bar" role="tablist" style="display:flex; gap:10px; overflow-x:auto;">
-              <button type="button" class="sub-tab-btn active" onclick="switchSettingsTab('set-ui')"><i data-lucide="palette" style="width:14px; height:14px; margin-right:4px;"></i> 1. UI & Theme</button>
-              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-automation')"><i data-lucide="zap" style="width:14px; height:14px; margin-right:4px;"></i> 2. Campaign Automation</button>
-              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-notifications')"><i data-lucide="bell" style="width:14px; height:14px; margin-right:4px;"></i> 3. Notifications & Sound</button>
-              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-security')"><i data-lucide="shield" style="width:14px; height:14px; margin-right:4px;"></i> 4. Security & Compliance</button>
-              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-api')"><i data-lucide="code" style="width:14px; height:14px; margin-right:4px;"></i> 5. API Keys & Webhooks</button>
-              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-maintenance')"><i data-lucide="cpu" style="width:14px; height:14px; margin-right:4px;"></i> 6. System Health</button>
+              <button type="button" class="sub-tab-btn active" onclick="switchSettingsTab('set-automation')"><i data-lucide="zap" style="width:14px; height:14px; margin-right:4px;"></i> 1. Campaign Automation</button>
+              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-notifications')"><i data-lucide="bell" style="width:14px; height:14px; margin-right:4px;"></i> 2. Notifications & Sound</button>
+              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-security')"><i data-lucide="shield" style="width:14px; height:14px; margin-right:4px;"></i> 3. Security & Compliance</button>
+              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-api')"><i data-lucide="code" style="width:14px; height:14px; margin-right:4px;"></i> 4. API Keys & Webhooks</button>
+              <button type="button" class="sub-tab-btn" onclick="switchSettingsTab('set-maintenance')"><i data-lucide="cpu" style="width:14px; height:14px; margin-right:4px;"></i> 5. System Health</button>
             </div>
           </div>
 
           <form id="recruiter-settings-form" onsubmit="submitRecruiterSettingsForm(event)">
+            <input type="hidden" name="theme" value="<?php echo htmlspecialchars($userSettings['theme'] ?? 'light'); ?>">
+            <input type="hidden" name="timezone" value="<?php echo htmlspecialchars($userSettings['timezone'] ?? 'Asia/Kolkata'); ?>">
+            <input type="hidden" name="date_format" value="<?php echo htmlspecialchars($userSettings['date_format'] ?? 'Y-m-d'); ?>">
+            <input type="hidden" name="accent_color" value="<?php echo htmlspecialchars($extraConfig['accent_color'] ?? 'blue'); ?>">
+            <input type="hidden" name="default_tab" value="<?php echo htmlspecialchars($extraConfig['default_tab'] ?? 'dashboard'); ?>">
+            <?php if (!empty($extraConfig['compact_mode'])): ?>
+              <input type="hidden" name="compact_mode" value="1">
+            <?php endif; ?>
             
-            <!-- SECTION 1: UI & Theme Preferences -->
-            <div class="settings-sub-panel active" id="set-ui">
-              <div class="grid-container">
-                <div class="dashboard-card col-6 col-lg-12">
-                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
-                    <i data-lucide="sliders" style="width:18px; height:18px; color:var(--primary);"></i>
-                    Visual Theme & Accent Customization
-                  </h3>
-                  
-                  <div class="form-input-wrapper">
-                    <label class="form-input-label">Workspace Theme Mode *</label>
-                    <select class="input-field-custom" name="theme" id="settings-theme-select">
-                      <option value="light" <?php echo ($userSettings['theme'] ?? 'light') === 'light' ? 'selected' : ''; ?>>Light Mode Default</option>
-                      <option value="dark" <?php echo ($userSettings['theme'] ?? '') === 'dark' ? 'selected' : ''; ?>>Dark Mode Override</option>
-                    </select>
-                  </div>
-
-                  <div class="form-input-wrapper">
-                    <label class="form-input-label">Primary Brand Accent Color</label>
-                    <select class="input-field-custom" name="accent_color">
-                      <option value="blue" <?php echo ($extraConfig['accent_color'] ?? 'blue') === 'blue' ? 'selected' : ''; ?>>Corporate Royal Blue (#2563EB)</option>
-                      <option value="indigo" <?php echo ($extraConfig['accent_color'] ?? '') === 'indigo' ? 'selected' : ''; ?>>Deep Indigo (#4F46E5)</option>
-                      <option value="emerald" <?php echo ($extraConfig['accent_color'] ?? '') === 'emerald' ? 'selected' : ''; ?>>Emerald Green (#059669)</option>
-                      <option value="purple" <?php echo ($extraConfig['accent_color'] ?? '') === 'purple' ? 'selected' : ''; ?>>Violet Purple (#7C3AED)</option>
-                    </select>
-                  </div>
-
-                  <div class="form-input-wrapper">
-                    <label class="form-input-label" style="margin-bottom:8px;">Grid Layout Density</label>
-                    <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600;">
-                      <input type="checkbox" name="compact_mode" value="1" id="settings-compact-mode" style="width:16px; height:16px;" <?php echo !empty($extraConfig['compact_mode']) ? 'checked' : ''; ?>>
-                      <label for="settings-compact-mode">Enable Compact Data Table & Card Density</label>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="dashboard-card col-6 col-lg-12">
-                  <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
-                    <i data-lucide="globe" style="width:18px; height:18px; color:var(--primary);"></i>
-                    Regional & Startup Preferences
-                  </h3>
-
-                  <div class="form-input-wrapper">
-                    <label class="form-input-label">Default Landing View on Login</label>
-                    <select class="input-field-custom" name="default_tab">
-                      <option value="dashboard" <?php echo ($extraConfig['default_tab'] ?? 'dashboard') === 'dashboard' ? 'selected' : ''; ?>>Main Executive Dashboard</option>
-                      <option value="drives" <?php echo ($extraConfig['default_tab'] ?? '') === 'drives' ? 'selected' : ''; ?>>Placement Drives Directory</option>
-                      <option value="applications" <?php echo ($extraConfig['default_tab'] ?? '') === 'applications' ? 'selected' : ''; ?>>Candidate ATS Applications</option>
-                      <option value="pipeline" <?php echo ($extraConfig['default_tab'] ?? '') === 'pipeline' ? 'selected' : ''; ?>>Selection Pipeline Kanban</option>
-                      <option value="interviews" <?php echo ($extraConfig['default_tab'] ?? '') === 'interviews' ? 'selected' : ''; ?>>Interview Schedule Calendar</option>
-                      <option value="aptitude" <?php echo ($extraConfig['default_tab'] ?? '') === 'aptitude' ? 'selected' : ''; ?>>Aptitude Test Bank</option>
-                    </select>
-                  </div>
-
-                  <div class="form-input-wrapper">
-                    <label class="form-input-label">Workspace Timezone</label>
-                    <select class="input-field-custom" name="timezone">
-                      <option value="Asia/Kolkata" <?php echo ($userSettings['timezone'] ?? 'Asia/Kolkata') === 'Asia/Kolkata' ? 'selected' : ''; ?>>Asia/Kolkata (IST +05:30)</option>
-                      <option value="UTC" <?php echo ($userSettings['timezone'] ?? '') === 'UTC' ? 'selected' : ''; ?>>UTC (Coordinated Universal Time)</option>
-                      <option value="America/New_York" <?php echo ($userSettings['timezone'] ?? '') === 'America/New_York' ? 'selected' : ''; ?>>America/New_York (EST -05:00)</option>
-                      <option value="Europe/London" <?php echo ($userSettings['timezone'] ?? '') === 'Europe/London' ? 'selected' : ''; ?>>Europe/London (GMT +00:00)</option>
-                    </select>
-                  </div>
-
-                  <div class="form-input-wrapper">
-                    <label class="form-input-label">Date Display Format</label>
-                    <select class="input-field-custom" name="date_format">
-                      <option value="Y-m-d" <?php echo ($userSettings['date_format'] ?? 'Y-m-d') === 'Y-m-d' ? 'selected' : ''; ?>>YYYY-MM-DD (2026-07-25)</option>
-                      <option value="d/m/Y" <?php echo ($userSettings['date_format'] ?? '') === 'd/m/Y' ? 'selected' : ''; ?>>DD/MM/YYYY (25/07/2026)</option>
-                      <option value="m/d/Y" <?php echo ($userSettings['date_format'] ?? '') === 'm/d/Y' ? 'selected' : ''; ?>>MM/DD/YYYY (07/25/2026)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <!-- SECTION 2: Campaign Automation Rules -->
-            <div class="settings-sub-panel" id="set-automation" style="display:none;">
+            <div class="settings-sub-panel active" id="set-automation">
               <div class="grid-container">
                 <div class="dashboard-card col-6 col-lg-12">
                   <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
@@ -2557,78 +2494,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
           </form>
         </div>
 
-        <!-- ==================== FOOTER VIEW SECTION ==================== -->
-        <div class="page-view-section" id="footer">
-          <div class="dashboard-card" style="margin-bottom:24px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-              <div>
-                <h2 style="font-size:18px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px;">
-                  <i data-lucide="layout-template" style="width:20px; height:20px; color:var(--primary);"></i>
-                  Application Footer Section
-                </h2>
-                <p style="font-size:13px; color:var(--text-secondary); margin:0;">Standardized corporate footer layout, legal policy links, and social channel integration.</p>
-              </div>
-              <span class="badge badge-success" style="font-size:11px;">Status: Active</span>
-            </div>
-          </div>
 
-          <!-- Live Footer Display Card matching user screenshot -->
-          <div class="dashboard-card" style="padding:0; overflow:hidden; border-radius:12px; margin-bottom:24px;">
-            <div style="padding:16px 20px; background:#F8FAFC; border-bottom:1px solid var(--border-color); font-size:13px; font-weight:700; color:var(--text-primary);">
-              Active Footer Layout Preview
-            </div>
-            
-            <div class="custom-dark-footer-bar">
-              <div class="footer-left-content">
-                <span>Copyright 2023-24</span>
-                <span class="footer-pipe-divider">|</span>
-                <span>All rights reserved</span>
-                <span class="footer-pipe-divider">|</span>
-                <a href="javascript:void(0)" onclick="openPrivacyPolicyModal()" class="dark-footer-link">Privacy Policy</a>
-                <span class="footer-pipe-divider">|</span>
-                <a href="javascript:void(0)" onclick="openTermsModal()" class="dark-footer-link">Terms of Service</a>
-                <span class="footer-pipe-divider">|</span>
-                <a href="javascript:void(0)" onclick="openRefundPolicyModal()" class="dark-footer-link">Refund Policy</a>
-              </div>
-              
-              <div class="footer-right-socials">
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" class="dark-social-icon" title="Facebook" aria-label="Facebook">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                </a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="dark-social-icon" title="LinkedIn" aria-label="LinkedIn">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
-                </a>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" class="dark-social-icon" title="Twitter / X" aria-label="Twitter">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <!-- Quick Interactive Legal Policy Cards -->
-          <div class="grid-container">
-            <div class="dashboard-card col-4 col-md-12 lift" onclick="openPrivacyPolicyModal()" style="cursor:pointer; padding:20px;">
-              <h4 style="font-size:15px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
-                <i data-lucide="shield" style="width:18px; height:18px; color:var(--primary);"></i> Privacy Policy
-              </h4>
-              <p style="font-size:12px; color:var(--text-secondary); margin:0;">View data confidentiality, encryption, and candidate privacy parameters.</p>
-            </div>
-
-            <div class="dashboard-card col-4 col-md-12 lift" onclick="openTermsModal()" style="cursor:pointer; padding:20px;">
-              <h4 style="font-size:15px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
-                <i data-lucide="file-text" style="width:18px; height:18px; color:var(--primary);"></i> Terms of Service
-              </h4>
-              <p style="font-size:12px; color:var(--text-secondary); margin:0;">Review recruitment guidelines, single-offer rules, and campaign terms.</p>
-            </div>
-
-            <div class="dashboard-card col-4 col-md-12 lift" onclick="openRefundPolicyModal()" style="cursor:pointer; padding:20px;">
-              <h4 style="font-size:15px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
-                <i data-lucide="credit-card" style="width:18px; height:18px; color:var(--primary);"></i> Refund Policy
-              </h4>
-              <p style="font-size:12px; color:var(--text-secondary); margin:0;">Information regarding corporate drive enrollment fee terms & refunds.</p>
-            </div>
-          </div>
-        </div>
 
 
 

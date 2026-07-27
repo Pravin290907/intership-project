@@ -61,6 +61,25 @@ try {
           "registration_status",
           "high"
         );
+
+        if ($target['role'] === 'student') {
+          // Auto-assign any active general/global tests to this newly approved student
+          $stmtGenTests = $db->query("SELECT id, title, duration_minutes, (SELECT name FROM users WHERE id = company_id) as company_name FROM aptitude_tests WHERE (drive_id IS NULL OR drive_id = 0) AND status IN ('Scheduled', 'Active')");
+          $genTests = $stmtGenTests->fetchAll();
+          foreach ($genTests as $t) {
+            $db->prepare("INSERT INTO aptitude_assignments (test_id, student_id, application_id, status) VALUES (?, ?, NULL, 'Assigned') ON DUPLICATE KEY UPDATE status = VALUES(status)")
+               ->execute([$t['id'], $targetUserId]);
+               
+            createUserNotification(
+              $targetUserId,
+              "Aptitude Test Scheduled",
+              "You have been assigned the Aptitude Test '{$t['title']}' by {$t['company_name']}. Duration: {$t['duration_minutes']} mins.",
+              "aptitude_test",
+              "high",
+              "aptitude"
+            );
+          }
+        }
       } else if ($newStatus === 'suspended') {
         createUserNotification(
           $targetUserId,
@@ -1019,6 +1038,104 @@ try {
       echo json_encode(['status' => 'success', 'message' => 'Offer letter deleted successfully']);
       break;
 
+    case 'get_student_offers':
+      if ($role !== 'student') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+      $stmtOff = $db->prepare("
+        SELECT o.id, o.application_id, o.salary_lpa as packageLPA, o.designation as role, o.joining_date as date, o.location, o.status,
+               o.offer_letter_path, c.company_name as companyName, c.company_logo as companyLogo
+        FROM offers o
+        JOIN applications a ON o.application_id = a.id
+        JOIN drives d ON a.drive_id = d.id
+        JOIN companies c ON d.company_id = c.user_id
+        WHERE a.student_id = ?
+        ORDER BY o.id DESC
+      ");
+      $stmtOff->execute([$_SESSION['user_id']]);
+      $offers = $stmtOff->fetchAll();
+      echo json_encode(['status' => 'success', 'offers' => $offers]);
+      break;
+
+    case 'respond_offer':
+      if ($role !== 'student') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+
+      $offerId = (int)($_POST['offer_id'] ?? 0);
+      $status = trim($_POST['status'] ?? ''); // 'Accepted' or 'Declined'
+
+      if (!$offerId || !in_array($status, ['Accepted', 'Declined'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Invalid offer response.']);
+        exit;
+      }
+
+      // Verify offer belongs to the logged in student
+      $stmtCheck = $db->prepare("
+        SELECT o.id, o.application_id, o.status as current_status, a.student_id, d.company_id, d.job_role, u.name as student_name
+        FROM offers o
+        JOIN applications a ON o.application_id = a.id
+        JOIN drives d ON a.drive_id = d.id
+        JOIN users u ON a.student_id = u.id
+        WHERE o.id = ? AND a.student_id = ?
+      ");
+      $stmtCheck->execute([$offerId, $_SESSION['user_id']]);
+      $offer = $stmtCheck->fetch();
+
+      if (!$offer) {
+        echo json_encode(['status' => 'error', 'message' => 'Offer letter not found.']);
+        exit;
+      }
+
+      if ($offer['current_status'] !== 'Released') {
+        echo json_encode(['status' => 'error', 'message' => 'This offer has already been responded to.']);
+        exit;
+      }
+
+      $db->beginTransaction();
+
+      // Update offer status
+      $stmtUpdate = $db->prepare("UPDATE offers SET status = ? WHERE id = ?");
+      $stmtUpdate->execute([$status, $offerId]);
+
+      if ($status === 'Declined') {
+        // Set application status to Rejected
+        $db->prepare("UPDATE applications SET status = 'Rejected' WHERE id = ?")->execute([$offer['application_id']]);
+        // Decrement hired count
+        $db->prepare("UPDATE companies SET students_hired = GREATEST(0, students_hired - 1) WHERE user_id = ?")->execute([$offer['company_id']]);
+
+        // Notify company
+        createUserNotification(
+          $offer['company_id'],
+          "Offer Letter Declined",
+          "Candidate {$offer['student_name']} has declined the offer letter for the role '{$offer['job_role']}'.",
+          "offer_status",
+          "high",
+          "offers"
+        );
+      } else {
+        // Set application status to Selected
+        $db->prepare("UPDATE applications SET status = 'Selected' WHERE id = ?")->execute([$offer['application_id']]);
+
+        // Notify company
+        createUserNotification(
+          $offer['company_id'],
+          "Offer Letter Accepted",
+          "Candidate {$offer['student_name']} has accepted the offer letter for the role '{$offer['job_role']}'.",
+          "offer_status",
+          "high",
+          "offers"
+        );
+      }
+
+      $db->commit();
+
+      logActivity("Student {$_SESSION['user_name']} marked offer ID $offerId as $status", "success");
+      echo json_encode(['status' => 'success', 'message' => "Offer successfully $status!"]);
+      break;
+
     case 'update_company_profile':
       if ($role !== 'company' && $role !== 'admin' && $role !== 'tpo') {
         echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
@@ -1428,6 +1545,7 @@ try {
       $testId = $db->lastInsertId();
 
       logActivity("Created Aptitude Test: $title (ID: $testId)", "success");
+      autoAssignAptitudeTest($db, $testId);
       echo json_encode(['status' => 'success', 'message' => 'Aptitude Test created successfully!', 'test_id' => $testId]);
       break;
 
@@ -1456,6 +1574,7 @@ try {
       $stmt->execute([$title, $description, $duration, $totalMarks, $passMarks, $status, $scheduledDate, $startTime, $endTime, $testId]);
 
       echo json_encode(['status' => 'success', 'message' => 'Aptitude Test details updated.']);
+      autoAssignAptitudeTest($db, $testId);
       break;
 
     case 'delete_aptitude_test':
@@ -1896,5 +2015,69 @@ try {
   error_log("API actions Exception: " . $e->getMessage() . "\n" . $e->getTraceAsString());
   echo json_encode(['status' => 'error', 'message' => 'An unexpected backend operation error occurred. Please try again later.']);
   exit;
+}
+
+function autoAssignAptitudeTest($db, $testId) {
+  // Fetch test info
+  $stmtTest = $db->prepare("SELECT t.*, u.name as company_name FROM aptitude_tests t JOIN users u ON t.company_id = u.id WHERE t.id = ?");
+  $stmtTest->execute([$testId]);
+  $test = $stmtTest->fetch();
+
+  if (!$test) {
+    return;
+  }
+
+  // Only assign if status is Scheduled or Active
+  if ($test['status'] === 'Draft') {
+    return;
+  }
+
+  $driveId = (int)($test['drive_id'] ?? 0);
+  $studentTargets = [];
+  if ($driveId > 0) {
+    // Fetch candidates who applied to this drive
+    $stmtApps = $db->prepare("SELECT student_id, id as app_id FROM applications WHERE drive_id = ? AND status NOT IN ('Rejected')");
+    $stmtApps->execute([$driveId]);
+    $studentTargets = $stmtApps->fetchAll();
+  } else {
+    // Assign to all approved active students
+    $stmtStus = $db->query("SELECT id as student_id, NULL as app_id FROM users WHERE role = 'student' AND status = 'approved'");
+    $studentTargets = $stmtStus->fetchAll();
+  }
+
+  if (empty($studentTargets)) {
+    return;
+  }
+
+  // Check who is already assigned
+  $stmtExisting = $db->prepare("SELECT student_id FROM aptitude_assignments WHERE test_id = ?");
+  $stmtExisting->execute([$testId]);
+  $existingStudents = $stmtExisting->fetchAll(PDO::FETCH_COLUMN);
+
+  $stmtAssign = $db->prepare("INSERT INTO aptitude_assignments (test_id, student_id, application_id, status) VALUES (?, ?, ?, 'Assigned') ON DUPLICATE KEY UPDATE status = VALUES(status)");
+
+  foreach ($studentTargets as $target) {
+    $studentId = $target['student_id'];
+    $appId = $target['app_id'];
+
+    $stmtAssign->execute([$testId, $studentId, $appId]);
+
+    if (!in_array($studentId, $existingStudents)) {
+      // Send notification only if they were not already assigned
+      createUserNotification(
+        $studentId,
+        "Aptitude Test Scheduled",
+        "You have been assigned the Aptitude Test '{$test['title']}' by {$test['company_name']}. Duration: {$test['duration_minutes']} mins.",
+        "aptitude_test",
+        "high",
+        "aptitude"
+      );
+
+      // Update application status to Aptitude if applicable
+      if (!empty($appId)) {
+        $db->prepare("UPDATE applications SET status = 'Aptitude' WHERE id = ? AND status = 'Applied'")->execute([$appId]);
+      }
+    }
+  }
 }
 ?>

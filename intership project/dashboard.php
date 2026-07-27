@@ -123,7 +123,7 @@ try {
     $drives = $db->query("
       SELECT d.id, d.company_id, d.job_role as jobRole, d.eligibility_cgpa as eligibilityCGPA,
              d.package_lpa as packageLPA, d.drive_date as date, d.status, d.skills_required,
-             d.registration_deadline, d.departments, c.company_name as companyName
+             d.registration_deadline, d.departments, c.company_name as companyName, c.company_logo as companyLogo
       FROM drives d
       JOIN companies c ON d.company_id = c.user_id
       ORDER BY d.id DESC
@@ -132,7 +132,7 @@ try {
     $stmtDrives = $db->prepare("
       SELECT d.id, d.company_id, d.job_role as jobRole, d.eligibility_cgpa as eligibilityCGPA,
              d.package_lpa as packageLPA, d.drive_date as date, d.status, d.skills_required,
-             d.registration_deadline, d.departments, c.company_name as companyName
+             d.registration_deadline, d.departments, c.company_name as companyName, c.company_logo as companyLogo
       FROM drives d
       JOIN companies c ON d.company_id = c.user_id
       WHERE d.company_id = ?
@@ -145,7 +145,7 @@ try {
   $applicationsQueryStr = "
     SELECT a.id, a.student_id as studentId, a.drive_id as driveId, a.applied_date, a.status,
            u.name as studentName, s.department, s.cgpa, d.job_role as role, c.company_name as companyName,
-           d.package_lpa as lpa, d.drive_date as driveDate
+           d.package_lpa as lpa, d.drive_date as driveDate, c.company_logo as companyLogo
     FROM applications a
     JOIN users u ON a.student_id = u.id
     JOIN students s ON u.id = s.user_id
@@ -173,8 +173,8 @@ try {
 
   // 5. Fetch Interviews
   $interviewsQueryStr = "
-    SELECT i.id, i.application_id, i.date, i.time, i.venue, i.interviewer, i.remarks, i.result, i.attendance,
-           u.name as studentName, s.department, d.job_role as role, c.company_name as companyName
+    SELECT i.id, i.application_id, i.date, i.time, i.venue, i.interviewer, i.remarks, i.result, i.attendance, i.meeting_link,
+           u.name as studentName, s.department, d.job_role as role, c.company_name as companyName, c.company_logo as companyLogo
     FROM interviews i
     JOIN applications a ON i.application_id = a.id
     JOIN users u ON a.student_id = u.id
@@ -204,7 +204,7 @@ try {
   $offersQueryStr = "
     SELECT o.id, o.application_id, o.salary_lpa as packageLPA, o.designation as role, o.joining_date as date, o.location, o.status,
            o.offer_date, o.expiry_date, o.sent_date, o.viewed_date, o.accepted_date, o.rejected_date,
-           u.name as studentName, s.department, c.company_name as companyName, o.offer_letter_path
+           u.name as studentName, s.department, c.company_name as companyName, o.offer_letter_path, c.company_logo as companyLogo
     FROM offers o
     JOIN applications a ON o.application_id = a.id
     JOIN users u ON a.student_id = u.id
@@ -293,6 +293,28 @@ try {
           VALUES (?, ?, CURDATE(), 'Applied')
         ");
         $stmtInsert->execute([$userId, $driveId]);
+        $appId = $db->lastInsertId();
+
+        // Auto-assign any active/scheduled tests of this drive to this student
+        $stmtTests = $db->prepare("SELECT id, title, duration_minutes, (SELECT name FROM users WHERE id = company_id) as company_name FROM aptitude_tests WHERE drive_id = ? AND status IN ('Scheduled', 'Active')");
+        $stmtTests->execute([$driveId]);
+        $activeTests = $stmtTests->fetchAll();
+        
+        foreach ($activeTests as $t) {
+          $db->prepare("INSERT INTO aptitude_assignments (test_id, student_id, application_id, status) VALUES (?, ?, ?, 'Assigned') ON DUPLICATE KEY UPDATE status = VALUES(status)")
+             ->execute([$t['id'], $userId, $appId]);
+             
+          createUserNotification(
+            $userId,
+            "Aptitude Test Scheduled",
+            "You have been assigned the Aptitude Test '{$t['title']}' by {$t['company_name']}. Duration: {$t['duration_minutes']} mins.",
+            "aptitude_test",
+            "high",
+            "aptitude"
+          );
+          
+          $db->prepare("UPDATE applications SET status = 'Aptitude' WHERE id = ? AND status = 'Applied'")->execute([$appId]);
+        }
         
         // Create user notification for student
         createUserNotification(
@@ -424,6 +446,15 @@ try {
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
+  <script>
+    // Overwrite fetch globally to ensure SameSite credentials are sent
+    const originalFetch = window.fetch;
+    window.fetch = function (url, options) {
+      options = options || {};
+      options.credentials = 'same-origin';
+      return originalFetch(url, options);
+    };
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRMS Workspace Dashboard</title>
@@ -440,6 +471,7 @@ try {
   <!-- Make variables accessible to JS modules -->
   <script>
     window.campusRecruitmentData = {
+      baseUrl: '<?php echo BASE_URL; ?>',
       students: <?php echo json_encode($students); ?>,
       companies: <?php echo json_encode($companies); ?>,
       drives: <?php echo json_encode($drives); ?>,
@@ -461,7 +493,7 @@ try {
     <aside class="sidebar" id="app-sidebar" aria-label="Sidebar Navigation">
       <div class="sidebar-brand">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-        <span class="brand-text">Campus Recruitment</span>
+        <span class="brand-text">Campus Reqruitment</span>
       </div>
 
       <nav class="sidebar-nav">
@@ -529,6 +561,15 @@ try {
           </div>
         </div>
 
+        <?php if ($role === 'student'): ?>
+        <div class="nav-item" data-target="offers" role="link" aria-label="Offer Letters">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+            <span class="nav-label">Offer Letters</span>
+          </div>
+        </div>
+        <?php endif; ?>
+
         <div class="nav-item" data-target="notifications" role="link" aria-label="Notifications">
           <div class="nav-item-left" style="position: relative; width: 100%;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -587,7 +628,7 @@ try {
           </button>
           
           <nav class="breadcrumbs" aria-label="Breadcrumb">
-            <span class="breadcrumb-item">Campus Recruitment</span>
+            <span class="breadcrumb-item">Campus Reqruitment</span>
             <span class="breadcrumb-separator">/</span>
             <span class="breadcrumb-item active" id="crumb-current">Dashboard</span>
           </nav>
@@ -1805,16 +1846,6 @@ try {
               </div>
             </section>
 
-            <div class="welcome-info">
-              <h1>Welcome Back, <?php echo $userName; ?> 👋</h1>
-              <p>Academic Year: 2026 Batch Portal</p>
-            </div>
-            <div class="welcome-badge-group">
-              <span class="badge badge-success">Role: <?php echo strtoupper($role); ?></span>
-              <span class="badge badge-info">Connection: Secure (PDO)</span>
-            </div>
-          </section>
-
           <!-- KPI Cards Grid -->
           <section class="kpi-container">
             <div class="kpi-row" id="dashboard-kpis-grid">
@@ -2633,13 +2664,18 @@ try {
                       actionBtnHtml = `<button class="btn btn-primary btn-sm btn-action-apply" data-id="${job.id}" data-role="${job.jobRole}" data-comp="${job.companyName}" style="flex:1;">Apply Now</button>`;
                     }
 
+                    const hasLogo = job.companyLogo && job.companyLogo.trim() !== "";
+                    const logoHtml = hasLogo 
+                      ? `<img src="${window.campusRecruitmentData.baseUrl}${job.companyLogo.replace(/^\/+/, '')}" alt="${htmlspecialchars(job.companyName)}" style="width:100%; height:100%; object-fit:contain; border-radius:inherit;">`
+                      : job.companyName.substring(0,2).toUpperCase();
+
                     const card = document.createElement("div");
                     card.className = "job-card";
                     card.innerHTML = `
                       <div>
                         <div class="job-card-header">
-                          <div class="company-logo-avatar" style="background-color:${posted}">
-                            ${job.companyName.substring(0,2).toUpperCase()}
+                          <div class="company-logo-avatar" style="background-color:${hasLogo ? '#ffffff' : posted}; border:${hasLogo ? '1px solid var(--border-color)' : 'none'};">
+                            ${logoHtml}
                           </div>
                           <div class="job-card-title-group">
                             <h4 class="job-card-role">${htmlspecialchars(job.jobRole)}</h4>
@@ -2759,8 +2795,16 @@ try {
                   const status = getJobStatus(drive);
 
                   const logo = document.getElementById("modal-job-company-logo");
-                  logo.style.backgroundColor = color;
-                  logo.textContent = drive.companyName.substring(0,2).toUpperCase();
+                  const hasLogo = drive.companyLogo && drive.companyLogo.trim() !== "";
+                  if (hasLogo) {
+                    logo.style.backgroundColor = '#ffffff';
+                    logo.style.border = '1px solid var(--border-color)';
+                    logo.innerHTML = `<img src="${window.campusRecruitmentData.baseUrl}${drive.companyLogo.replace(/^\/+/, '')}" alt="${htmlspecialchars(drive.companyName)}" style="width:100%; height:100%; object-fit:contain; border-radius:inherit;">`;
+                  } else {
+                    logo.style.backgroundColor = color;
+                    logo.style.border = 'none';
+                    logo.textContent = drive.companyName.substring(0,2).toUpperCase();
+                  }
 
                   document.getElementById("modal-job-role").textContent = drive.jobRole;
                   document.getElementById("modal-job-company").textContent = drive.companyName;
@@ -3550,6 +3594,20 @@ try {
           </div>
         </div>
 
+        <!-- ==================== OFFER LETTERS STUDENT VIEW ==================== -->
+        <?php if ($role === 'student'): ?>
+        <div class="page-view" id="offers">
+          <div class="card" style="margin-bottom: var(--space-3);">
+            <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">My Offer Letters</h3>
+            <p style="color: var(--text-secondary); font-size: 13px;">View and respond to official job offers, review compensation details, and download offer letters.</p>
+          </div>
+
+          <div id="student-offers-container">
+            <!-- Rendered dynamically by js/app.js -->
+          </div>
+        </div>
+        <?php endif; ?>
+
         <!-- ==================== NOTIFICATIONS VIEW ==================== -->
         <div class="page-view" id="notifications">
           <div class="card" style="margin-bottom: var(--space-3);">
@@ -3831,6 +3889,7 @@ try {
           
           fetch('api/upload.php', {
             method: 'POST',
+            credentials: 'same-origin',
             body: new FormData(resForm)
           })
           .then(res => res.json())
@@ -3857,6 +3916,7 @@ try {
           
           fetch('api/upload.php', {
             method: 'POST',
+            credentials: 'same-origin',
             body: new FormData(certForm)
           })
           .then(res => res.json())
@@ -3895,6 +3955,7 @@ try {
 
               fetch('api/actions.php', {
                 method: 'POST',
+                credentials: 'same-origin',
                 body: new FormData(restoreForm)
               })
               .then(res => res.json())

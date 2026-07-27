@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $mail->SMTPDebug = SMTP::DEBUG_OFF;
       
       // Recipients
-      $mail->setFrom(getenv('MAIL_FROM') ?: 'support@university.edu', getenv('MAIL_FROM_NAME') ?: 'CampusRecruit Support');
+      $mail->setFrom(getenv('MAIL_FROM') ?: 'support@university.edu', getenv('MAIL_FROM_NAME') ?: 'Campus Reqruitment Support');
       $mail->addAddress($email, $user['name']);
       
       // Content
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <body>
           <div class='container'>
             <div class='header'>
-              <a href='#' class='logo'>CampusRecruit</a>
+              <a href='#' class='logo'>Campus Reqruitment</a>
               <div class='title'>Reset Your Password</div>
             </div>
             <div class='content'>
@@ -114,8 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <p>If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
             </div>
             <div class='footer'>
-              <p>This is an automated security message from CampusRecruit Portal.</p>
-              <p>&copy; " . date('Y') . " CampusRecruit. All rights reserved.</p>
+              <p>This is an automated security message from Campus Reqruitment Portal.</p>
+              <p>&copy; " . date('Y') . " Campus Reqruitment. All rights reserved.</p>
             </div>
           </div>
         </body>
@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="auth-logo-section">
         <div class="auth-brand-name">
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-          CampusRecruit
+          Campus Reqruitment
         </div>
       </div>
 

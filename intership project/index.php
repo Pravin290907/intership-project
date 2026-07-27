@@ -68,7 +68,7 @@ try {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CampusRecruit - Campus Recruitment & Placement Management System</title>
+  <title>Campus Reqruitment - Campus Recruitment & Placement Management System</title>
   <meta name="description" content="Unified Campus Recruitment Portal connecting top university talent with corporate leaders. Automated ATS screening, online aptitude tests, interview calendar, and offer tracking.">
   
   <link rel="stylesheet" href="css/design-system.css">
@@ -677,7 +677,7 @@ try {
         <div class="navbar-logo-icon">
           <i data-lucide="graduation-cap" style="width:22px; height:22px;"></i>
         </div>
-        <span class="navbar-title">CampusRecruit</span>
+        <span class="navbar-title">Campus Reqruitment</span>
       </a>
 
       <ul class="navbar-menu-links">
@@ -716,7 +716,7 @@ try {
         </h1>
         
         <p class="hero-subtext">
-          CampusRecruit is a unified recruitment management ecosystem automating candidate registrations, ATS resume shortlisting, online MCQ aptitude testing, interview scheduling, and offer tracking.
+          Campus Reqruitment is a unified recruitment management ecosystem automating candidate registrations, ATS resume shortlisting, online MCQ aptitude testing, interview scheduling, and offer tracking.
         </p>
 
         <div class="hero-actions-group">
@@ -799,7 +799,7 @@ try {
   <!-- ==================== ABOUT SECTION ==================== -->
   <section class="landing-section" id="about">
     <div class="section-header">
-      <div class="section-subtitle">About CampusRecruit</div>
+      <div class="section-subtitle">About Campus Reqruitment</div>
       <h2 class="section-title">End-to-End Placement Management Architecture</h2>
       <p class="section-desc">
         Designed specifically for training and placement cells, students, and corporate talent acquisition teams to simplify campus hiring.
@@ -932,7 +932,7 @@ try {
       <div class="section-subtitle">Top Recruiters</div>
       <h2 class="section-title">Trusted by Leading Global Corporations</h2>
       <p class="section-desc">
-        Top tier technology, consulting, and finance leaders hire directly through CampusRecruit.
+        Top tier technology, consulting, and finance leaders hire directly through Campus Reqruitment.
       </p>
     </div>
 
@@ -1004,7 +1004,7 @@ try {
       <div class="section-subtitle">Student Testimonials</div>
       <h2 class="section-title">Success Stories from Placed Candidates</h2>
       <p class="section-desc">
-        Hear how CampusRecruit helped students land their dream corporate roles.
+        Hear how Campus Reqruitment helped students land their dream corporate roles.
       </p>
     </div>
 
@@ -1113,7 +1113,7 @@ try {
         <div class="auth-logo-section">
           <div class="auth-brand-name">
             <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-            CampusRecruit
+            Campus Reqruitment
           </div>
         </div>
 
@@ -1147,7 +1147,7 @@ try {
           <div class="form-group" style="margin-bottom:20px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
               <label class="form-label" for="login-password" style="font-weight:600; font-size:13px;">Password</label>
-              <span style="font-size:12px;"><a href="forgot_password.php" style="color:var(--primary); text-decoration:none;">Forgot Password?</a></span>
+              <span style="font-size:12px;"><a href="forgot_password.php" style="color:#60A5FA; font-weight:600; text-decoration:none;">Forgot Password?</a></span>
             </div>
             <div class="input-icon-wrapper" style="position:relative;">
               <input type="password" class="input-field" id="login-password" name="password" placeholder="••••••••" required autocomplete="current-password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color);">
@@ -1158,10 +1158,10 @@ try {
             Sign In to Portal
           </button>
 
-          <div style="margin-top:20px; text-align:center; font-size:13px; color:#64748B; display:flex; justify-content:center; gap:16px;">
-            <a href="student/register.php" style="color:var(--primary); font-weight:600; text-decoration:none;">New Student? Register</a>
+          <div style="margin-top:20px; text-align:center; font-size:13px; color:#94A3B8; display:flex; justify-content:center; gap:16px;">
+            <a href="student/register.php" style="color:#60A5FA; font-weight:600; text-decoration:none;">New Student? Register</a>
             <span>•</span>
-            <a href="company/register.php" style="color:var(--primary); font-weight:600; text-decoration:none;">New Recruiter? Enroll</a>
+            <a href="company/register.php" style="color:#60A5FA; font-weight:600; text-decoration:none;">New Recruiter? Enroll</a>
           </div>
 
         </form>

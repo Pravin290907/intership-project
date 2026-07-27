@@ -4,10 +4,25 @@
  */
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Intercept fetch to inject credentials option
+  const originalFetch = window.fetch;
+  window.fetch = function (url, options) {
+    options = options || {};
+    options.credentials = 'same-origin';
+    return originalFetch(url, options);
+  };
+
   const data = window.campusRecruitmentData;
-  const langData = data.translations || {};
+  const globalData = data;
+  const langData = (data && data.translations) || {};
   window.__ = function(text) {
     return langData[text] || text;
+  };
+
+  const isUrl = (str) => {
+    if (!str) return false;
+    const s = str.trim().toLowerCase();
+    return s.startsWith('http://') || s.startsWith('https://') || s.includes('zoom.us') || s.includes('teams.live') || s.includes('meet.google.com') || s.includes('teams.microsoft.com');
   };
 
   let studentTableInstance = null;
@@ -85,6 +100,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } else if (viewId === "aptitude") {
         studentAptitudeRender();
+      } else if (viewId === "offers") {
+        if (data.role === 'student') {
+          studentOffersRender();
+        }
       } else if (viewId === "dashboard") {
         refreshCharts();
       } else if (viewId === "notifications") {
@@ -1298,7 +1317,10 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       const pastelBg = getPastelBgColor(app.companyName);
-      const initials = app.companyName.substring(0, 2).toUpperCase();
+      const hasLogo = app.companyLogo && app.companyLogo.trim() !== "";
+      const logoHtml = hasLogo 
+        ? `<img src="${globalData.baseUrl}${app.companyLogo.replace(/^\/+/, '')}" alt="${app.companyName}" style="width:100%; height:100%; object-fit:contain; border-radius:inherit;">`
+        : app.companyName.substring(0, 2).toUpperCase();
 
       html += `
         <div class="card card-lift" style="display: flex; flex-direction: column; justify-content: space-between; border-radius: var(--radius-lg); padding: var(--space-25); background: var(--bg-card); border: 1px solid var(--border-color); min-height: 280px; box-shadow: var(--shadow-sm); transition: all var(--transition-normal);">
@@ -1306,8 +1328,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <!-- Card Header -->
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-2);">
               <div style="display: flex; gap: 12px; align-items: center;">
-                <div style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #FFFFFF; background-color: ${pastelBg}; flex-shrink: 0;">
-                  ${initials}
+                <div style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #FFFFFF; background-color: ${hasLogo ? '#ffffff' : pastelBg}; border: ${hasLogo ? '1px solid var(--border-color)' : 'none'}; flex-shrink: 0;">
+                  ${logoHtml}
                 </div>
                 <div>
                   <h4 style="font-weight: 700; font-size: 15px; margin: 0; color: var(--text-primary);">${app.role}</h4>
@@ -1476,6 +1498,9 @@ document.addEventListener("DOMContentLoaded", () => {
     hours = hours ? hours : 12;
     const formattedTime = `${hours}:${minutes} ${ampm}`;
 
+    const meetingUrl = isUrl(interview.meeting_link) ? interview.meeting_link.trim() : (isUrl(interview.venue) ? interview.venue.trim() : null);
+    const cleanUrl = meetingUrl ? (meetingUrl.startsWith('http') ? meetingUrl : 'https://' + meetingUrl) : '';
+
     const bodyHtml = `
       <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; margin-bottom: 20px;">
         <div style="font-size: 40px; margin-bottom: var(--space-1);">📅</div>
@@ -1503,7 +1528,9 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span style="color: var(--text-secondary);">Interview Venue</span>
-          <span style="font-weight: 600; color: var(--primary);">${interview.venue}</span>
+          <span style="font-weight: 600;">
+            ${meetingUrl ? `<a href="${cleanUrl}" target="_blank" style="color: var(--primary); text-decoration: underline;">${interview.venue || 'Online Meeting Link'}</a>` : interview.venue}
+          </span>
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span style="color: var(--text-secondary);">Panel/Interviewer</span>
@@ -1798,6 +1825,9 @@ Date generated: ${new Date().toLocaleDateString()}
       return completed ? 'active' : '';
     };
 
+    const meetingUrl = isUrl(app.meeting_link) ? app.meeting_link.trim() : (isUrl(app.venue) ? app.venue.trim() : null);
+    const cleanUrl = meetingUrl ? (meetingUrl.startsWith('http') ? meetingUrl : 'https://' + meetingUrl) : '';
+
     const bodyHtml = `
       <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; margin-bottom: 20px;">
         <div style="font-size: 36px; line-height: 1;">📝</div>
@@ -1838,7 +1868,13 @@ Date generated: ${new Date().toLocaleDateString()}
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span style="color: var(--text-secondary);">Mode</span>
-          <span style="font-weight: 700; color: var(--text-primary);">${mode} (${app.venue.includes('http') ? 'Virtual Meeting' : 'In-Person'})</span>
+          <span style="font-weight: 700; color: var(--text-primary);">${mode} (${meetingUrl ? 'Virtual Meeting' : 'In-Person'})</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Venue / Location</span>
+          <span style="font-weight: 700;">
+            ${meetingUrl ? `<a href="${cleanUrl}" target="_blank" style="color: var(--primary); text-decoration: underline;">${app.venue || 'Online Meeting Link'}</a>` : app.venue}
+          </span>
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span style="color: var(--text-secondary);">Date & Time</span>
@@ -1974,16 +2010,21 @@ Date generated: ${new Date().toLocaleDateString()}
       else if (status === 'Rescheduled') statusStyle = 'rescheduled';
 
       const pastelBg = getPastelBgColor(app.companyName);
-      const initials = app.companyName.substring(0, 2).toUpperCase();
+      const hasLogo = app.companyLogo && app.companyLogo.trim() !== "";
+      const logoHtml = hasLogo 
+        ? `<img src="${globalData.baseUrl}${app.companyLogo.replace(/^\/+/, '')}" alt="${app.companyName}" style="width:100%; height:100%; object-fit:contain; border-radius:inherit;">`
+        : app.companyName.substring(0, 2).toUpperCase();
       const timerId = `student-interviews-countdown-${app.id}`;
+      const meetingUrl = isUrl(app.meeting_link) ? app.meeting_link.trim() : (isUrl(app.venue) ? app.venue.trim() : null);
+      const cleanUrl = meetingUrl ? (meetingUrl.startsWith('http') ? meetingUrl : 'https://' + meetingUrl) : '';
 
       html += `
         <div class="student-interviews-card">
           <div>
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-2);">
               <div style="display: flex; gap: 12px; align-items: center;">
-                <div style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #FFFFFF; background-color: ${pastelBg}; flex-shrink: 0;">
-                  ${initials}
+                <div style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #FFFFFF; background-color: ${hasLogo ? '#ffffff' : pastelBg}; border: ${hasLogo ? '1px solid var(--border-color)' : 'none'}; flex-shrink: 0;">
+                  ${logoHtml}
                 </div>
                 <div>
                   <h4 style="font-weight: 700; font-size: 15px; margin: 0; color: var(--text-primary);">${app.role}</h4>
@@ -2006,7 +2047,9 @@ Date generated: ${new Date().toLocaleDateString()}
 
             <div style="font-size: 12px; padding: 8px 10px; background: rgba(0,0,0,0.01); border-radius: var(--radius-sm); margin-bottom: var(--space-2); border: 1px solid var(--border-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
               <span style="color: var(--text-secondary); font-weight: 600;">Venue:</span>
-              <span style="color: var(--text-primary);">${app.venue}</span>
+              <span style="color: var(--text-primary);">
+                ${meetingUrl ? `<a href="${cleanUrl}" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: 600;">${app.venue || 'Online Meeting Link'}</a>` : app.venue}
+              </span>
             </div>
 
             <div class="student-interviews-timeline-wrapper">
@@ -2047,8 +2090,8 @@ Date generated: ${new Date().toLocaleDateString()}
               <button class="btn btn-ghost btn-sm btn-view-details" data-id="${app.id}" style="flex: 1; justify-content: center; font-size: 11px; padding: 6px; border: 1px solid var(--border-color);">
                 View Details
               </button>
-              ${mode === 'Online' ? `
-                <a href="${app.venue.includes('http') ? app.venue : 'https://' + app.venue}" target="_blank" class="btn btn-primary btn-sm" style="flex: 1; justify-content: center; font-size: 11px; padding: 6px; background-color: var(--primary); border-color: var(--primary); color: white; display: inline-flex; align-items: center; gap: 4px;">
+              ${meetingUrl ? `
+                <a href="${cleanUrl}" target="_blank" class="btn btn-primary btn-sm" style="flex: 1; justify-content: center; font-size: 11px; padding: 6px; background-color: var(--primary); border-color: var(--primary); color: white; display: inline-flex; align-items: center; gap: 4px;">
                   Join Meeting
                 </a>
               ` : `
@@ -2405,41 +2448,13 @@ Date generated: ${new Date().toLocaleDateString()}
       confirmButtonText: 'Start Test Now'
     }).then(res => {
       if (res.isConfirmed) {
-        Swal.fire({ title: 'Loading Test Questions...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-        const f = new FormData();
-        f.append('action', 'start_aptitude_test');
-        f.append('assignment_id', assignmentId);
-
-        fetch('api/actions.php', { method: 'POST', body: f })
-          .then(r => r.json())
-          .then(r => {
-            Swal.close();
-            if (r.status === 'success') {
-              window.currentTestState = {
-                assignmentId: assignmentId,
-                title: r.title,
-                durationMinutes: r.duration_minutes,
-                questions: r.questions || [],
-                currentIndex: 0,
-                userAnswers: {},
-                secondsLeft: (r.duration_minutes || 30) * 60,
-                timerInterval: null
-              };
-
-              document.getElementById('test-runner-title').innerText = r.title;
-              document.getElementById('test-runner-meta').innerText = `Duration: ${r.duration_minutes} Mins | Total Questions: ${r.questions.length}`;
-
-              // Show Modal
-              document.getElementById('modal-take-aptitude-test').style.display = 'flex';
-              
-              startTestTimer();
-              renderCurrentQuestion();
-              renderQuestionPalette();
-            } else {
-              Swal.fire({ title: 'Cannot Start Test', text: r.message, icon: 'error' });
-            }
-          });
+        Swal.fire({
+          title: 'Portal Under Maintenance',
+          text: 'The online aptitude evaluation engine is currently undergoing scheduled maintenance. Please try again later or contact your TPO cell.',
+          icon: 'warning',
+          confirmButtonColor: '#2563EB',
+          confirmButtonText: 'I Understand'
+        });
       }
     });
   };
@@ -2634,6 +2649,139 @@ Date generated: ${new Date().toLocaleDateString()}
         }
       });
   }
+
+  /* --- STUDENT OFFER LETTERS --- */
+  window.studentOffersRender = function() {
+    fetch('api/actions.php?action=get_student_offers')
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          renderStudentOffersList(r.offers || []);
+        }
+      });
+  };
+
+  function renderStudentOffersList(offers) {
+    const container = document.getElementById('student-offers-container');
+    if (!container) return;
+
+    if (offers.length === 0) {
+      container.innerHTML = `
+        <div class="card" style="padding:48px; text-align:center; display:flex; flex-direction:column; align-items:center; border: 1px dashed var(--border-color); background: var(--bg-card); border-radius: var(--radius-xl);">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin:0 auto 12px auto; display:block;"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+          <h4 style="font-size:16px; font-weight:700; color:var(--text-primary);">No Offer Letters Released</h4>
+          <p style="font-size:13px; color:var(--text-secondary); margin-top:4px; max-width:320px; margin-left:auto; margin-right:auto;">Once recruiters evaluate your profile and release an offer, your official offer letter will appear here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="grid-12">
+        ${offers.map(o => {
+          const pastelBg = getPastelBgColor(o.companyName);
+          const hasLogo = o.companyLogo && o.companyLogo.trim() !== "";
+          const logoHtml = hasLogo 
+            ? `<img src="${globalData.baseUrl}${o.companyLogo.replace(/^\/+/, '')}" alt="${o.companyName}" style="width:100%; height:100%; object-fit:contain; border-radius:inherit;">`
+            : o.companyName.substring(0, 2).toUpperCase();
+          const joiningDate = new Date(o.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+          let statusBadge = '<span class="badge badge-primary">Released</span>';
+          if (o.status === 'Accepted') {
+            statusBadge = '<span class="badge badge-success" style="font-weight:700;">ACCEPTED</span>';
+          } else if (o.status === 'Declined') {
+            statusBadge = '<span class="badge badge-danger" style="font-weight:700;">DECLINED</span>';
+          }
+
+          return `
+            <div class="col-6 col-lg-12">
+              <div class="card card-lift" style="padding:24px; display:flex; flex-direction:column; justify-content:space-between; height:100%; border:1px solid var(--border-color); background:var(--bg-card); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm);">
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+                    <div style="display:flex; gap:12px; align-items:center;">
+                      <div style="width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; color:#FFFFFF; background-color:${hasLogo ? '#ffffff' : pastelBg}; border:${hasLogo ? '1px solid var(--border-color)' : 'none'}; flex-shrink:0;">
+                        ${logoHtml}
+                      </div>
+                      <div>
+                        <h4 style="font-size:16px; font-weight:700; color:var(--text-primary); margin:0;">${o.role}</h4>
+                        <span style="font-size:12px; color:var(--text-secondary); font-weight:600;">${o.companyName}</span>
+                      </div>
+                    </div>
+                    ${statusBadge}
+                  </div>
+                  
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:13px; background:var(--bg-body); padding:14px; border-radius:8px; margin-bottom:20px; border:1px solid var(--border-color);">
+                    <div>Compensation: <strong style="color:var(--primary);">${o.packageLPA} LPA</strong></div>
+                    <div>Location: <strong>${o.location}</strong></div>
+                    <div>Joining Date: <strong>${joiningDate}</strong></div>
+                    <div>Status: <strong>${o.status}</strong></div>
+                  </div>
+                </div>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                  ${o.offer_letter_path ? `
+                    <a href="${o.offer_letter_path}" target="_blank" class="btn btn-secondary btn-sm" style="flex:1; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
+                      📄 View PDF Letter
+                    </a>
+                  ` : ''}
+                  
+                  ${o.status === 'Released' ? `
+                    <button class="btn btn-success btn-sm" style="flex:1; justify-content:center; font-weight:700;" onclick="respondStudentOffer(${o.id}, 'Accepted')">
+                      Accept
+                    </button>
+                    <button class="btn btn-danger btn-sm" style="flex:1; justify-content:center; font-weight:700;" onclick="respondStudentOffer(${o.id}, 'Declined')">
+                      Decline
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  window.respondStudentOffer = function(offerId, status) {
+    const actionText = status === 'Accepted' ? 'accept' : 'decline';
+    const confirmColor = status === 'Accepted' ? '#10B981' : '#EF4444';
+
+    Swal.fire({
+      title: `Are you sure?`,
+      text: `Do you want to ${actionText} this offer letter? This decision is final.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: confirmColor,
+      cancelButtonColor: 'var(--text-secondary)',
+      confirmButtonText: `Yes, ${status}!`
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const f = new FormData();
+        f.append('action', 'respond_offer');
+        f.append('offer_id', offerId);
+        f.append('status', status);
+
+        fetch('api/actions.php', { method: 'POST', body: f })
+          .then(r => r.json())
+          .then(r => {
+            if (r.status === 'success') {
+              Swal.fire({
+                title: 'Success!',
+                text: r.message,
+                icon: 'success'
+              });
+              studentOffersRender();
+            } else {
+              Swal.fire({
+                title: 'Error',
+                text: r.message,
+                icon: 'error'
+              });
+            }
+          });
+      }
+    });
+  };
 
   // Start polling
   initSidebar();

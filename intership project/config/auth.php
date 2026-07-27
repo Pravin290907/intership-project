@@ -6,6 +6,7 @@
 
 // Secure session settings
 if (session_status() === PHP_SESSION_NONE) {
+  ini_set('session.cookie_path', '/');
   ini_set('session.cookie_httponly', 1);
   ini_set('session.use_only_cookies', 1);
   ini_set('session.cookie_samesite', 'Lax');
@@ -308,13 +309,13 @@ function sendSystemEmail($toEmail, $toName, $subject, $bodyHtml, $bccList = []) 
     $mail->SMTPDebug = 0; // Off
     
     $fromMail = getenv('MAIL_FROM') ?: 'support@university.edu';
-    $fromName = getenv('MAIL_FROM_NAME') ?: 'CampusRecruit Support';
+    $fromName = getenv('MAIL_FROM_NAME') ?: 'Campus Reqruitment Support';
     $mail->setFrom($fromMail, $fromName);
 
     if (!empty($toEmail)) {
       $mail->addAddress($toEmail, $toName);
     } else {
-      $mail->addAddress($fromMail, 'CampusRecruit Recipients');
+      $mail->addAddress($fromMail, 'Campus Reqruitment Recipients');
     }
 
     foreach ($bccList as $bcc) {

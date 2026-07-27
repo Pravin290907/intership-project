@@ -188,11 +188,36 @@ body.auth-body::after {
 }
 
 .auth-footer-link a {
-  color: #3B82F6;
-  font-weight: var(--font-medium);
+  color: #60A5FA;
+  font-weight: var(--font-semibold);
   transition: color var(--transition-fast);
+  text-decoration: none;
 }
 
 .auth-footer-link a:hover {
-  color: #60A5FA;
+  color: #93C5FD;
+  text-decoration: underline;
+}
+
+.auth-back-container {
+  text-align: center;
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.back-to-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #94A3B8 !important;
+  font-size: 13px;
+  text-decoration: none;
+  font-weight: var(--font-medium) !important;
+  transition: color var(--transition-fast);
+}
+
+.back-to-home-link:hover {
+  color: #60A5FA !important;
+  text-decoration: none !important;
 }

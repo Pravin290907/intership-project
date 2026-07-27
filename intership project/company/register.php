@@ -25,7 +25,7 @@ require_once __DIR__ . '/../config/db.php';
       <div class="auth-logo-section">
         <div class="auth-brand-name">
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-          CampusRecruit
+          Campus Reqruitment
         </div>
       </div>
 
@@ -224,7 +224,7 @@ require_once __DIR__ . '/../config/db.php';
 
               <div class="auth-brand-name" style="justify-content: center; margin-bottom: var(--space-2); font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-                CampusRecruit
+                Campus Reqruitment
               </div>
 
               <h2 class="auth-title" style="margin-bottom: var(--space-15); font-size: 24px; font-weight: 700; color: var(--text-primary);">Registration Successful</h2>

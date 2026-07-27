@@ -7,15 +7,17 @@
 document.addEventListener("DOMContentLoaded", () => {
   // Intercept fetch to rewrite relative api/ paths dynamically to absolute base URL
   const originalFetch = window.fetch;
-  window.fetch = function(url, options) {
+  window.fetch = function (url, options) {
     if (typeof url === 'string' && url.startsWith('api/')) {
       const apiBase = window.API_BASE_URL || '../api/';
       url = decodeURIComponent(apiBase) + url.substring(4);
     }
+    options = options || {};
+    options.credentials = 'same-origin';
     return originalFetch(url, options);
   };
 
-  window.getAbsoluteUrl = function(path) {
+  window.getAbsoluteUrl = function (path) {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('//')) return path;
     const apiBase = window.API_BASE_URL || '../api/';
@@ -29,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let activeCharts = {};
 
   // Global client localization helper
-  window.__ = function(text) {
+  window.__ = function (text) {
     if (!window.crmsTranslations || !window.currentLanguage || window.currentLanguage === 'en') {
       return text;
     }
@@ -41,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Immediate page-wide DOM translator (translates text-nodes, placeholders, and dynamic views)
-  window.translatePageDOM = function() {
+  window.translatePageDOM = function () {
     const lang = window.currentLanguage || 'en';
     if (!window.crmsTranslations) return;
     const dict = window.crmsTranslations[lang] || {};
@@ -88,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (typeof renderSelectedDayInterviewsList === 'function') renderSelectedDayInterviewsList();
     if (typeof loadNotificationsView === 'function') loadNotificationsView();
     if (typeof renderOfferTrackerTable === 'function') renderOfferTrackerTable();
-    
+
     // Refresh active Breadcrumb title
     const crumbText = document.getElementById('nav-crumb-title');
     if (crumbText) {
@@ -100,10 +102,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (window.lucide) lucide.createIcons();
   };
-  
+
   // Selected state for bulk actions
   let selectedDriveIds = new Set();
-  
+
   // ATS & Chat state
   let selectedStudentId = null;
   let activeChatContactId = null;
@@ -113,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function switchView(tabId) {
     currentActiveTab = tabId;
     sessionStorage.setItem('recruiter_active_tab', tabId);
-    
+
     // Update navigation active class
     document.querySelectorAll('.nav-item-link').forEach(link => {
       if (link.getAttribute('data-target') === tabId) {
@@ -168,8 +170,6 @@ document.addEventListener("DOMContentLoaded", () => {
       loadSettingsView();
     } else if (tabId === 'reports') {
       loadReportsHistory();
-    } else if (tabId === 'footer') {
-      loadFooterView();
     }
 
     // Trigger Lucide icons reload
@@ -185,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (toggleBtn && sidebar) {
     const savedState = localStorage.getItem('recruiter_sidebar_state');
     const isMobile = window.innerWidth <= 768;
-    
+
     if (isMobile) {
       sidebar.classList.add('collapsed');
     } else if (savedState === 'collapsed') {
@@ -234,7 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* --- TAB SWITCHERS --- */
-  window.switchStudentTab = function(tabId) {
+  window.switchStudentTab = function (tabId) {
     document.querySelectorAll('#student_management .sub-tab-panel').forEach(p => {
       p.classList.remove('active');
       p.style.display = 'none';
@@ -265,16 +265,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  window.switchStudentManagementTab = function(tabId) {
+  window.switchStudentManagementTab = function (tabId) {
     window.switchStudentTab(tabId);
   };
 
-  window.switchOfferTab = function(tabId) {
+  window.switchOfferTab = function (tabId) {
     document.querySelectorAll('#offers .sub-offer-panel').forEach(p => {
       p.classList.remove('active');
       p.style.display = 'none';
     });
-    
+
     const targetPanel = document.getElementById(`tab-${tabId}-panel`);
     if (targetPanel) {
       targetPanel.classList.add('active');
@@ -284,19 +284,19 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll('#offers .sub-tab-btn').forEach(link => {
       link.classList.remove('active');
     });
-    
+
     const activeBtn = document.getElementById(`btn-tab-${tabId}`);
     if (activeBtn) {
       activeBtn.classList.add('active');
     }
   };
 
-  window.switchInterviewTab = function(tabId) {
+  window.switchInterviewTab = function (tabId) {
     document.querySelectorAll('#interviews .sub-interview-panel').forEach(p => {
       p.classList.remove('active');
       p.style.display = 'none';
     });
-    
+
     const targetPanel = document.getElementById(`tab-${tabId}-panel`);
     if (targetPanel) {
       targetPanel.classList.add('active');
@@ -313,18 +313,18 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* --- FILTER STUDENTS LIST --- */
-  window.filterStudentManagementList = function() {
+  window.filterStudentManagementList = function () {
     const q = document.getElementById('student-search-input').value.toLowerCase().trim();
     const branch = document.getElementById('student-branch-filter').value;
     const rows = document.querySelectorAll('#student-directory-tbody tr');
-    
+
     rows.forEach(r => {
       const text = r.innerText.toLowerCase();
       const branchBadge = r.querySelector('.badge')?.innerText.trim() || '';
-      
+
       const matchesSearch = !q || text.includes(q);
       const matchesBranch = branch === 'All' || branchBadge === branch;
-      
+
       if (matchesSearch && matchesBranch) {
         r.style.display = '';
       } else {
@@ -334,10 +334,10 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* --- FORM SUBMISSION VALIDATORS --- */
-  window.submitAddStudentForm = function(ev) {
+  window.submitAddStudentForm = function (ev) {
     ev.preventDefault();
     const form = ev.target;
-    
+
     // CGPA Validation
     const cgpa = parseFloat(form.cgpa.value);
     if (isNaN(cgpa) || cgpa < 1.00 || cgpa > 10.00) {
@@ -376,7 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* --- CANDIDATE PROFILE CRUD ACTIONS --- */
-  window.viewStudentDetailsDirectly = function(studentId) {
+  window.viewStudentDetailsDirectly = function (studentId) {
     const student = globalData.students.find(s => parseInt(s.id) === parseInt(studentId));
     if (!student) return;
 
@@ -416,7 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openRecruiterModal('modal-view-student');
   };
 
-  window.openEditStudentModalDirectly = function(studentId) {
+  window.openEditStudentModalDirectly = function (studentId) {
     const student = globalData.students.find(s => parseInt(s.id) === parseInt(studentId));
     if (!student) return;
 
@@ -432,7 +432,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openRecruiterModal('modal-edit-student');
   };
 
-  window.submitEditStudentForm = function(ev) {
+  window.submitEditStudentForm = function (ev) {
     ev.preventDefault();
     const form = ev.target;
     const btn = document.getElementById('btn-edit-student-submit');
@@ -479,7 +479,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  window.deleteStudentDirectly = function(studentId) {
+  window.deleteStudentDirectly = function (studentId) {
     Swal.fire({
       title: 'Remove Candidate Profile',
       text: 'Are you sure you want to permanently delete this student?',
@@ -509,15 +509,15 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* --- VIEW BRANCH ENROLLED CANDIDATES --- */
-  window.viewBranchStudentsDirectly = function(branchName) {
+  window.viewBranchStudentsDirectly = function (branchName) {
     const students = globalData.students.filter(s => s.department === branchName);
     const tbody = document.getElementById('branch-students-details-body');
     const title = document.getElementById('modal-view-branch-title');
-    
+
     if (title) {
       title.innerText = `${branchName} - Enrolled Candidates`;
     }
-    
+
     if (tbody) {
       if (students.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text-muted);">No candidates enrolled in this branch.</td></tr>`;
@@ -536,10 +536,10 @@ document.addEventListener("DOMContentLoaded", () => {
     openRecruiterModal('modal-view-branch');
   };
 
-  window.submitReleaseOfferForm = function(ev) {
+  window.submitReleaseOfferForm = function (ev) {
     ev.preventDefault();
     const form = ev.target;
-    
+
     // Joining Date validation
     const joiningVal = form.querySelector("[name='joining_date']")?.value || '';
     const today = new Date();
@@ -580,7 +580,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* --- INTERVIEW SCHEDULE CRUD --- */
-  window.openScheduleInterviewModalDirectly = function() {
+  window.openScheduleInterviewModalDirectly = function () {
     const form = document.getElementById('form-schedule-interview-api');
     if (form) {
       form.reset();
@@ -593,7 +593,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openRecruiterModal('modal-schedule-interview');
   };
 
-  window.openEditInterviewModalDirectly = function(interviewId) {
+  window.openEditInterviewModalDirectly = function (interviewId) {
     const form = document.getElementById('form-schedule-interview-api');
     if (!form) return;
 
@@ -603,11 +603,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById('interview-edit-id').value = int.id;
     document.getElementById('modal-interview-title').innerText = 'Modify Interview Schedule';
-    
+
     // Hide student select since it's already bound, select correct val if needed
     document.getElementById('interview-student-wrapper').style.display = 'none';
     document.getElementById('interview-status-wrapper').style.display = 'block';
-    
+
     document.getElementById('interview-round').value = int.interview_round || 'Technical';
     document.getElementById('interview-type').value = int.interview_type || 'Online';
     document.getElementById('interview-link').value = int.meeting_link || '';
@@ -618,16 +618,16 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('interview-instructions').value = int.instructions || '';
     document.getElementById('interview-notes').value = int.notes || '';
     document.getElementById('interview-status').value = int.result || 'Scheduled';
-    
+
     document.getElementById('btn-schedule-int-submit').innerText = 'Update Schedule';
     openRecruiterModal('modal-schedule-interview');
   };
 
-  window.submitInterviewForm = function(ev) {
+  window.submitInterviewForm = function (ev) {
     ev.preventDefault();
     const form = ev.target;
     const isEdit = document.getElementById('interview-edit-id').value !== '';
-    
+
     // Interview Date validation
     const intDateVal = form.querySelector("[name='date']")?.value || '';
     const today = new Date();
@@ -659,11 +659,11 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(res => {
         if (res.status === 'success') {
           closeRecruiterModal('modal-schedule-interview');
-          Swal.fire({ 
-            title: 'Success', 
-            text: isEdit ? 'Interview Updated Successfully' : 'Interview Scheduled Successfully', 
-            icon: 'success', 
-            timer: 1500 
+          Swal.fire({
+            title: 'Success',
+            text: isEdit ? 'Interview Updated Successfully' : 'Interview Scheduled Successfully',
+            icon: 'success',
+            timer: 1500
           });
           setTimeout(() => window.location.reload(), 1500);
         } else {
@@ -672,7 +672,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  window.deleteInterviewDirectly = function(interviewId) {
+  window.deleteInterviewDirectly = function (interviewId) {
     Swal.fire({
       title: 'Remove Scheduled Round',
       text: 'Are you sure you want to permanently delete this interview?',
@@ -701,7 +701,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  window.openOfferModalDirectly = function() {
+  window.openOfferModalDirectly = function () {
     window.switchRecruiterView('offers');
     window.switchOfferTab('release-offer');
   };
@@ -731,7 +731,7 @@ document.addEventListener("DOMContentLoaded", () => {
       'kpi-rejected-apps': kpis.rejectedApplications,
       'kpi-pending-apps': kpis.pendingApplications,
       'kpi-upcoming-drives': kpis.upcomingDrives,
-      
+
       // Analytics Page KPIs
       'analytics-kpi-active-drives': kpis.activeDrives,
       'analytics-kpi-applications': kpis.applicationsCount,
@@ -827,7 +827,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let start = 0;
     const duration = 800;
     const increment = finalVal / (duration / 16);
-    
+
     const updateCount = () => {
       start += increment;
       if (start >= finalVal) {
@@ -842,7 +842,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderDashboardCharts(charts) {
     if (typeof Chart === 'undefined') return;
-    
+
     // Clear previous instances
     Object.keys(activeCharts).forEach(key => {
       if (activeCharts[key]) activeCharts[key].destroy();
@@ -968,7 +968,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Filter drives
     let filtered = [...globalData.drives];
-    
+
     // Apply filters
     const searchVal = document.getElementById('drive-search-input')?.value.toLowerCase() || '';
     if (searchVal) {
@@ -1009,7 +1009,10 @@ document.addEventListener("DOMContentLoaded", () => {
           </td>
           <td>
             <div style="display:flex; align-items:center; gap:8px;">
-              <div class="candidate-avatar">${d.companyName.slice(0,2).toUpperCase()}</div>
+              ${d.companyLogo && d.companyLogo.trim() !== "" 
+                ? `<div class="candidate-avatar" style="background-color:#ffffff; border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center;"><img src="${globalData.baseUrl}${d.companyLogo.replace(/^\/+/, '')}" alt="${d.companyName}" style="width:100%; height:100%; object-fit:contain; border-radius:inherit;"></div>`
+                : `<div class="candidate-avatar">${d.companyName.slice(0, 2).toUpperCase()}</div>`
+              }
               <div>
                 <div style="font-weight:600;">${d.companyName}</div>
               </div>
@@ -1079,9 +1082,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  window.executeDrivesBulkAction = function(operation) {
+  window.executeDrivesBulkAction = function (operation) {
     if (selectedDriveIds.size === 0) return;
-    
+
     Swal.fire({
       title: 'Bulk Drive Campaign Action',
       text: `Are you sure you want to ${operation} the selected drives?`,
@@ -1099,23 +1102,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
         fetch('api/actions.php', {
           method: 'POST',
+          credentials: 'same-origin',
           body: f
         })
-        .then(r => r.json())
-        .then(r => {
-          if (r.status === 'success') {
-            Swal.fire({ title: 'Success', text: 'Drives updated successfully', icon: 'success', timer: 1500 });
-            selectedDriveIds.clear();
-            setTimeout(() => window.location.reload(), 1500);
-          } else {
-            Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
-          }
-        });
+          .then(r => r.json())
+          .then(r => {
+            if (r.status === 'success') {
+              Swal.fire({ title: 'Success', text: 'Drives updated successfully', icon: 'success', timer: 1500 });
+              
+              // Update local globalData.drives instantly for responsive SPA feedback
+              if (operation === 'delete') {
+                globalData.drives = globalData.drives.filter(d => !selectedDriveIds.has(d.id) && !selectedDriveIds.has(parseInt(d.id)) && !selectedDriveIds.has(d.id.toString()));
+              } else if (operation === 'close') {
+                globalData.drives.forEach(d => {
+                  if (selectedDriveIds.has(d.id) || selectedDriveIds.has(parseInt(d.id)) || selectedDriveIds.has(d.id.toString())) d.status = 'closed';
+                });
+              } else if (operation === 'archive') {
+                globalData.drives.forEach(d => {
+                  if (selectedDriveIds.has(d.id) || selectedDriveIds.has(parseInt(d.id)) || selectedDriveIds.has(d.id.toString())) d.status = 'archived';
+                });
+              }
+              
+              renderDrivesTable();
+              selectedDriveIds.clear();
+              setTimeout(() => window.location.reload(), 1500);
+            } else {
+              Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+            }
+          });
       }
     });
   };
 
-  window.cloneRecruiterDrive = function(driveId) {
+  window.cloneRecruiterDrive = function (driveId) {
     const f = new FormData();
     f.append('action', 'clone_drive');
     f.append('drive_id', driveId);
@@ -1123,18 +1142,18 @@ document.addEventListener("DOMContentLoaded", () => {
       method: 'POST',
       body: f
     })
-    .then(r => r.json())
-    .then(r => {
-      if (r.status === 'success') {
-        Swal.fire({ title: 'Success', text: 'Drive Cloned Successfully', icon: 'success', timer: 1500 });
-        setTimeout(() => window.location.reload(), 1500);
-      } else {
-        Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
-      }
-    });
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          Swal.fire({ title: 'Success', text: 'Drive Cloned Successfully', icon: 'success', timer: 1500 });
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+        }
+      });
   };
 
-  window.deleteRecruiterDrive = function(driveId) {
+  window.deleteRecruiterDrive = function (driveId) {
     selectedDriveIds.clear();
     selectedDriveIds.add(driveId);
     window.executeDrivesBulkAction('delete');
@@ -1163,7 +1182,7 @@ document.addEventListener("DOMContentLoaded", () => {
     listEl.innerHTML = filteredApps.map(app => `
       <div class="candidate-card-item ${selectedStudentId === app.studentId ? 'active' : ''}" onclick="loadATSCandidate(${app.studentId}, ${app.id})">
         <div class="candidate-card-header">
-          <div class="candidate-avatar">${app.studentName.slice(0,2).toUpperCase()}</div>
+          <div class="candidate-avatar">${app.studentName.slice(0, 2).toUpperCase()}</div>
           <div class="candidate-meta-info">
             <h4 class="candidate-name">${app.studentName}</h4>
             <p class="candidate-job">${app.role}</p>
@@ -1182,14 +1201,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  window.loadATSCandidate = function(studentId, appId) {
+  window.loadATSCandidate = function (studentId, appId) {
     selectedStudentId = studentId;
-    
+
     // Highlight active card
     document.querySelectorAll('.candidate-card-item').forEach(card => {
       card.classList.remove('active');
     });
-    
+
     // Re-query details
     const student = globalData.students.find(s => s.id === studentId || s.user_id === studentId);
     const application = globalData.applications.find(a => a.id === appId);
@@ -1201,7 +1220,7 @@ document.addEventListener("DOMContentLoaded", () => {
       centerEl.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; border-bottom:1px solid var(--border-color); padding-bottom:16px;">
           <div style="display:flex; gap:16px; align-items:center;">
-            <div class="avatar-profile" style="width:64px; height:64px; font-size:24px;">${student.name.slice(0,2).toUpperCase()}</div>
+            <div class="avatar-profile" style="width:64px; height:64px; font-size:24px;">${student.name.slice(0, 2).toUpperCase()}</div>
             <div>
               <h2 style="font-size:20px; font-weight:700;">${student.name}</h2>
               <p style="color:var(--text-secondary); font-size:13px;">${student.email} &bull; ${student.phone || '+91 9876543210'}</p>
@@ -1286,7 +1305,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  window.setCandidateFunnelStatus = function(appId, result) {
+  window.setCandidateFunnelStatus = function (appId, result) {
     Swal.fire({
       title: 'Update Candidate Round',
       text: `Do you want to mark this candidate status as ${result}?`,
@@ -1316,7 +1335,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  window.openInterviewSchedulePanel = function(appId) {
+  window.openInterviewSchedulePanel = function (appId) {
     openScheduleInterviewModalDirectly();
     const select = document.getElementById('interview-app-id');
     if (select) select.value = appId;
@@ -1373,27 +1392,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  window.handleKanbanDragStart = function(ev, appId) {
+  window.handleKanbanDragStart = function (ev, appId) {
     ev.dataTransfer.setData("text/plain", appId);
     const card = document.getElementById(`kanban-card-${appId}`);
     if (card) card.classList.add('dragging');
   };
 
-  window.allowKanbanDrop = function(ev) {
+  window.allowKanbanDrop = function (ev) {
     ev.preventDefault();
     const wrapper = ev.currentTarget;
     wrapper.style.backgroundColor = 'rgba(37,99,235,0.04)';
     wrapper.style.borderRadius = 'var(--radius-md)';
   };
 
-  window.handleKanbanLeave = function(ev) {
+  window.handleKanbanLeave = function (ev) {
     ev.currentTarget.style.backgroundColor = 'transparent';
   };
 
-  window.handleKanbanDrop = function(ev, stage) {
+  window.handleKanbanDrop = function (ev, stage) {
     ev.preventDefault();
     ev.currentTarget.style.backgroundColor = 'transparent';
-    
+
     const appId = parseInt(ev.dataTransfer.getData("text/plain"));
     const card = document.getElementById(`kanban-card-${appId}`);
     if (card) {
@@ -1411,24 +1430,24 @@ document.addEventListener("DOMContentLoaded", () => {
       method: 'POST',
       body: f
     })
-    .then(r => r.json())
-    .then(r => {
-      if (r.status === 'success') {
-        Swal.fire({ title: 'Success', text: `Candidate successfully moved to ${stage} round.`, icon: 'success', timer: 1500 });
-        // Reload global variables dynamically
-        const app = globalData.applications.find(a => a.id === appId);
-        if (app) app.status = stage;
-        renderKanbanPipeline();
-        loadStatsAndCharts();
-      } else {
-        Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
-      }
-    });
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          Swal.fire({ title: 'Success', text: `Candidate successfully moved to ${stage} round.`, icon: 'success', timer: 1500 });
+          // Reload global variables dynamically
+          const app = globalData.applications.find(a => a.id === appId);
+          if (app) app.status = stage;
+          renderKanbanPipeline();
+          loadStatsAndCharts();
+        } else {
+          Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+        }
+      });
   };
 
   /* --- INTERVIEW MANAGEMENT CALENDAR --- */
   const todayObj = new Date();
-  let calendarMonthIndex = new Date(); 
+  let calendarMonthIndex = new Date();
   let selectedCalendarDateStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
 
   function renderInterviewCalendar() {
@@ -1456,7 +1475,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const dayInterviews = globalData.interviews.filter(i => i.date === dateStr);
 
       const isSelected = dateStr === selectedCalendarDateStr;
-      
+
       let dotHtml = '';
       if (dayInterviews.length > 0) {
         dotHtml = `
@@ -1478,12 +1497,12 @@ document.addEventListener("DOMContentLoaded", () => {
     renderSelectedDayInterviewsList();
   }
 
-  window.navigateCalendar = function(direction) {
+  window.navigateCalendar = function (direction) {
     calendarMonthIndex.setMonth(calendarMonthIndex.getMonth() + direction);
     renderInterviewCalendar();
   };
 
-  window.selectCalendarDay = function(dateStr) {
+  window.selectCalendarDay = function (dateStr) {
     selectedCalendarDateStr = dateStr;
     renderInterviewCalendar();
   };
@@ -1493,7 +1512,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!el) return;
 
     const filtered = globalData.interviews.filter(i => i.date === selectedCalendarDateStr);
-    
+
     if (filtered.length === 0) {
       el.innerHTML = `
         <div class="empty-illustration-container" style="padding:16px;">
@@ -1530,21 +1549,21 @@ document.addEventListener("DOMContentLoaded", () => {
     `).join('');
   }
 
-  window.openFeedbackModal = function(interviewId) {
+  window.openFeedbackModal = function (interviewId) {
     const inputIntId = document.getElementById('feedback-interview-id');
     if (inputIntId) inputIntId.value = interviewId;
     openRecruiterModal('modal-interview-feedback');
   };
 
   /* --- REPORT EXPORTS --- */
-  window.triggerDataExport = function(format) {
+  window.triggerDataExport = function (format) {
     const dateVal = document.getElementById('report-filter-date')?.value || '2026-07-01';
     const statusVal = document.getElementById('report-filter-status')?.value || 'All';
     const reportName = `Placement Drives Report (${statusVal})`;
 
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Drive ID,Company,Role,CGPA Criteria,CTC package,Date,Status\r\n";
-    
+
     globalData.drives.forEach(d => {
       const matchesStatus = (statusVal === 'All' || d.status === statusVal);
       const matchesDate = (new Date(d.date) >= new Date(dateVal));
@@ -1560,7 +1579,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // Save report to database via AJAX
     const fData = new FormData();
     fData.append('action', 'save_report');
@@ -1573,13 +1592,13 @@ document.addEventListener("DOMContentLoaded", () => {
       method: 'POST',
       body: fData
     })
-    .then(r => r.json())
-    .then(res => {
-      if (res.status === 'success') {
-        loadReportsHistory();
-      }
-    })
-    .catch(err => console.error('Error saving report to db:', err));
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          loadReportsHistory();
+        }
+      })
+      .catch(err => console.error('Error saving report to db:', err));
 
     Swal.fire({ title: 'Export Complete', text: 'CSV Report Downloaded & Saved Successfully.', icon: 'success', timer: 1500 });
   };
@@ -1625,7 +1644,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="candidate-card-item ${activeChatContactId === c.id ? 'active' : ''}" onclick="selectChatContact(${c.id}, '${c.name}')">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div style="display:flex; gap:10px; align-items:center;">
-                  <div class="candidate-avatar">${c.name.slice(0,2).toUpperCase()}</div>
+                  <div class="candidate-avatar">${c.name.slice(0, 2).toUpperCase()}</div>
                   <div>
                     <h4 style="font-size:13px; font-weight:600;">${c.name}</h4>
                     <p style="font-size:11px; color:var(--text-secondary); max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
@@ -1645,7 +1664,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  window.selectChatContact = function(contactId, contactName) {
+  window.selectChatContact = function (contactId, contactName) {
     activeChatContactId = contactId;
     document.getElementById('chat-active-contact-title').innerText = contactName;
 
@@ -1676,7 +1695,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return `
               <div class="chat-message-bubble ${isSent ? 'sent' : 'received'}">
                 <div>${m.message}</div>
-                <div class="chat-bubble-time">${new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                <div class="chat-bubble-time">${new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
             `;
           }).join('');
@@ -1778,7 +1797,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Save Settings
-  window.submitRecruiterSettingsForm = function(ev) {
+  window.submitRecruiterSettingsForm = function (ev) {
     ev.preventDefault();
     const form = ev.target;
     const btn = document.getElementById('btn-save-settings-submit');
@@ -1810,7 +1829,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Dynamic uploads logo/banner
-  window.triggerBrandingUpload = function(inputId, type) {
+  window.triggerBrandingUpload = function (inputId, type) {
     const fileInput = document.getElementById(inputId);
     if (!fileInput || !fileInput.files[0]) return;
 
@@ -1831,7 +1850,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* --- DIALOG PANELS --- */
-  window.openRecruiterModal = function(modalId) {
+  window.openRecruiterModal = function (modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
       modal.classList.add('active');
@@ -1841,7 +1860,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  window.closeRecruiterModal = function(modalId) {
+  window.closeRecruiterModal = function (modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.remove('active');
   };
@@ -1989,7 +2008,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /* --- SIDEBAR SUBMENUS CLEANED --- */
 
   /* --- OFFER STATUS FILTERING --- */
-  window.filterOfferHistory = function(status) {
+  window.filterOfferHistory = function (status) {
     const rows = document.querySelectorAll('#offer-history-tbody tr');
     rows.forEach(row => {
       const badge = row.querySelector('.badge');
@@ -2014,26 +2033,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const placementHistoryPageSize = 10;
   let placementHistoryFilteredRows = [];
 
-  window.filterPlacementHistoryTable = function() {
+  window.filterPlacementHistoryTable = function () {
     const q = (document.getElementById('placement-history-search')?.value || '').toLowerCase().trim();
     const status = document.getElementById('placement-history-filter-status')?.value || 'All';
     const rows = Array.from(document.querySelectorAll('#placement-history-tbody tr.placement-history-row'));
-    
+
     placementHistoryFilteredRows = rows.filter(row => {
       const name = row.getAttribute('data-name') || '';
       const company = row.getAttribute('data-company') || '';
       const role = row.getAttribute('data-role') || '';
       const rowStatus = row.getAttribute('data-status') || '';
-      
+
       const matchesSearch = !q || name.includes(q) || company.includes(q) || role.includes(q);
       const matchesStatus = status === 'All' || rowStatus === status;
-      
+
       return matchesSearch && matchesStatus;
     });
 
     // Hide all rows
     rows.forEach(r => r.style.display = 'none');
-    
+
     placementHistoryPage = 1;
     updatePlacementHistoryPagination();
   };
@@ -2041,7 +2060,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updatePlacementHistoryPagination() {
     const total = placementHistoryFilteredRows.length;
     const totalPages = Math.ceil(total / placementHistoryPageSize) || 1;
-    
+
     if (placementHistoryPage < 1) placementHistoryPage = 1;
     if (placementHistoryPage > totalPages) placementHistoryPage = totalPages;
 
@@ -2072,14 +2091,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (nextBtn) nextBtn.disabled = placementHistoryPage === totalPages;
   }
 
-  window.changePlacementHistoryPage = function(offset) {
+  window.changePlacementHistoryPage = function (offset) {
     placementHistoryPage += offset;
     // Hide all currently visible rows in the filtered subset
     placementHistoryFilteredRows.forEach(r => r.style.display = 'none');
     updatePlacementHistoryPagination();
   };
 
-  window.showModuleDetails = function(moduleType, recordId) {
+  window.showModuleDetails = function (moduleType, recordId) {
     const titleEl = document.getElementById('generic-details-title');
     const bodyEl = document.getElementById('generic-details-body');
     if (!titleEl || !bodyEl) return;
@@ -2288,7 +2307,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     openRecruiterModal('modal-view-generic-details');
     if (window.lucide) lucide.createIcons();
-  };  function loadNotificationsView() {
+  }; function loadNotificationsView() {
     const container = document.getElementById('notifications-list-container');
     if (!container) return;
 
@@ -2439,7 +2458,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
   /* --- DYNAMIC OFFER TRACKER WORKSPACE --- */
-  window.renderOfferTrackerTable = function() {
+  window.renderOfferTrackerTable = function () {
     const tbody = document.getElementById('offer-history-tbody');
     if (!tbody) return;
 
@@ -2451,7 +2470,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Filter by search query
     if (query !== '') {
-      list = list.filter(o => 
+      list = list.filter(o =>
         (o.studentName || '').toLowerCase().includes(query) ||
         (o.designation || '').toLowerCase().includes(query) ||
         (o.location || '').toLowerCase().includes(query)
@@ -2532,7 +2551,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.lucide) lucide.createIcons();
   };
 
-  window.openEditOfferModalDirectly = function(offerId) {
+  window.openEditOfferModalDirectly = function (offerId) {
     const offer = globalData.offers.find(o => parseInt(o.id) === parseInt(offerId));
     if (!offer) return;
 
@@ -2548,7 +2567,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Format timestamps to YYYY-MM-DD
     document.getElementById('edit-offer-sent').value = offer.sent_date ? offer.sent_date.split(' ')[0] : '';
     document.getElementById('edit-offer-viewed').value = offer.viewed_date ? offer.viewed_date.split(' ')[0] : '';
-    
+
     const decision = offer.accepted_date || offer.rejected_date || '';
     document.getElementById('edit-offer-decision').value = decision ? decision.split(' ')[0] : '';
 
@@ -2556,9 +2575,9 @@ document.addEventListener("DOMContentLoaded", () => {
     openRecruiterModal('modal-edit-offer');
   };
 
-  window.toggleEditOfferTimestamps = function() {
+  window.toggleEditOfferTimestamps = function () {
     const status = document.getElementById('edit-offer-status').value;
-    
+
     const sentWrapper = document.getElementById('wrapper-edit-offer-sent');
     if (['Sent', 'Viewed', 'Accepted', 'Rejected'].includes(status)) {
       sentWrapper.style.display = 'block';
@@ -2586,7 +2605,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  window.submitEditOfferForm = function(e) {
+  window.submitEditOfferForm = function (e) {
     e.preventDefault();
     const form = document.getElementById('form-edit-offer-api');
     const btn = document.getElementById('btn-edit-offer-submit');
@@ -2661,7 +2680,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (res.status === 'success') {
           closeRecruiterModal('modal-edit-offer');
           Swal.fire({ title: window.__('Success'), text: window.__(res.message), icon: 'success', timer: 1500 });
-          
+
           const offer = globalData.offers.find(o => parseInt(o.id) === parseInt(f.get('offer_id')));
           if (offer) {
             offer.designation = f.get('designation');
@@ -2692,7 +2711,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  window.deleteOfferDirectly = function(offerId) {
+  window.deleteOfferDirectly = function (offerId) {
     Swal.fire({
       title: window.__('Are you sure?'),
       text: window.__('This will permanently delete this candidate offer letter record.'),
@@ -2748,7 +2767,7 @@ document.addEventListener("DOMContentLoaded", () => {
               sidebarBadge.style.display = 'none';
             }
           }
-          
+
           // Flatten grouped notifications into a single list
           let allNotifs = [];
           const groups = res.notifications;
@@ -2758,7 +2777,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           });
           globalData.notifications = allNotifs;
-          
+
           loadStatsAndCharts();
         }
       });
@@ -2767,7 +2786,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateWelcomeGreeting() {
     const msgElem = document.getElementById('recruiter-welcome-msg');
     if (!msgElem) return;
-    
+
     const now = new Date();
     const istHourStr = now.toLocaleTimeString('en-US', {
       timeZone: 'Asia/Kolkata',
@@ -2775,7 +2794,7 @@ document.addEventListener("DOMContentLoaded", () => {
       hour12: false
     });
     const hour = parseInt(istHourStr, 10);
-    
+
     let greeting = "Good Morning";
     if (hour >= 12 && hour < 17) {
       greeting = "Good Afternoon";
@@ -2784,13 +2803,13 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (hour >= 21 || hour < 5) {
       greeting = "Good Night";
     }
-    
+
     const name = globalData.userName || 'Recruiter';
     msgElem.innerText = `${greeting}, ${name} 👋`;
   }
 
   // CountUp Animation Helper
-  window.animateValue = function(id, start, end, duration, prefix = '', suffix = '') {
+  window.animateValue = function (id, start, end, duration, prefix = '', suffix = '') {
     const obj = document.getElementById(id);
     if (!obj) return;
     if (isNaN(end)) {
@@ -2813,7 +2832,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Profile Sub-Tabs Handler
-  window.switchProfileTab = function(secId) {
+  window.switchProfileTab = function (secId) {
     document.querySelectorAll('#profile .profile-sub-panel').forEach(p => {
       p.style.display = 'none';
       p.classList.remove('active');
@@ -2834,13 +2853,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.lucide) lucide.createIcons();
   };
 
-  window.loadProfileView = function() {
+  window.loadProfileView = function () {
     window.switchProfileTab('sec-branding');
     if (window.lucide) lucide.createIcons();
   };
 
   // Settings Sub-Tabs Handler
-  window.switchSettingsTab = function(secId) {
+  window.switchSettingsTab = function (secId) {
     document.querySelectorAll('#settings .settings-sub-panel').forEach(p => {
       p.style.display = 'none';
       p.classList.remove('active');
@@ -2861,16 +2880,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.lucide) lucide.createIcons();
   };
 
-  window.loadSettingsView = function() {
-    window.switchSettingsTab('set-ui');
+  window.loadSettingsView = function () {
+    window.switchSettingsTab('set-automation');
     if (window.lucide) lucide.createIcons();
   };
 
-  window.loadFooterView = function() {
-    if (window.lucide) lucide.createIcons();
-  };
 
-  window.generateRecruiterApiKey = function() {
+
+  window.generateRecruiterApiKey = function () {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let key = 'crms_live_sk_';
     for (let i = 0; i < 24; i++) {
@@ -2881,7 +2898,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Swal.fire({ title: 'New API Key Generated!', text: 'Be sure to save your settings to persist the new key.', icon: 'info', timer: 2000 });
   };
 
-  window.copyRecruiterApiKey = function() {
+  window.copyRecruiterApiKey = function () {
     const input = document.getElementById('settings-api-key');
     if (input) {
       input.select();
@@ -2890,12 +2907,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  window.clearRecruiterLocalCache = function() {
+  window.clearRecruiterLocalCache = function () {
     sessionStorage.clear();
     Swal.fire({ title: 'Cache Cleared!', text: 'Workspace local cache and session state cleared successfully.', icon: 'success', timer: 1500 });
   };
 
-  window.playTestNotificationSound = function() {
+  window.playTestNotificationSound = function () {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
@@ -2909,12 +2926,12 @@ document.addEventListener("DOMContentLoaded", () => {
       osc.start();
       osc.stop(ctx.currentTime + 0.5);
       Swal.fire({ title: 'Sound Played!', text: 'Notification chime test succeeded.', icon: 'success', timer: 1200 });
-    } catch(e) {
+    } catch (e) {
       Swal.fire({ title: 'Audio Test', text: 'Audio playback triggered.', icon: 'info', timer: 1200 });
     }
   };
 
-  window.loadReportsHistory = function() {
+  window.loadReportsHistory = function () {
     fetch('api/actions.php?action=get_reports_history')
       .then(r => r.json())
       .then(res => {
@@ -2943,7 +2960,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  window.submitRecruiterProfileForm = function(event) {
+  window.submitRecruiterProfileForm = function (event) {
     if (event) event.preventDefault();
     const form = event ? event.target : null;
     if (!form) return;
@@ -2971,7 +2988,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  window.submitRecruiterSettingsForm = function(event) {
+  window.submitRecruiterSettingsForm = function (event) {
     if (event) event.preventDefault();
     const form = document.getElementById('recruiter-settings-form');
     if (!form) return;
@@ -2999,7 +3016,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  window.submitRecruiterPasswordForm = function(event) {
+  window.submitRecruiterPasswordForm = function (event) {
     if (event) event.preventDefault();
     const currentPwd = document.getElementById('pwd-current')?.value;
     const newPwd = document.getElementById('pwd-new')?.value;
@@ -3040,7 +3057,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Branding Upload & Drag-and-Drop
-  window.handleBrandingDrop = function(e, type) {
+  window.handleBrandingDrop = function (e, type) {
     e.preventDefault();
     e.stopPropagation();
     const dt = e.dataTransfer;
@@ -3050,7 +3067,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  window.triggerBrandingUpload = function(inputId, type) {
+  window.triggerBrandingUpload = function (inputId, type) {
     const input = document.getElementById(inputId);
     if (input && input.files.length > 0) {
       uploadBrandingFile(input.files[0], type);
@@ -3088,7 +3105,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .catch(err => Swal.fire({ title: 'Error', text: 'Network upload error.', icon: 'error' }));
   }
 
-  window.removeBrandingAsset = function(type) {
+  window.removeBrandingAsset = function (type) {
     Swal.fire({
       title: 'Remove Branding Asset?',
       text: 'This will reset the branding asset.',
@@ -3111,7 +3128,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Corporate Profile AJAX Form Submission
-  window.submitRecruiterProfileForm = function(e) {
+  window.submitRecruiterProfileForm = function (e) {
     e.preventDefault();
     const form = e.target;
     const formData = new FormData(form);
@@ -3137,14 +3154,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   // Password Verification & Live Strength Meter
-  window.togglePasswordVisibility = function(inputId) {
+  window.togglePasswordVisibility = function (inputId) {
     const input = document.getElementById(inputId);
     if (input) {
       input.type = input.type === 'password' ? 'text' : 'password';
     }
   };
 
-  window.checkPasswordRequirements = function(val) {
+  window.checkPasswordRequirements = function (val) {
     const fill = document.getElementById('pwd-strength-fill');
     const reqLen = document.getElementById('req-len');
     const reqUpper = document.getElementById('req-upper');
@@ -3174,7 +3191,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  window.submitRecruiterPasswordForm = function(e) {
+  window.submitRecruiterPasswordForm = function (e) {
     e.preventDefault();
     const curr = document.getElementById('pwd-current').value;
     const newP = document.getElementById('pwd-new').value;
@@ -3214,7 +3231,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Audit Timeline Search & CSV Export
-  window.filterAuditTimeline = function() {
+  window.filterAuditTimeline = function () {
     const q = document.getElementById('audit-timeline-search').value.toLowerCase().trim();
     document.querySelectorAll('#audit-timeline-list .audit-timeline-node').forEach(node => {
       const text = node.innerText.toLowerCase();
@@ -3222,7 +3239,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  window.exportAuditHistoryCSV = function() {
+  window.exportAuditHistoryCSV = function () {
     let csv = "Timestamp,Action,Status,IP Address,Browser\n";
     document.querySelectorAll('#audit-timeline-list .audit-timeline-node').forEach(node => {
       const text = node.innerText;
@@ -3232,13 +3249,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `audit_history_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `audit_history_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
   };
 
   // Initialize
   setTimeout(() => {
     updateWelcomeGreeting();
+    updateLiveTime();
+    setInterval(updateLiveTime, 1000);
     if (document.getElementById('placement-history-search')) {
       filterPlacementHistoryTable();
     }
@@ -3265,7 +3284,7 @@ document.addEventListener("DOMContentLoaded", () => {
       second: '2-digit',
       hour12: true
     };
-    
+
     const now = new Date();
     const istDateStr = now.toLocaleDateString('en-US', optionsDate);
     const istTimeStr = now.toLocaleTimeString('en-US', optionsTime);
@@ -3291,7 +3310,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.currentQuestionList = [];
   window.currentAnalyticsData = null;
 
-  window.fetchAptitudeTests = function() {
+  window.fetchAptitudeTests = function () {
     fetch('api/actions.php?action=get_aptitude_tests')
       .then(r => r.json())
       .then(r => {
@@ -3312,7 +3331,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (totalTestsEl) totalTestsEl.innerText = tests.length;
     if (activeTestsEl) activeTestsEl.innerText = tests.filter(t => t.status === 'Active' || t.status === 'Scheduled').length;
-    
+
     let totalAssigned = 0;
     let totalEvaluated = 0;
     tests.forEach(t => {
@@ -3323,7 +3342,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (passRateEl) passRateEl.innerText = totalAssigned > 0 ? `${Math.round((totalEvaluated / totalAssigned) * 100)}%` : '0%';
   }
 
-  window.renderAptitudeTestsTable = function() {
+  window.renderAptitudeTestsTable = function () {
     const tbody = document.getElementById('aptitude-tests-tbody');
     if (!tbody) return;
 
@@ -3387,14 +3406,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.lucide) lucide.createIcons();
   };
 
-  window.openCreateAptitudeTestModal = function(testId) {
+  window.openCreateAptitudeTestModal = function (testId) {
     const form = document.getElementById('form-aptitude-test-api');
     if (!form) return;
     form.reset();
 
     const titleEl = document.getElementById('aptitude-test-modal-title');
     const editIdEl = document.getElementById('aptitude-edit-id');
-    
+
     // Set dynamic default date and time
     const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
     document.getElementById('aptitude-test-date').value = todayStr;
@@ -3421,7 +3440,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openRecruiterModal('modal-create-aptitude-test');
   };
 
-  window.submitAptitudeTestForm = function(ev) {
+  window.submitAptitudeTestForm = function (ev) {
     ev.preventDefault();
     const form = ev.target;
     const formData = new FormData(form);
@@ -3442,7 +3461,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  window.deleteAptitudeTest = function(testId) {
+  window.deleteAptitudeTest = function (testId) {
     Swal.fire({
       title: 'Delete Aptitude Test?',
       text: 'This will delete the test, all MCQ questions, and candidate attempt submissions!',
@@ -3471,7 +3490,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* --- MANAGE MCQ QUESTIONS --- */
-  window.openManageQuestionsModal = function(testId) {
+  window.openManageQuestionsModal = function (testId) {
     const test = window.recruiterAptitudeTests.find(t => t.id == testId);
     if (!test) return;
 
@@ -3483,7 +3502,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openRecruiterModal('modal-manage-questions');
   };
 
-  window.fetchAptitudeQuestions = function(testId) {
+  window.fetchAptitudeQuestions = function (testId) {
     fetch(`api/actions.php?action=get_aptitude_questions&test_id=${testId}`)
       .then(r => r.json())
       .then(r => {
@@ -3532,7 +3551,7 @@ document.addEventListener("DOMContentLoaded", () => {
     `).join('');
   }
 
-  window.resetQuestionForm = function() {
+  window.resetQuestionForm = function () {
     const form = document.getElementById('form-aptitude-question-api');
     if (form) form.reset();
     document.getElementById('question-edit-id').value = "";
@@ -3540,7 +3559,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('btn-save-question').innerText = "Save Question";
   };
 
-  window.editQuestion = function(qId) {
+  window.editQuestion = function (qId) {
     const q = window.currentQuestionList.find(item => item.id == qId);
     if (!q) return;
 
@@ -3558,7 +3577,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('btn-save-question').innerText = "Update Question";
   };
 
-  window.submitAptitudeQuestionForm = function(ev) {
+  window.submitAptitudeQuestionForm = function (ev) {
     ev.preventDefault();
     const formData = new FormData(ev.target);
     formData.append('action', 'save_aptitude_question');
@@ -3577,7 +3596,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  window.deleteAptitudeQuestion = function(qId, testId) {
+  window.deleteAptitudeQuestion = function (qId, testId) {
     const f = new FormData();
     f.append('action', 'delete_aptitude_question');
     f.append('question_id', qId);
@@ -3593,7 +3612,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* --- ASSIGN & RESULTS --- */
-  window.openAssignAptitudeTestModal = function(testId) {
+  window.openAssignAptitudeTestModal = function (testId) {
     const test = window.recruiterAptitudeTests.find(t => t.id == testId);
     if (!test) return;
 
@@ -3602,7 +3621,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openRecruiterModal('modal-assign-aptitude-test');
   };
 
-  window.submitAssignAptitudeTest = function(ev) {
+  window.submitAssignAptitudeTest = function (ev) {
     ev.preventDefault();
     const formData = new FormData(ev.target);
     formData.append('action', 'assign_aptitude_test');
@@ -3620,7 +3639,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  window.openAptitudeResultsModal = function(testId) {
+  window.openAptitudeResultsModal = function (testId) {
     const test = window.recruiterAptitudeTests.find(t => t.id == testId);
     if (test) {
       document.getElementById('aptitude-results-title').innerText = `Candidate Rankings - ${test.title}`;
@@ -3661,7 +3680,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tbody.innerHTML = leaderboard.map(row => {
       const isPassed = parseFloat(row.score || 0) >= parseFloat(passMarks || 40);
-      const badge = row.status === 'Evaluated' 
+      const badge = row.status === 'Evaluated'
         ? (isPassed ? '<span class="badge badge-success">PASSED</span>' : '<span class="badge badge-danger">FAILED</span>')
         : `<span class="badge badge-secondary">${row.status}</span>`;
 
@@ -3683,9 +3702,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }).join('');
   }
 
-  window.exportAptitudeLeaderboardCSV = function() {
+  window.exportAptitudeLeaderboardCSV = function () {
     if (!window.currentAnalyticsData || !window.currentAnalyticsData.leaderboard) return;
-    
+
     const test = window.currentAnalyticsData.test;
     const board = window.currentAnalyticsData.leaderboard;
 

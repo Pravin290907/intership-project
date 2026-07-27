@@ -723,6 +723,14 @@ class InterviewCalendar {
       const mockTimeStr = `${this.selectedDateStr}T${int.time}:00`;
       const elementId = `countdown-timer-${index}`;
 
+      const isUrl = (str) => {
+        if (!str) return false;
+        const s = str.trim().toLowerCase();
+        return s.startsWith('http://') || s.startsWith('https://') || s.includes('zoom.us') || s.includes('teams.live') || s.includes('meet.google.com') || s.includes('teams.microsoft.com');
+      };
+      const meetingUrl = isUrl(int.meeting_link) ? int.meeting_link.trim() : (isUrl(int.venue) ? int.venue.trim() : null);
+      const cleanUrl = meetingUrl ? (meetingUrl.startsWith('http') ? meetingUrl : 'https://' + meetingUrl) : '';
+
       html += `
         <div class="interview-item-card">
           <div class="interview-card-top">
@@ -746,7 +754,7 @@ class InterviewCalendar {
             </span>
             <span style="display: inline-flex; align-items: center; gap: 4px;">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              ${int.venue}
+              ${meetingUrl ? `<a href="${cleanUrl}" target="_blank" style="color: var(--primary); text-decoration: underline;">${int.venue || 'Online Link'}</a>` : int.venue}
             </span>
             <span style="display: inline-flex; align-items: center; gap: 4px;">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -755,9 +763,15 @@ class InterviewCalendar {
           </div>
           
           <div style="margin-top: 10px; display: flex; gap: var(--space-1);">
-            <a href="#" class="btn btn-secondary btn-sm start-meeting-btn" data-id="${int.id}" style="flex-grow: 1;">
-              ${translate('Join Meeting Link')}
-            </a>
+            ${meetingUrl ? `
+              <a href="${cleanUrl}" target="_blank" class="btn btn-primary btn-sm" style="flex-grow: 1; text-align: center; display: inline-flex; align-items: center; justify-content: center; color: white;">
+                Join Meeting
+              </a>
+            ` : `
+              <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(int.venue)}" target="_blank" class="btn btn-secondary btn-sm" style="flex-grow: 1; text-align: center; display: inline-flex; align-items: center; justify-content: center;">
+                Open Location
+              </a>
+            `}
           </div>
         </div>
       `;

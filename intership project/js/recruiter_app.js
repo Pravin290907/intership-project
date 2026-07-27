@@ -323,7 +323,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const branchBadge = r.querySelector('.badge')?.innerText.trim() || '';
 
       const matchesSearch = !q || text.includes(q);
-      const matchesBranch = branch === 'All' || branchBadge === branch;
+      const matchesBranch = branch === 'All' || 
+                            branchBadge.toLowerCase() === branch.toLowerCase() ||
+                            (branch === 'CSE' && (branchBadge.toLowerCase().includes('computer') || branchBadge.toLowerCase() === 'cse')) ||
+                            (branch === 'IT' && (branchBadge.toLowerCase().includes('information') || branchBadge.toLowerCase() === 'it')) ||
+                            (branch === 'ECE' && (branchBadge.toLowerCase().includes('electronics') || branchBadge.toLowerCase() === 'ece')) ||
+                            (branch === 'EE' && (branchBadge.toLowerCase().includes('electrical') || branchBadge.toLowerCase() === 'ee')) ||
+                            (branch === 'ME' && (branchBadge.toLowerCase().includes('mechanical') || branchBadge.toLowerCase() === 'me')) ||
+                            (branch === 'CE' && (branchBadge.toLowerCase().includes('civil') || branchBadge.toLowerCase() === 'ce'));
 
       if (matchesSearch && matchesBranch) {
         r.style.display = '';
@@ -407,9 +414,21 @@ document.addEventListener("DOMContentLoaded", () => {
           <span style="color:var(--text-secondary); font-size:13px;">Academic Year:</span>
           <strong style="color:var(--text-primary); font-size:13px;">${student.academic_year || 'Final Year'}</strong>
         </div>
-        <div style="display:flex; justify-content:space-between; padding-bottom:8px;">
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
           <span style="color:var(--text-secondary); font-size:13px;">Contact Phone:</span>
           <strong style="color:var(--text-primary); font-size:13px;">+91 ${student.phone || 'N/A'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+          <span style="color:var(--text-secondary); font-size:13px;">Resume Skills:</span>
+          <strong style="color:var(--text-primary); font-size:13px;">${student.skills || 'None Listed'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+          <span style="color:var(--text-secondary); font-size:13px;">Key Projects:</span>
+          <strong style="color:var(--text-primary); font-size:13px;">${student.projects || 'None Listed'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding-bottom:8px;">
+          <span style="color:var(--text-secondary); font-size:13px;">Student Resume:</span>
+          <strong style="font-size:13px;">${student.resume_path ? `<a href="${window.getAbsoluteUrl(student.resume_path)}" target="_blank" style="color:var(--primary); font-weight:700; text-decoration:underline;">View Resume PDF</a>` : 'No Resume Submitted'}</strong>
         </div>
       `;
     }
@@ -598,7 +617,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!form) return;
 
     form.reset();
-    const int = globalData.interviews.find(i => i.id === interviewId);
+    const int = globalData.interviews.find(i => String(i.id) === String(interviewId));
     if (!int) return;
 
     document.getElementById('interview-edit-id').value = int.id;
@@ -1210,8 +1229,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Re-query details
-    const student = globalData.students.find(s => s.id === studentId || s.user_id === studentId);
-    const application = globalData.applications.find(a => a.id === appId);
+    const student = globalData.students.find(s => String(s.id) === String(studentId) || String(s.user_id) === String(studentId));
+    const application = globalData.applications.find(a => String(a.id) === String(appId));
     if (!student || !application) return;
 
     // Center Panel rendering
@@ -1227,7 +1246,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
           </div>
           <span class="badge ${application.status === 'Selected' ? 'badge-success' : (application.status === 'Rejected' ? 'badge-danger' : 'badge-primary')}" style="font-size:13px; padding:6px 12px;">
-            Round: ${application.status}
+            Round: ${application.status === 'Eligible' ? 'Shortlisted' : application.status}
           </span>
         </div>
 
@@ -1250,12 +1269,12 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
           </div>
 
-          <div class="dashboard-card col-6">
+           <div class="dashboard-card col-6">
             <h4 style="font-size:14px; font-weight:700; margin-bottom:12px;">Resume Skills</h4>
             <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
-              ${(student.skills || '').split(',').map(s => `
+              ${student.skills && student.skills.trim() ? student.skills.split(',').filter(s => s.trim().length > 0).map(s => `
                 <span class="badge badge-primary">${s.trim()}</span>
-              `).join('')}
+              `).join('') : '<span style="font-size:12px; color:var(--text-muted);">No skills listed.</span>'}
             </div>
           </div>
         </div>
@@ -1266,7 +1285,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
 
         <div style="display:flex; gap:12px; margin-top:16px;">
-          <button class="btn btn-primary" onclick="setCandidateFunnelStatus(${appId}, 'Selected')" style="flex:1;">Shortlist/Select</button>
+          <button class="btn btn-primary" onclick="setCandidateFunnelStatus(${appId}, 'Eligible')" style="flex:1;">Shortlist Student</button>
           <button class="btn btn-secondary" onclick="openInterviewSchedulePanel(${appId})" style="flex:1;">Schedule Interview</button>
           <button class="btn btn-ghost" onclick="setCandidateFunnelStatus(${appId}, 'Rejected')" style="color:var(--color-danger); border:1px solid var(--color-danger); flex:1;">Reject Profile</button>
         </div>
@@ -1306,9 +1325,10 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   window.setCandidateFunnelStatus = function (appId, result) {
+    const statusLabel = result === 'Eligible' ? 'Shortlisted' : result;
     Swal.fire({
       title: 'Update Candidate Round',
-      text: `Do you want to mark this candidate status as ${result}?`,
+      text: `Do you want to mark this candidate status as ${statusLabel}?`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#2563EB',
@@ -1358,7 +1378,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="kanban-column-header">
             <div class="kanban-column-title">
               <span style="width:8px; height:8px; border-radius:50%; background-color:${getKanbanStageColor(stage)}; display:inline-block;"></span>
-              ${stage}
+              ${stage === 'Eligible' ? 'Shortlisted' : stage}
             </div>
             <span class="kanban-counter-badge">${stageApps.length}</span>
           </div>
@@ -1435,7 +1455,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (r.status === 'success') {
           Swal.fire({ title: 'Success', text: `Candidate successfully moved to ${stage} round.`, icon: 'success', timer: 1500 });
           // Reload global variables dynamically
-          const app = globalData.applications.find(a => a.id === appId);
+          const app = globalData.applications.find(a => String(a.id) === String(appId));
           if (app) app.status = stage;
           renderKanbanPipeline();
           loadStatsAndCharts();
@@ -1935,54 +1955,30 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // Date validations
-      const driveDate = addDriveForm.drive_date.value;
       const deadline = addDriveForm.registration_deadline.value;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const driveParts = driveDate ? driveDate.split('-') : [];
       const deadlineParts = deadline ? deadline.split('-') : [];
 
-      if (!driveDate || driveParts.length !== 3) {
-        Swal.fire({ title: 'Validation Error', text: 'Commencement Date is required and must be in YYYY-MM-DD format.', icon: 'error' });
-        if (btn) btn.disabled = false;
-        return;
-      }
       if (!deadline || deadlineParts.length !== 3) {
         Swal.fire({ title: 'Validation Error', text: 'Registration Deadline is required and must be in YYYY-MM-DD format.', icon: 'error' });
         if (btn) btn.disabled = false;
         return;
       }
 
-      const driveYear = parseInt(driveParts[0], 10);
       const deadlineYear = parseInt(deadlineParts[0], 10);
 
-      if (isNaN(driveYear) || driveYear < 2026 || driveYear > 2030 || driveParts[0].length !== 4) {
-        Swal.fire({ title: 'Validation Error', text: 'Commencement Date year must be a 4-digit year between 2026 and 2030.', icon: 'error' });
-        if (btn) btn.disabled = false;
-        return;
-      }
       if (isNaN(deadlineYear) || deadlineYear < 2026 || deadlineYear > 2030 || deadlineParts[0].length !== 4) {
         Swal.fire({ title: 'Validation Error', text: 'Registration Deadline year must be a 4-digit year between 2026 and 2030.', icon: 'error' });
         if (btn) btn.disabled = false;
         return;
       }
 
-      const driveObj = new Date(driveDate + 'T00:00:00');
       const deadlineObj = new Date(deadline + 'T00:00:00');
 
-      if (driveObj < today) {
-        Swal.fire({ title: 'Validation Error', text: 'Commencement Date cannot be set before today\'s date.', icon: 'error' });
-        if (btn) btn.disabled = false;
-        return;
-      }
       if (deadlineObj < today) {
         Swal.fire({ title: 'Validation Error', text: 'Registration Deadline cannot be set before today\'s date.', icon: 'error' });
-        if (btn) btn.disabled = false;
-        return;
-      }
-      if (deadlineObj > driveObj) {
-        Swal.fire({ title: 'Validation Error', text: 'Registration Deadline cannot be set after Commencement Date.', icon: 'error' });
         if (btn) btn.disabled = false;
         return;
       }
@@ -2854,7 +2850,6 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   window.loadProfileView = function () {
-    window.switchProfileTab('sec-branding');
     if (window.lucide) lucide.createIcons();
   };
 
@@ -3098,6 +3093,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const preview = document.getElementById('preview-company-banner-img');
             if (preview) preview.src = res.filepath;
           }
+          setTimeout(() => window.location.reload(), 1500);
         } else {
           Swal.fire({ title: 'Upload Failed', text: res.message, icon: 'error' });
         }

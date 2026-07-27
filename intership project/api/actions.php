@@ -286,7 +286,10 @@ try {
         echo json_encode(['status' => 'error', 'message' => 'Compensation LPA must be a positive number.']);
         exit;
       }
-      if (empty($drive_date) || !strtotime($drive_date)) {
+      if (empty($drive_date)) {
+        $drive_date = date('Y-m-d');
+      }
+      if (!strtotime($drive_date)) {
         echo json_encode(['status' => 'error', 'message' => 'Invalid interview date.']);
         exit;
       }
@@ -407,7 +410,7 @@ try {
       $appId = (int)$_POST['application_id'];
       $date = $_POST['date'];
       $time = $_POST['time'];
-      $venue = filter_input(INPUT_POST, 'venue', FILTER_SANITIZE_SPECIAL_CHARS);
+      $venue = filter_input(INPUT_POST, 'venue', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Virtual';
       $interviewer = filter_input(INPUT_POST, 'interviewer', FILTER_SANITIZE_SPECIAL_CHARS);
       
       $interviewRound = filter_input(INPUT_POST, 'interview_round', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Technical';
@@ -463,7 +466,7 @@ try {
       $interviewId = (int)$_POST['interview_id'];
       $date = $_POST['date'];
       $time = $_POST['time'];
-      $venue = filter_input(INPUT_POST, 'venue', FILTER_SANITIZE_SPECIAL_CHARS);
+      $venue = filter_input(INPUT_POST, 'venue', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Virtual';
       $interviewer = filter_input(INPUT_POST, 'interviewer', FILTER_SANITIZE_SPECIAL_CHARS);
       
       $interviewRound = filter_input(INPUT_POST, 'interview_round', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Technical';
@@ -1647,17 +1650,30 @@ try {
         ");
         $stmt->execute([$_SESSION['user_id']]);
       } else {
-        $stmt = $db->prepare("
-          SELECT t.*, u.name as company_name,
-                 (SELECT COUNT(*) FROM aptitude_questions q WHERE q.test_id = t.id) as question_count,
-                 (SELECT COUNT(*) FROM aptitude_assignments a WHERE a.test_id = t.id) as assigned_count,
-                 (SELECT COUNT(*) FROM aptitude_assignments a WHERE a.test_id = t.id AND a.status = 'Evaluated') as evaluated_count
-          FROM aptitude_tests t
-          LEFT JOIN users u ON t.company_id = u.id
-          WHERE t.company_id = ? OR ? IN ('admin', 'tpo')
-          ORDER BY t.id DESC
-        ");
-        $stmt->execute([$_SESSION['user_id'], $role]);
+        if ($role === 'admin' || $role === 'tpo') {
+          $stmt = $db->prepare("
+            SELECT t.*, u.name as company_name,
+                   (SELECT COUNT(*) FROM aptitude_questions q WHERE q.test_id = t.id) as question_count,
+                   (SELECT COUNT(*) FROM aptitude_assignments a WHERE a.test_id = t.id) as assigned_count,
+                   (SELECT COUNT(*) FROM aptitude_assignments a WHERE a.test_id = t.id AND a.status = 'Evaluated') as evaluated_count
+            FROM aptitude_tests t
+            LEFT JOIN users u ON t.company_id = u.id
+            ORDER BY t.id DESC
+          ");
+          $stmt->execute();
+        } else {
+          $stmt = $db->prepare("
+            SELECT t.*, u.name as company_name,
+                   (SELECT COUNT(*) FROM aptitude_questions q WHERE q.test_id = t.id) as question_count,
+                   (SELECT COUNT(*) FROM aptitude_assignments a WHERE a.test_id = t.id) as assigned_count,
+                   (SELECT COUNT(*) FROM aptitude_assignments a WHERE a.test_id = t.id AND a.status = 'Evaluated') as evaluated_count
+            FROM aptitude_tests t
+            LEFT JOIN users u ON t.company_id = u.id
+            WHERE t.company_id = ?
+            ORDER BY t.id DESC
+          ");
+          $stmt->execute([$_SESSION['user_id']]);
+        }
       }
       $tests = $stmt->fetchAll();
       echo json_encode(['status' => 'success', 'tests' => $tests]);

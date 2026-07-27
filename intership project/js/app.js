@@ -112,6 +112,8 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshCharts();
       } else if (viewId === "notifications") {
         loadNotificationsPage();
+      } else if (viewId === "eligibility") {
+        runEligibilityCheck();
       }
     }
   }
@@ -621,7 +623,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const jobRole = form.querySelector("[name='job_role']").value.trim();
       const cgpa = form.querySelector("[name='eligibility_cgpa']").value;
       const packageLpa = form.querySelector("[name='package_lpa']").value;
-      const driveDate = form.querySelector("[name='drive_date']").value;
+       const driveDateEl = form.querySelector("[name='drive_date']");
+      const driveDate = driveDateEl ? driveDateEl.value : '';
       const deadline = form.querySelector("[name='registration_deadline']").value;
       const departments = form.querySelector("[name='departments']").value.trim();
 
@@ -640,7 +643,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (btn) btn.disabled = false;
         return;
       }
-      if (!driveDate) {
+      if (driveDateEl && !driveDate) {
         Swal.fire({ title: 'Validation Error', text: 'Invalid interview date.', icon: 'error' });
         if (btn) btn.disabled = false;
         return;
@@ -2353,7 +2356,6 @@ Date generated: ${new Date().toLocaleDateString()}
   }
 
   window.renderCalendar = function() {
-    if (calendarInstance) return;
     calendarInstance = new InterviewCalendar("calendar-widget-grid", "upcoming-interviews-list", data.interviews);
   }
 
@@ -2946,9 +2948,13 @@ Date generated: ${new Date().toLocaleDateString()}
               Swal.fire({
                 title: 'Success!',
                 text: r.message,
-                icon: 'success'
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
               });
-              studentOffersRender();
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
             } else {
               Swal.fire({
                 title: 'Error',
@@ -3178,4 +3184,329 @@ Date generated: ${new Date().toLocaleDateString()}
   // Watch for size changes
   window.addEventListener("resize", handleResponsiveLayout);
   handleResponsiveLayout();
+
+  /* --- TPO PROFESSIONAL PLACEMENT MODULES --- */
+  
+  // 1. Export Students CSV
+  window.exportStudentsCSV = function() {
+    const students = data.students;
+    if (!students || students.length === 0) {
+      Swal.fire({ title: 'No Data', text: 'No students available to export.', icon: 'warning' });
+      return;
+    }
+    const headers = ['Roll Number', 'Name', 'Email', 'Department', 'CGPA', 'Phone', 'Status'];
+    const csvRows = [headers.join(',')];
+    students.forEach(s => {
+      csvRows.push([
+        `"${s.rollNumber || ''}"`,
+        `"${s.name || ''}"`,
+        `"${s.email || ''}"`,
+        `"${s.department || ''}"`,
+        `"${s.cgpa || ''}"`,
+        `"${s.phone || ''}"`,
+        `"${s.verifiedStatus || ''}"`
+      ].join(','));
+    });
+    downloadCSV(csvRows.join('\n'), 'students_directory.csv');
+  };
+
+  // 2. Export Placement Excel Report
+  window.exportPlacementExcel = function() {
+    const students = data.students;
+    if (!students || students.length === 0) return;
+    const headers = ['Name', 'Email', 'Roll Number', 'Branch', 'CGPA', 'Phone', 'Placed Status', 'Highest Package (LPA)'];
+    const rows = [headers.join(',')];
+    students.forEach(s => {
+      rows.push([
+        `"${s.name || ''}"`,
+        `"${s.email || ''}"`,
+        `"${s.rollNumber || ''}"`,
+        `"${s.department || ''}"`,
+        `"${s.cgpa || ''}"`,
+        `"${s.phone || ''}"`,
+        `"${s.placedStatus || 'Unplaced'}"`,
+        `"${s.highestPackage || 0}"`
+      ].join(','));
+    });
+    downloadCSV(rows.join('\n'), 'placement_status_report.csv');
+  };
+
+  // 3. Export Recruiter Logs Excel
+  window.exportCompaniesExcel = function() {
+    const companies = data.companies;
+    if (!companies || companies.length === 0) return;
+    const headers = ['Company Name', 'Email', 'Industry', 'Website', 'Status'];
+    const rows = [headers.join(',')];
+    companies.forEach(c => {
+      rows.push([
+        `"${c.company_name || c.name || ''}"`,
+        `"${c.email || ''}"`,
+        `"${c.industry || ''}"`,
+        `"${c.website || ''}"`,
+        `"${c.status || ''}"`
+      ].join(','));
+    });
+    downloadCSV(rows.join('\n'), 'hiring_companies_report.csv');
+  };
+
+  // 4. Download CSV Helper
+  function downloadCSV(csvContent, filename) {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+
+  // 5. Print Analytics PDF
+  window.printAnalyticsReport = function() {
+    window.print();
+  };
+
+  // 6. Eligibility Checker
+  window.runEligibilityCheck = function() {
+    const minCgpa = parseFloat(document.getElementById('elig-min-cgpa')?.value) || 0;
+    const branch = document.getElementById('elig-branch')?.value || 'All';
+    const year = document.getElementById('elig-year')?.value || '';
+    const skillsInput = document.getElementById('elig-skills')?.value.toLowerCase().trim() || '';
+    const requiredSkills = skillsInput ? skillsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    const filtered = data.students.filter(s => {
+      const cgpaVal = parseFloat(s.cgpa) || 0;
+      const matchesCgpa = cgpaVal >= minCgpa;
+      
+      const deptCode = s.deptCode || '';
+      const matchesBranch = branch === 'All' || deptCode === branch;
+      
+      const academicYear = s.academic_year || 'Final Year';
+      const matchesYear = !year || academicYear.includes(year);
+      
+      const skillsStr = (s.skills || '').toLowerCase();
+      const matchesSkills = requiredSkills.every(reqSkill => skillsStr.includes(reqSkill));
+
+      return matchesCgpa && matchesBranch && matchesYear && matchesSkills;
+    });
+
+    const countLabel = document.getElementById('eligibility-results-count');
+    if (countLabel) countLabel.innerText = `Eligible Students (${filtered.length})`;
+
+    const container = document.getElementById('eligibility-table-container');
+    if (!container) return;
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-secondary); font-size:14px;">No candidates match the specified eligibility thresholds.</div>`;
+      return;
+    }
+
+    let rowsHtml = filtered.map(s => `
+      <tr>
+        <td><strong>${s.rollNumber || 'N/A'}</strong></td>
+        <td>
+          <div style="font-weight:600;">${s.name}</div>
+          <div style="font-size:11px; color:var(--text-secondary);">${s.email}</div>
+        </td>
+        <td><span class="badge badge-primary">${s.department || s.deptCode}</span></td>
+        <td><strong>${s.cgpa}</strong></td>
+        <td>${s.academic_year || 'Final Year'}</td>
+        <td>${s.skills ? s.skills.split(',').map(skill => `<span class="badge" style="background:rgba(255,255,255,0.05); margin-right:4px;">${skill.trim()}</span>`).join('') : 'None'}</td>
+      </tr>
+    `).join('');
+
+    container.innerHTML = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Roll Number</th>
+            <th>Name</th>
+            <th>Branch</th>
+            <th>CGPA</th>
+            <th>Academic Year</th>
+            <th>Skills</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    `;
+  };
+
+  // 7. Export Eligibility CSV
+  window.exportEligibilityResultsCSV = function() {
+    const minCgpa = parseFloat(document.getElementById('elig-min-cgpa')?.value) || 0;
+    const branch = document.getElementById('elig-branch')?.value || 'All';
+    const year = document.getElementById('elig-year')?.value || '';
+    const skillsInput = document.getElementById('elig-skills')?.value.toLowerCase().trim() || '';
+    const requiredSkills = skillsInput ? skillsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    const filtered = data.students.filter(s => {
+      const cgpaVal = parseFloat(s.cgpa) || 0;
+      const matchesCgpa = cgpaVal >= minCgpa;
+      const deptCode = s.deptCode || '';
+      const matchesBranch = branch === 'All' || deptCode === branch;
+      const academicYear = s.academic_year || 'Final Year';
+      const matchesYear = !year || academicYear.includes(year);
+      const skillsStr = (s.skills || '').toLowerCase();
+      const matchesSkills = requiredSkills.every(reqSkill => skillsStr.includes(reqSkill));
+      return matchesCgpa && matchesBranch && matchesYear && matchesSkills;
+    });
+
+    if (filtered.length === 0) {
+      Swal.fire({ title: 'No Data', text: 'No eligible candidates to export.', icon: 'warning' });
+      return;
+    }
+
+    const headers = ['Roll Number', 'Name', 'Email', 'Department', 'CGPA', 'Academic Year', 'Skills'];
+    const csvRows = [headers.join(',')];
+    filtered.forEach(s => {
+      csvRows.push([
+        `"${s.rollNumber || ''}"`,
+        `"${s.name || ''}"`,
+        `"${s.email || ''}"`,
+        `"${s.department || ''}"`,
+        `"${s.cgpa || ''}"`,
+        `"${s.academic_year || 'Final Year'}"`,
+        `"${s.skills || ''}"`
+      ].join(','));
+    });
+    downloadCSV(csvRows.join('\n'), 'eligible_students.csv');
+  };
+
+  // 8. Bulk Import CSV
+  window.importStudentsCSV = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    event.target.value = '';
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const text = e.target.result;
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length <= 1) {
+        Swal.fire({ title: 'Empty CSV', text: 'No student records found in the CSV file.', icon: 'warning' });
+        return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const rollIdx = headers.indexOf('roll number');
+      const nameIdx = headers.indexOf('name');
+      const emailIdx = headers.indexOf('email');
+      const deptIdx = headers.indexOf('department');
+      const cgpaIdx = headers.indexOf('cgpa');
+      const phoneIdx = headers.indexOf('phone');
+
+      if (rollIdx === -1 || nameIdx === -1 || emailIdx === -1 || deptIdx === -1 || cgpaIdx === -1 || phoneIdx === -1) {
+        Swal.fire({
+          title: 'Incorrect Headers',
+          text: 'CSV must contain headers: Roll Number, Name, Email, Department, CGPA, Phone',
+          icon: 'error'
+        });
+        return;
+      }
+
+      Swal.fire({
+        title: 'Importing Students...',
+        html: 'Processed: <b>0</b> / ' + (lines.length - 1) + '<br><div class="progress" style="width:100%;height:10px;background:#eee;border-radius:5px;margin-top:10px;overflow:hidden;"><div id="import-progress-fill" style="width:0%;height:100%;background:var(--primary);transition:width 0.2s;"></div></div>',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      let successCount = 0;
+      let errorMsgs = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = parseCSVRow(lines[i]);
+        if (row.length < headers.length) continue;
+
+        const name = row[nameIdx];
+        const email = row[emailIdx];
+        const roll = row[rollIdx];
+        const rawDept = row[deptIdx];
+        const cgpa = row[cgpaIdx];
+        const phone = row[phoneIdx];
+
+        let dept = 'CSE';
+        const lowerDept = rawDept.toLowerCase();
+        if (lowerDept.includes('information') || lowerDept === 'it') dept = 'IT';
+        else if (lowerDept.includes('electronic') || lowerDept === 'ece' || lowerDept === 'entc') dept = 'ECE';
+        else if (lowerDept.includes('electrical') || lowerDept === 'ee') dept = 'EE';
+        else if (lowerDept.includes('mechanical') || lowerDept === 'me') dept = 'ME';
+        else if (lowerDept.includes('civil') || lowerDept === 'ce') dept = 'CE';
+
+        const f = new FormData();
+        f.append('register_type', 'student');
+        f.append('name', name);
+        f.append('email', email);
+        f.append('password', 'Student123!');
+        f.append('roll_number', roll);
+        f.append('department', dept);
+        f.append('cgpa', cgpa);
+        f.append('phone', phone);
+
+        try {
+          const res = await fetch('auth/register.php', { method: 'POST', body: f });
+          const json = await res.json();
+          if (json.status === 'success') {
+            successCount++;
+          } else {
+            errorMsgs.push(`Row ${i} (${name}): ${json.message}`);
+          }
+        } catch (err) {
+          errorMsgs.push(`Row ${i} (${name}): Connection failed`);
+        }
+
+        const pct = Math.round((i / (lines.length - 1)) * 100);
+        const fill = document.getElementById('import-progress-fill');
+        if (fill) fill.style.width = pct + '%';
+        const boldText = Swal.getHtmlContainer()?.querySelector('b');
+        if (boldText) boldText.innerText = i;
+      }
+
+      Swal.close();
+
+      if (errorMsgs.length > 0) {
+        Swal.fire({
+          title: 'Import Completed with Errors',
+          html: `<p>Successfully imported <b>${successCount}</b> candidates.</p><div style="text-align:left;max-height:150px;overflow-y:auto;font-size:12px;background:rgba(0,0,0,0.1);padding:10px;border-radius:4px;color:#f87171;">${errorMsgs.join('<br>')}</div>`,
+          icon: 'warning'
+        }).then(() => window.location.reload());
+      } else {
+        Swal.fire({
+          title: 'Success!',
+          text: `Successfully imported all ${successCount} candidates.`,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
+        setTimeout(() => window.location.reload(), 2000);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  function parseCSVRow(str) {
+    const arr = [];
+    let quote = false;
+    let col = '';
+    for (let c = 0; c < str.length; c++) {
+      const char = str[c];
+      if (char === '"') {
+        quote = !quote;
+      } else if (char === ',' && !quote) {
+        arr.push(col.trim());
+        col = '';
+      } else {
+        col += char;
+      }
+    }
+    arr.push(col.trim());
+    return arr;
+  }
 });

@@ -132,7 +132,7 @@ $recruiterInterviews = $stmtInt->fetchAll();
 
 // Fetch all system students
 $stmtAllStudents = $db->query("
-  SELECT u.id, u.name, u.email, s.roll_number, s.department, s.cgpa, s.phone, s.academic_year
+  SELECT u.id, u.name, u.email, s.roll_number, s.department, s.cgpa, s.phone, s.academic_year, s.resume_path, s.skills, s.projects, s.profile_pic
   FROM users u
   JOIN students s ON u.id = s.user_id
   ORDER BY u.name ASC
@@ -253,8 +253,8 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRMS Recruiter Dashboard Workspace</title>
   
-  <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/design-system.css">
-  <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/recruiter_style.css">
+  <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/design-system.css?v=<?php echo time(); ?>">
+  <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/recruiter_style.css?v=<?php echo time(); ?>">
   
   
   
@@ -366,7 +366,13 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
             <i class="icon" data-lucide="settings"></i>
             <span class="nav-item-label">Settings</span>
           </div>
+          <div class="sidebar-divider" style="height: 1px; background-color: rgba(255, 255, 255, 0.06); margin: 8px 12px;"></div>
+          <a href="auth/logout.php" class="nav-item-link danger" data-tooltip="Sign Out" style="text-decoration: none; color: var(--color-danger) !important;">
+            <i class="icon" data-lucide="log-out" style="color: var(--color-danger) !important;"></i>
+            <span class="nav-item-label" style="color: var(--color-danger) !important;">Sign Out</span>
+          </a>
         </div>
+
       </nav>
 
       <div class="sidebar-footer-profile">
@@ -982,14 +988,12 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
               </div>
               <select class="input-field-custom" id="student-branch-filter" onchange="filterStudentManagementList()" style="width:240px; height:40px;">
                 <option value="All">All Branches</option>
-                <option value="Information Technology (IT)">Information Technology (IT)</option>
-                <option value="Computer Engineering (CE)">Computer Engineering (CE)</option>
-                <option value="Artificial Intelligence & Data Science (AIDS)">Artificial Intelligence & Data Science (AIDS)</option>
-                <option value="Artificial Intelligence & Machine Learning (AIML)">Artificial Intelligence & Machine Learning (AIML)</option>
-                <option value="Electronics & Telecommunication (ENTC)">Electronics & Telecommunication (ENTC)</option>
-                <option value="Mechanical Engineering">Mechanical Engineering</option>
-                <option value="Civil Engineering">Civil Engineering</option>
-                <option value="Electrical Engineering">Electrical Engineering</option>
+                <option value="CSE">Computer Science & Engineering (CSE)</option>
+                <option value="IT">Information Technology (IT)</option>
+                <option value="ECE">Electronics & Communication (ECE)</option>
+                <option value="EE">Electrical Engineering (EE)</option>
+                <option value="ME">Mechanical Engineering (ME)</option>
+                <option value="CE">Civil Engineering (CE)</option>
               </select>
             </div>
             <div class="dashboard-card" style="padding:0; overflow-x:auto;">
@@ -1020,12 +1024,6 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
                         <div style="display:inline-flex; gap:4px;">
                           <button class="btn btn-ghost btn-sm btn-icon-only" onclick="viewStudentDetailsDirectly(<?php echo $stu['id']; ?>)" title="View Details">
                             <i data-lucide="eye" style="width:14px; height:14px;"></i>
-                          </button>
-                          <button class="btn btn-ghost btn-sm btn-icon-only" onclick="openEditStudentModalDirectly(<?php echo $stu['id']; ?>)" title="Modify Details">
-                            <i data-lucide="edit" style="width:14px; height:14px;"></i>
-                          </button>
-                          <button class="btn btn-ghost btn-sm btn-icon-only" onclick="deleteStudentDirectly(<?php echo $stu['id']; ?>)" style="color:var(--color-danger);" title="Remove Profile">
-                            <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
                           </button>
                         </div>
                       </td>
@@ -1782,414 +1780,143 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
         <!-- ==================== COMPANY PROFILE VIEW ==================== -->
         <div class="page-view-section" id="profile">
-          
-          <!-- Sub-Tab Header for Profile -->
-          <div class="dashboard-card" style="margin-bottom:20px; padding:12px 16px;">
-            <div class="sub-tab-nav-bar" role="tablist" style="display:flex; gap:10px; overflow-x:auto;">
-              <button type="button" class="sub-tab-btn active" onclick="switchProfileTab('sec-branding')">Company Branding</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-corporate')">Corporate Info</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-location')">Office Location</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-preferences')">Hiring Preferences</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-social')">Social Media</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-password')">Security & Password</button>
-              <button type="button" class="sub-tab-btn" onclick="switchProfileTab('sec-audit')">Activity Audit Timeline</button>
-            </div>
-          </div>
-
-          <!-- SECTION 1: Company Branding -->
-          <div class="profile-sub-panel active" id="sec-branding">
-            <div class="grid-container">
-              
-              <!-- Logo Upload Dropzone -->
-              <div class="dashboard-card col-6 col-lg-12">
-                <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
-                  <span>Corporate Logo Asset</span>
-                  <span class="badge badge-primary" style="font-size:10px;">Recommended: 400x400 px</span>
+          <div class="grid-container">
+            
+            <!-- Left Column: Company Profile Details -->
+            <div class="col-8 col-lg-12">
+              <div class="dashboard-card">
+                <h3 style="font-size:16px; font-weight:700; margin-bottom:20px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="building" style="width:18px; height:18px; color:var(--primary);"></i>
+                  Company Profile Details
                 </h3>
-                
-                <div class="branding-logo-preview" style="width:120px; height:120px; border-radius:16px; border:2px dashed #CBD5E1; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto; overflow:hidden; background-color:#F8FAFC;">
-                  <?php if ($companyLogo): ?>
-                    <img src="<?php echo htmlspecialchars($companyLogo); ?>" id="preview-company-logo-img" alt="Branding Logo" style="width:100%; height:100%; object-fit:contain;">
-                  <?php else: ?>
-                    <span id="preview-company-logo-placeholder" style="color:var(--text-muted); font-size:12px;">No Logo</span>
-                  <?php endif; ?>
+
+                <!-- Logo Uploader -->
+                <div style="display:flex; gap:20px; align-items:center; margin-bottom:24px; padding:16px; background-color:#F8FAFC; border-radius:12px; border:1px solid var(--border-color); flex-wrap:wrap;">
+                  <div class="branding-logo-preview" style="width:90px; height:90px; border-radius:12px; border:2px dashed #CBD5E1; display:flex; align-items:center; justify-content:center; overflow:hidden; background-color:#FFFFFF; flex-shrink:0;">
+                    <?php if ($companyLogo): ?>
+                      <img src="<?php echo htmlspecialchars($companyLogo); ?>" id="preview-company-logo-img" alt="Branding Logo" style="width:100%; height:100%; object-fit:contain;">
+                    <?php else: ?>
+                      <span id="preview-company-logo-placeholder" style="color:var(--text-muted); font-size:11px;">No Logo</span>
+                    <?php endif; ?>
+                  </div>
+                  <div style="flex:1; min-width:200px;">
+                    <h4 style="font-size:14px; font-weight:700; margin-bottom:4px; color:#0F172A;">Company Logo</h4>
+                    <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Supports PNG, JPG, WEBP, or SVG. Max size 5MB.</p>
+                    <div style="display:flex; gap:8px;">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('logo-file-input').click()" style="padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
+                        <i data-lucide="image" style="width:12px; height:12px;"></i> Choose Logo
+                      </button>
+                      <?php if ($companyLogo): ?>
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="removeBrandingAsset('company_logo')" style="color:var(--color-danger); padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
+                        <i data-lucide="trash-2" style="width:12px; height:12px;"></i> Remove
+                      </button>
+                      <?php endif; ?>
+                    </div>
+                    <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;" onchange="triggerBrandingUpload('logo-file-input', 'company_logo')">
+                  </div>
                 </div>
 
-                <div class="branding-dropzone" onclick="document.getElementById('logo-file-input').click()" ondragover="event.preventDefault(); this.classList.add('dragover');" ondragleave="this.classList.remove('dragover');" ondrop="handleBrandingDrop(event, 'company_logo')">
-                  <i data-lucide="upload-cloud" style="width:32px; height:32px; color:var(--primary); margin-bottom:8px;"></i>
-                  <p style="font-weight:600; font-size:13px; margin-bottom:4px;">Drag & Drop Corporate Logo Here</p>
-                  <p style="font-size:11px; color:var(--text-muted);">Supports PNG, JPG, WEBP or SVG up to 5MB</p>
-                </div>
-
-                <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;" onchange="triggerBrandingUpload('logo-file-input', 'company_logo')">
-
-                <!-- Progress & Action Bar -->
-                <div class="crop-preview-toolbar" style="margin-top:16px;">
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('logo-file-input').click()">
-                    <i data-lucide="image" style="width:12px; height:12px; margin-right:4px;"></i> Choose File
-                  </button>
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="removeBrandingAsset('company_logo')" style="color:var(--color-danger);">
-                    <i data-lucide="trash-2" style="width:12px; height:12px; margin-right:4px;"></i> Remove
-                  </button>
-                </div>
-              </div>
-
-              <!-- Banner Upload Dropzone -->
-              <div class="dashboard-card col-6 col-lg-12">
-                <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
-                  <span>Corporate Banner Header</span>
-                  <span class="badge badge-primary" style="font-size:10px;">Recommended: 1200x400 px</span>
-                </h3>
-                
-                <div class="branding-banner-preview" style="width:100%; height:120px; border-radius:16px; border:2px dashed #CBD5E1; display:flex; align-items:center; justify-content:center; margin-bottom:16px; overflow:hidden; background-color:#F8FAFC;">
-                  <?php if ($companyBanner): ?>
-                    <img src="<?php echo htmlspecialchars($companyBanner); ?>" id="preview-company-banner-img" alt="Branding Banner" style="width:100%; height:100%; object-fit:cover;">
-                  <?php else: ?>
-                    <span id="preview-company-banner-placeholder" style="color:var(--text-muted); font-size:12px;">No Banner Header</span>
-                  <?php endif; ?>
-                </div>
-
-                <div class="branding-dropzone" onclick="document.getElementById('banner-file-input').click()" ondragover="event.preventDefault(); this.classList.add('dragover');" ondragleave="this.classList.remove('dragover');" ondrop="handleBrandingDrop(event, 'company_banner')">
-                  <i data-lucide="image-plus" style="width:32px; height:32px; color:var(--primary); margin-bottom:8px;"></i>
-                  <p style="font-weight:600; font-size:13px; margin-bottom:4px;">Drag & Drop Cover Banner Here</p>
-                  <p style="font-size:11px; color:var(--text-muted);">Supports PNG, JPG, WEBP up to 8MB</p>
-                </div>
-
-                <input type="file" id="banner-file-input" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="triggerBrandingUpload('banner-file-input', 'company_banner')">
-
-                <!-- Progress & Action Bar -->
-                <div class="crop-preview-toolbar" style="margin-top:16px;">
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('banner-file-input').click()">
-                    <i data-lucide="image" style="width:12px; height:12px; margin-right:4px;"></i> Choose File
-                  </button>
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="removeBrandingAsset('company_banner')" style="color:var(--color-danger);">
-                    <i data-lucide="trash-2" style="width:12px; height:12px; margin-right:4px;"></i> Remove
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          <!-- SECTION 2: Corporate Information Form -->
-          <div class="profile-sub-panel" id="sec-corporate" style="display:none;">
-            <div class="dashboard-card">
-              <h3 style="font-size:16px; font-weight:700; margin-bottom:20px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Corporate Parameters & Recruiter Head Details</h3>
-              <form id="recruiter-profile-form" onsubmit="submitRecruiterProfileForm(event)">
-                <div class="grid-container">
-                  
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">HR Representative Name *</label>
-                    <input type="text" class="input-field-custom" name="hr_name" value="<?php echo htmlspecialchars($hrName); ?>" placeholder="Example: Rahul Sharma" required>
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Recruiter Head Title *</label>
-                    <input type="text" class="input-field-custom" name="recruiter_name" value="<?php echo htmlspecialchars($recruiterName); ?>" placeholder="Example: Recruiting Officer" required>
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Recruiter Head Designation</label>
-                    <input type="text" class="input-field-custom" name="designation" value="<?php echo htmlspecialchars($designation); ?>" placeholder="Example: Talent Acquisition Head">
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Industry Domain *</label>
-                    <input type="text" class="input-field-custom" name="industry" value="<?php echo htmlspecialchars($industry); ?>" placeholder="Example: Information Technology" required>
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Company Name *</label>
-                    <input type="text" class="input-field-custom" name="company_name" value="<?php echo htmlspecialchars($companyName); ?>" placeholder="Example: Google Inc." required>
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Corporate Company Size</label>
-                    <input type="text" class="input-field-custom" name="company_size" value="<?php echo htmlspecialchars($companySize); ?>" placeholder="Example: 500-1000 Employees">
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Corporate Website URL *</label>
-                    <input type="url" class="input-field-custom" name="website" value="<?php echo htmlspecialchars($website); ?>" placeholder="Example: https://google.com" required>
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Official Contact Phone (10 digits) *</label>
-                    <input type="text" class="input-field-custom" name="phone" value="<?php echo htmlspecialchars($phone); ?>" placeholder="Example: 9876543210" required>
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Official HR Email Address *</label>
-                    <input type="email" class="input-field-custom" value="<?php echo htmlspecialchars($userEmail); ?>" disabled style="background-color:#F1F5F9;">
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">GSTIN ID Number</label>
-                    <input type="text" class="input-field-custom" name="gst" value="<?php echo htmlspecialchars($gst); ?>" placeholder="Example: 27AAAAA1111A1Z1">
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">PAN ID Card</label>
-                    <input type="text" class="input-field-custom" name="pan" value="<?php echo htmlspecialchars($pan); ?>" placeholder="Example: ABCDE1234F">
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Founded Year</label>
-                    <input type="number" class="input-field-custom" name="founded_year" value="<?php echo htmlspecialchars($foundedYear); ?>" placeholder="Example: 2010">
-                  </div>
-
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Total Employee Count</label>
-                    <input type="text" class="input-field-custom" name="employee_count" value="<?php echo htmlspecialchars($employeeCount); ?>" placeholder="Example: 1200+ Employees">
-                  </div>
-
-                  <div class="form-input-wrapper col-12">
-                    <label class="form-input-label">Headquarters Address</label>
-                    <textarea class="textarea-field-custom" name="office_address" rows="2" placeholder="Example: Cyber City, Tower B, Level 6, Pune, India"><?php echo htmlspecialchars($officeAddress); ?></textarea>
-                  </div>
-
-                  <div class="form-input-wrapper col-12">
-                    <label class="form-input-label">Company Description</label>
-                    <textarea class="textarea-field-custom" name="description" rows="3" placeholder="Describe core business operations and technology stack..."><?php echo htmlspecialchars($description); ?></textarea>
-                  </div>
-
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Corporate Vision</label>
-                    <textarea class="textarea-field-custom" name="vision" rows="2" placeholder="Enter corporate vision statement..."><?php echo htmlspecialchars($vision); ?></textarea>
-                  </div>
-
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Corporate Mission</label>
-                    <textarea class="textarea-field-custom" name="mission" rows="2" placeholder="Enter corporate mission statement..."><?php echo htmlspecialchars($mission); ?></textarea>
-                  </div>
-
-                </div>
-                <button type="submit" class="btn btn-primary" style="margin-top:16px;">
-                  <i data-lucide="save" style="width:14px; height:14px; margin-right:6px;"></i> Save Corporate Information
-                </button>
-              </form>
-            </div>
-          </div>
-
-          <!-- SECTION 3: Office Location -->
-          <div class="profile-sub-panel" id="sec-location" style="display:none;">
-            <div class="grid-container">
-              <div class="dashboard-card col-6 col-lg-12">
-                <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Office Address Details</h3>
-                <form onsubmit="submitRecruiterProfileForm(event)">
+                <!-- Profile Form -->
+                <form id="recruiter-profile-form" onsubmit="submitRecruiterProfileForm(event)">
                   <div class="grid-container">
+                    
                     <div class="form-input-wrapper col-6 col-md-12">
-                      <label class="form-input-label">Country *</label>
-                      <input type="text" class="input-field-custom" name="country" value="<?php echo htmlspecialchars($country); ?>" required>
+                      <label class="form-input-label">Company Name *</label>
+                      <input type="text" class="input-field-custom" name="company_name" value="<?php echo htmlspecialchars($companyName); ?>" placeholder="Example: Google Inc." required>
                     </div>
+
                     <div class="form-input-wrapper col-6 col-md-12">
-                      <label class="form-input-label">State / Province *</label>
-                      <input type="text" class="input-field-custom" name="state" value="<?php echo htmlspecialchars($state); ?>" placeholder="Example: Maharashtra" required>
+                      <label class="form-input-label">Industry Domain *</label>
+                      <input type="text" class="input-field-custom" name="industry" value="<?php echo htmlspecialchars($industry); ?>" placeholder="Example: Information Technology" required>
                     </div>
+
                     <div class="form-input-wrapper col-6 col-md-12">
-                      <label class="form-input-label">City *</label>
-                      <input type="text" class="input-field-custom" name="city" value="<?php echo htmlspecialchars($city); ?>" placeholder="Example: Pune" required>
+                      <label class="form-input-label">Corporate Website URL *</label>
+                      <input type="url" class="input-field-custom" name="website" value="<?php echo htmlspecialchars($website); ?>" placeholder="Example: https://google.com" required>
                     </div>
+
                     <div class="form-input-wrapper col-6 col-md-12">
-                      <label class="form-input-label">Pincode / Postal Code *</label>
-                      <input type="text" class="input-field-custom" name="pincode" value="<?php echo htmlspecialchars($pincode); ?>" placeholder="Example: 411001" required>
+                      <label class="form-input-label">Contact Phone Number *</label>
+                      <input type="text" class="input-field-custom" name="phone" value="<?php echo htmlspecialchars($phone); ?>" placeholder="Example: 9876543210" required>
                     </div>
+
+                    <div class="form-input-wrapper col-12">
+                      <label class="form-input-label">Headquarters Address *</label>
+                      <textarea class="textarea-field-custom" name="office_address" rows="2" placeholder="Example: Cyber City, Tower B, Level 6, Pune, India" required><?php echo htmlspecialchars($officeAddress); ?></textarea>
+                    </div>
+
+                    <div class="form-input-wrapper col-12">
+                      <label class="form-input-label">Company Description</label>
+                      <textarea class="textarea-field-custom" name="description" rows="3" placeholder="Describe core business operations and technology stack..."><?php echo htmlspecialchars($description); ?></textarea>
+                    </div>
+
                   </div>
-                  <button type="submit" class="btn btn-primary" style="margin-top:12px;">Save Office Location</button>
+                  <button type="submit" class="btn btn-primary" style="margin-top:16px; display:inline-flex; align-items:center; gap:6px;">
+                    <i data-lucide="save" style="width:14px; height:14px;"></i> Save Changes
+                  </button>
                 </form>
               </div>
-
-              <!-- Interactive Location Preview Card -->
-              <div class="dashboard-card col-6 col-lg-12">
-                <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Location Map Preview</h3>
-                <div style="width:100%; height:220px; background-color:#E2E8F0; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:16px;">
-                  <i data-lucide="map-pin" style="width:36px; height:36px; color:var(--primary); margin-bottom:8px;"></i>
-                  <h4 style="font-size:14px; font-weight:700; margin-bottom:4px;"><?php echo htmlspecialchars($companyName); ?> HQ</h4>
-                  <p style="font-size:12px; color:var(--text-secondary);"><?php echo htmlspecialchars($officeAddress ?: 'Pune, Maharashtra, India'); ?></p>
-                </div>
-              </div>
             </div>
-          </div>
 
-          <!-- SECTION 4: Hiring Preferences -->
-          <div class="profile-sub-panel" id="sec-preferences" style="display:none;">
-            <div class="dashboard-card">
-              <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Campus Recruitment Eligibility Criteria & Preferences</h3>
-              <form onsubmit="submitRecruiterProfileForm(event)">
-                <div class="grid-container">
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Target Eligible Branches</label>
-                    <input type="text" class="input-field-custom" name="eligible_branches" value="<?php echo htmlspecialchars($hiringPreferences['eligible_branches'] ?? 'CE, IT, ENTC, AI'); ?>" placeholder="Example: CE, IT, ENTC, AI">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Minimum CGPA Criteria (1.00 - 10.00)</label>
-                    <input type="number" class="input-field-custom" name="min_cgpa" step="0.01" value="<?php echo htmlspecialchars($hiringPreferences['min_cgpa'] ?? '7.50'); ?>">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Maximum Allowed Backlogs</label>
-                    <input type="number" class="input-field-custom" name="max_backlogs" value="<?php echo htmlspecialchars($hiringPreferences['max_backlogs'] ?? '0'); ?>">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Compensation Salary Range (LPA)</label>
-                    <input type="text" class="input-field-custom" name="salary_range" value="<?php echo htmlspecialchars($hiringPreferences['salary_range'] ?? '8.0 - 24.0 LPA'); ?>">
-                  </div>
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Work Mode Preference</label>
-                    <select class="input-field-custom" name="work_mode">
-                      <option value="Onsite" <?php echo ($hiringPreferences['work_mode'] ?? '') === 'Onsite' ? 'selected' : ''; ?>>Onsite Office</option>
-                      <option value="Hybrid" <?php echo ($hiringPreferences['work_mode'] ?? '') === 'Hybrid' ? 'selected' : ''; ?>>Hybrid Mode</option>
-                      <option value="Remote" <?php echo ($hiringPreferences['work_mode'] ?? '') === 'Remote' ? 'selected' : ''; ?>>Remote Work</option>
-                    </select>
-                  </div>
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Opportunity Type</label>
-                    <select class="input-field-custom" name="job_type">
-                      <option value="Full-Time" <?php echo ($hiringPreferences['job_type'] ?? '') === 'Full-Time' ? 'selected' : ''; ?>>Full-Time Permanent</option>
-                      <option value="Internship + FTE" <?php echo ($hiringPreferences['job_type'] ?? '') === 'Internship + FTE' ? 'selected' : ''; ?>>Internship + Full-Time Conversion</option>
-                      <option value="Internship Only" <?php echo ($hiringPreferences['job_type'] ?? '') === 'Internship Only' ? 'selected' : ''; ?>>Internship Only</option>
-                    </select>
-                  </div>
-                  <div class="form-input-wrapper col-4 col-md-12">
-                    <label class="form-input-label">Service Bond Requirement</label>
-                    <input type="text" class="input-field-custom" name="bond" value="<?php echo htmlspecialchars($hiringPreferences['bond'] ?? 'No Bond'); ?>" placeholder="Example: 1 Year Service Agreement or None">
-                  </div>
-                </div>
-                <button type="submit" class="btn btn-primary" style="margin-top:12px;">Save Hiring Preferences</button>
-              </form>
-            </div>
-          </div>
-
-          <!-- SECTION 5: Social Media -->
-          <div class="profile-sub-panel" id="sec-social" style="display:none;">
-            <div class="dashboard-card">
-              <h3 style="font-size:15px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Corporate Social Media Links</h3>
-              <form onsubmit="submitRecruiterProfileForm(event)">
-                <div class="grid-container">
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">LinkedIn Organization URL</label>
-                    <input type="url" class="input-field-custom" name="social_linkedin" value="<?php echo htmlspecialchars($socialLinks['linkedin'] ?? ''); ?>" placeholder="https://linkedin.com/company/example">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Twitter / X Page</label>
-                    <input type="url" class="input-field-custom" name="social_twitter" value="<?php echo htmlspecialchars($socialLinks['twitter'] ?? ''); ?>" placeholder="https://x.com/example">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Facebook Page</label>
-                    <input type="url" class="input-field-custom" name="social_facebook" value="<?php echo htmlspecialchars($socialLinks['facebook'] ?? ''); ?>" placeholder="https://facebook.com/example">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">Instagram Profile</label>
-                    <input type="url" class="input-field-custom" name="social_instagram" value="<?php echo htmlspecialchars($socialLinks['instagram'] ?? ''); ?>" placeholder="https://instagram.com/example">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">GitHub Organization</label>
-                    <input type="url" class="input-field-custom" name="social_github" value="<?php echo htmlspecialchars($socialLinks['github'] ?? ''); ?>" placeholder="https://github.com/example">
-                  </div>
-                  <div class="form-input-wrapper col-6 col-md-12">
-                    <label class="form-input-label">YouTube Channel</label>
-                    <input type="url" class="input-field-custom" name="social_youtube" value="<?php echo htmlspecialchars($socialLinks['youtube'] ?? ''); ?>" placeholder="https://youtube.com/@example">
-                  </div>
-                </div>
-                <button type="submit" class="btn btn-primary" style="margin-top:12px;">Save Social Media Handles</button>
-              </form>
-            </div>
-          </div>
-
-
-
-          <!-- SECURITY & PASSWORD SECTION -->
-          <div class="profile-sub-panel" id="sec-password" style="display:none;">
-            <div class="dashboard-card" style="max-width:650px; margin:0 auto;">
-              <h3 style="font-size:16px; font-weight:700; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">Change Security Password</h3>
-              <form id="recruiter-password-form" onsubmit="submitRecruiterPasswordForm(event)">
-                
-                <div class="form-input-wrapper">
-                  <label class="form-input-label">Current Password *</label>
-                  <div style="position:relative;">
-                    <input type="password" class="input-field-custom" id="pwd-current" required placeholder="Enter current account password">
-                    <button type="button" onclick="togglePasswordVisibility('pwd-current')" style="position:absolute; right:12px; top:12px; border:none; background:none; cursor:pointer; color:var(--text-muted);">
-                      <i data-lucide="eye" style="width:16px; height:16px;"></i>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="form-input-wrapper">
-                  <label class="form-input-label">New Password *</label>
-                  <div style="position:relative;">
-                    <input type="password" class="input-field-custom" id="pwd-new" onkeyup="checkPasswordRequirements(this.value)" required placeholder="Enter new password (Min 8 chars)">
-                    <button type="button" onclick="togglePasswordVisibility('pwd-new')" style="position:absolute; right:12px; top:12px; border:none; background:none; cursor:pointer; color:var(--text-muted);">
-                      <i data-lucide="eye" style="width:16px; height:16px;"></i>
-                    </button>
-                  </div>
+            <!-- Right Column: Security & Password -->
+            <div class="col-4 col-lg-12">
+              <div class="dashboard-card">
+                <h3 style="font-size:16px; font-weight:700; margin-bottom:20px; border-bottom:1px solid var(--border-color); padding-bottom:12px; display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="lock" style="width:18px; height:18px; color:var(--primary);"></i>
+                  Change Password
+                </h3>
+                <form id="recruiter-password-form" onsubmit="submitRecruiterPasswordForm(event)">
                   
-                  <!-- Live Password Strength Meter Bar -->
-                  <div class="password-strength-container">
-                    <div class="password-meter-bar">
-                      <div class="password-meter-fill" id="pwd-strength-fill"></div>
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">Current Password *</label>
+                    <div style="position:relative;">
+                      <input type="password" class="input-field-custom" id="pwd-current" required placeholder="Current account password">
+                      <button type="button" onclick="togglePasswordVisibility('pwd-current')" style="position:absolute; right:12px; top:12px; border:none; background:none; cursor:pointer; color:var(--text-muted);">
+                        <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                      </button>
                     </div>
-                    <div class="caps-lock-warning" id="caps-lock-alert">
-                      <i data-lucide="alert-triangle" style="width:14px; height:14px;"></i> Caps Lock is ON
+                  </div>
+
+                  <div class="form-input-wrapper">
+                    <label class="form-input-label">New Password *</label>
+                    <div style="position:relative;">
+                      <input type="password" class="input-field-custom" id="pwd-new" onkeyup="checkPasswordRequirements(this.value)" required placeholder="New password (Min 8 chars)">
+                      <button type="button" onclick="togglePasswordVisibility('pwd-new')" style="position:absolute; right:12px; top:12px; border:none; background:none; cursor:pointer; color:var(--text-muted);">
+                        <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                      </button>
                     </div>
                     
-                    <div class="password-requirements-list">
-                      <div class="password-req-item" id="req-len"><span>&bull;</span> Min 8 characters</div>
-                      <div class="password-req-item" id="req-upper"><span>&bull;</span> 1 Uppercase letter</div>
-                      <div class="password-req-item" id="req-num"><span>&bull;</span> 1 Number</div>
-                      <div class="password-req-item" id="req-spec"><span>&bull;</span> 1 Special character</div>
+                    <div class="password-strength-container" style="margin-top:8px;">
+                      <div class="password-meter-bar" style="height:4px; background:#E2E8F0; border-radius:2px; overflow:hidden; margin-bottom:8px;">
+                        <div class="password-meter-fill" id="pwd-strength-fill" style="height:100%; width:0%; background:var(--color-danger); transition:all 0.3s;"></div>
+                      </div>
+                      <div class="password-requirements-list" style="font-size:11px; color:var(--text-secondary); display:flex; flex-direction:column; gap:4px;">
+                        <div class="password-req-item" id="req-len"><span>&bull;</span> Min 8 characters</div>
+                        <div class="password-req-item" id="req-upper"><span>&bull;</span> 1 Uppercase letter</div>
+                        <div class="password-req-item" id="req-num"><span>&bull;</span> 1 Number</div>
+                        <div class="password-req-item" id="req-spec"><span>&bull;</span> 1 Special character</div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div class="form-input-wrapper">
-                  <label class="form-input-label">Confirm New Password *</label>
-                  <div style="position:relative;">
-                    <input type="password" class="input-field-custom" id="pwd-confirm" required placeholder="Re-enter new password">
-                    <button type="button" onclick="togglePasswordVisibility('pwd-confirm')" style="position:absolute; right:12px; top:12px; border:none; background:none; cursor:pointer; color:var(--text-muted);">
-                      <i data-lucide="eye" style="width:16px; height:16px;"></i>
-                    </button>
+                  <div class="form-input-wrapper" style="margin-top:16px;">
+                    <label class="form-input-label">Confirm New Password *</label>
+                    <div style="position:relative;">
+                      <input type="password" class="input-field-custom" id="pwd-confirm" required placeholder="Confirm new password">
+                      <button type="button" onclick="togglePasswordVisibility('pwd-confirm')" style="position:absolute; right:12px; top:12px; border:none; background:none; cursor:pointer; color:var(--text-muted);">
+                        <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                <button type="submit" class="btn btn-primary" id="btn-change-password-submit" style="width:100%; margin-top:8px;">
-                  <i data-lucide="lock" style="width:14px; height:14px; margin-right:6px;"></i> Change Password
-                </button>
-              </form>
-            </div>
-          </div>
-
-          <!-- ACTIVITY AUDIT TIMELINE SECTION -->
-          <div class="profile-sub-panel" id="sec-audit" style="display:none;">
-            <div class="dashboard-card">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-                <h3 style="font-size:16px; font-weight:700;">Activity Audit History Timeline</h3>
-                
-                <div style="display:flex; gap:10px;">
-                  <input type="search" id="audit-timeline-search" class="input-field-custom" placeholder="Search event history..." oninput="filterAuditTimeline()" style="width:220px; height:36px; font-size:12px;">
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="exportAuditHistoryCSV()">
-                    <i data-lucide="download" style="width:12px; height:12px; margin-right:4px;"></i> Export Log CSV
+                  <button type="submit" class="btn btn-primary" id="btn-change-password-submit" style="width:100%; margin-top:16px; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                    <i data-lucide="lock" style="width:14px; height:14px;"></i> Change Password
                   </button>
-                </div>
-              </div>
-
-              <div class="audit-timeline-container" id="audit-timeline-list">
-                <?php foreach (($recruiterLogs ?? []) as $log): ?>
-                  <div class="audit-timeline-node">
-                    <div class="audit-timeline-dot"></div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                      <strong style="font-size:13px; color:var(--text-primary);"><?php echo htmlspecialchars($log['action']); ?></strong>
-                      <span class="badge badge-primary" style="font-size:10px;"><?php echo htmlspecialchars($log['status'] ?? 'Success'); ?></span>
-                    </div>
-                    <div style="font-size:11px; color:var(--text-secondary); display:flex; gap:16px;">
-                      <span><i data-lucide="clock" style="width:12px; height:12px; vertical-align:middle;"></i> <?php echo $log['created_at']; ?></span>
-                      <span><i data-lucide="globe" style="width:12px; height:12px; vertical-align:middle;"></i> IP: <code><?php echo $log['ip_address']; ?></code></span>
-                      <span><i data-lucide="laptop" style="width:12px; height:12px; vertical-align:middle;"></i> <?php echo htmlspecialchars($log['browser']); ?></span>
-                    </div>
-                  </div>
-                <?php endforeach; ?>
+                </form>
               </div>
             </div>
-          </div>
 
+          </div>
         </div>
 
         <!-- ==================== SETTINGS VIEW ==================== -->
@@ -2528,10 +2255,6 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
               <input type="number" class="input-field-custom" name="package_lpa" placeholder="Example: 8" step="0.1" required>
             </div>
             <div class="form-input-wrapper">
-              <label class="form-input-label">Commencement Date *</label>
-              <input type="date" class="input-field-custom" name="drive_date" min="<?php echo date('Y-m-d'); ?>" max="2030-12-31" required>
-            </div>
-            <div class="form-input-wrapper">
               <label class="form-input-label">Registration Deadline *</label>
               <input type="date" class="input-field-custom" name="registration_deadline" min="<?php echo date('Y-m-d'); ?>" max="2030-12-31" required>
             </div>
@@ -2833,10 +2556,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
               <label class="form-input-label">Round Time Slot *</label>
               <input type="time" class="input-field-custom" name="time" id="interview-time" value="<?php echo date('H:i'); ?>" required>
             </div>
-            <div class="form-input-wrapper">
-              <label class="form-input-label">Location / Room Venue *</label>
-              <input type="text" class="input-field-custom" name="venue" id="interview-venue" placeholder="Example: Zoom Meeting or Block 3, Seminar Room" required>
-            </div>
+            <input type="hidden" name="venue" id="interview-venue" value="Virtual">
             <div class="form-input-wrapper">
               <label class="form-input-label">Interviewer Title Name *</label>
               <input type="text" class="input-field-custom" name="interviewer" id="interview-interviewer" placeholder="Example: Principal HR / Staff Engineer" required>

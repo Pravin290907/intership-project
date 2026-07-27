@@ -72,8 +72,8 @@ try {
       exit;
     }
 
-    // Insert user — status 'approved' so student can log in immediately after registration
-    $stmtUser = $db->prepare("INSERT INTO users (name, email, password_hash, role, status) VALUES (?, ?, ?, 'student', 'approved')");
+    // Insert user — status 'pending' to require manual TPO/Admin approval before login
+    $stmtUser = $db->prepare("INSERT INTO users (name, email, password_hash, role, status) VALUES (?, ?, ?, 'student', 'pending')");
     $stmtUser->execute([$name, $email, $passwordHash]);
     $userId = $db->lastInsertId();
 

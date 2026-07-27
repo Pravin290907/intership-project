@@ -239,6 +239,30 @@ body {
   color: #ffffff !important;
 }
 
+.sidebar-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.06);
+  margin: 8px 12px;
+}
+
+.nav-item-link.danger {
+  color: var(--color-danger) !important;
+}
+
+.nav-item-link.danger .icon {
+  color: var(--color-danger) !important;
+}
+
+.nav-item-link.danger:hover {
+  background-color: var(--color-danger-light) !important;
+  color: var(--color-danger) !important;
+}
+
+.nav-item-link.danger:hover .icon {
+  color: var(--color-danger) !important;
+}
+
+
 .sidebar-footer-profile {
   padding: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -1508,6 +1532,10 @@ body {
 .recruiter-sidebar.collapsed .nav-item-link:hover::after {
   opacity: 1;
   transform: translateY(-50%) translateX(12px);
+}
+
+.recruiter-sidebar.collapsed .sidebar-divider {
+  display: none;
 }
 
 /* Floating Input Group */

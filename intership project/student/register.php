@@ -42,7 +42,7 @@ require_once __DIR__ . '/../config/db.php';
         <span id="auth-success-msg">Success</span>
       </div>
 
-      <a href="login.php" class="btn btn-secondary" id="success-back-link" style="display: none; text-align: center; width: 100%; font-weight: 700; margin-bottom: var(--space-2);">Back to Login</a>
+      <a href="../index.php#login-portal" class="btn btn-secondary" id="success-back-link" style="display: none; text-align: center; width: 100%; font-weight: 700; margin-bottom: var(--space-2);">Back to Login</a>
 
       <!-- Form -->
       <form id="student-reg-form" novalidate>
@@ -109,7 +109,7 @@ require_once __DIR__ . '/../config/db.php';
         </div>
 
         <div class="auth-footer-link">
-          Already registered? <a href="login.php">Back to Login</a>
+          Already registered? <a href="../index.php#login-portal">Back to Login</a>
         </div>
       </form>
 

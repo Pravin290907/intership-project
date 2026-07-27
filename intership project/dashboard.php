@@ -230,9 +230,9 @@ try {
   }
   unset($off);
 
-  // 7. Load Activity Logs (Visible to Admin only)
+  // 7. Load Activity Logs (Visible to Admin/TPO)
   $logs = [];
-  if ($role === 'admin') {
+  if ($role === 'admin' || $role === 'tpo') {
     $logs = $db->query("SELECT id, username, role, action, ip_address, browser, status, created_at FROM activity_logs ORDER BY id DESC LIMIT 500")->fetchAll();
   }
 
@@ -298,6 +298,11 @@ try {
       
       if ($studentCGPA < $minEligibleCGPA) {
         echo json_encode(['status' => 'error', 'message' => 'You do not meet the minimum CGPA criterion of ' . $minEligibleCGPA . ' required for this role.']);
+        exit;
+      }
+      
+      if (empty($profile['resume_path'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Please upload your resume in the profile section before applying to placement drives.']);
         exit;
       }
       
@@ -575,6 +580,16 @@ try {
           </div>
         </div>
 
+        <?php if ($role === 'admin' || $role === 'tpo'): ?>
+        <div class="nav-item" data-target="eligibility" role="link" aria-label="Eligibility Checker">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span class="nav-label">Eligibility Checker</span>
+          </div>
+        </div>
+
+        <?php endif; ?>
+
         <?php if ($role === 'student'): ?>
         <div class="nav-item" data-target="offers" role="link" aria-label="Offer Letters">
           <div class="nav-item-left">
@@ -774,8 +789,8 @@ try {
             }
 
             $stages = [
-              ['key' => 'resume_uploaded', 'label' => 'Resume Uploaded', 'desc' => 'PDF resume uploaded'],
               ['key' => 'eligible', 'label' => 'Profile Verified', 'desc' => 'Verified by Admin/TPO'],
+              ['key' => 'resume_uploaded', 'label' => 'Resume Uploaded', 'desc' => 'PDF resume uploaded'],
               ['key' => 'applied', 'label' => 'Applied to Jobs', 'desc' => 'Submitted applications'],
               ['key' => 'shortlisted', 'label' => 'Shortlisted', 'desc' => 'Cleared profile screening'],
               ['key' => 'interview', 'label' => 'Interviewing', 'desc' => 'Interviews scheduled'],
@@ -783,17 +798,20 @@ try {
               ['key' => 'joined', 'label' => 'Joined Company', 'desc' => 'Offer accepted']
             ];
 
-            $currentStageIdx = -1;
-            for ($i = count($stages) - 1; $i >= 0; $i--) {
-              if ($journey[$stages[$i]['key']]) {
+            // Calculate current stage index based on sequential completion:
+            // Find the first step that is NOT completed.
+            $currentStageIdx = 0;
+            for ($i = 0; $i < count($stages); $i++) {
+              if (!$journey[$stages[$i]['key']]) {
                 $currentStageIdx = $i;
                 break;
               }
+              if ($i === count($stages) - 1) {
+                // If all steps are true/completed, we set index to the count (all completed)
+                $currentStageIdx = count($stages);
+              }
             }
-            if ($currentStageIdx === -1) {
-              $currentStageIdx = 0;
-            }
-            $progressPercent = count($stages) > 1 ? round(($currentStageIdx / (count($stages) - 1)) * 100) : 0;
+            $progressPercent = count($stages) > 1 ? round((min($currentStageIdx, count($stages) - 1) / (count($stages) - 1)) * 100) : 0;
 
             // Fetch live notifications
             $studentNotifications = [];
@@ -2008,6 +2026,9 @@ try {
                   <option value="Placed">Placed</option>
                   <option value="Unplaced">Unplaced</option>
                 </select>
+                <button class="btn btn-secondary btn-sm" onclick="exportStudentsCSV()">Export CSV</button>
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('import-students-file').click()">Import CSV</button>
+                <input type="file" id="import-students-file" accept=".csv" style="display: none;" onchange="importStudentsCSV(event)">
                 <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-student')">Add Student</button>
               </div>
             </div>
@@ -3507,10 +3528,10 @@ try {
         <?php endif; ?>
 
         <!-- ==================== ACTIVITY HISTORY VIEW ==================== -->
-        <?php if ($role === 'admin'): ?>
+        <?php if ($role === 'admin' || $role === 'tpo'): ?>
         <div class="page-view" id="activitylogs">
           <div class="card" style="margin-bottom: var(--space-3);">
-            <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">Admin Activity Logs</h3>
+            <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">Admin & TPO Activity Logs</h3>
             <p style="color: var(--text-secondary); font-size: 13px;">View complete system history audit containing IPs, user roles, actions, and status metrics.</p>
           </div>
 
@@ -3545,48 +3566,68 @@ try {
         </div>
         <?php endif; ?>
 
-        <!-- ==================== REPORTS VIEW ==================== -->
-        <div class="page-view" id="reports">
-          <div class="grid-12">
-            <div class="col-6 col-lg-12">
-              <div class="card">
-                <h3 class="chart-container-title">Export Placement Reports</h3>
-                <div class="empty-state">
-                  <svg class="empty-state-illust" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                  <div class="empty-state-title">Dynamic Placement Reports</div>
-                  <div class="empty-state-desc">Download complete university placement lists containing CTC packs, selected branches, and companies.</div>
-                  <div style="display:flex; gap:8px;">
-                    <button class="btn btn-primary btn-sm" onclick="showToast('Export Successful', 'Placement excel file downloaded.', 'success')">Download Excel Report</button>
-                    <button class="btn btn-secondary btn-sm" onclick="showToast('Export PDF', 'PDF catalog generated.', 'success')">Download PDF Catalog</button>
-                  </div>
-                </div>
+        <!-- ==================== ELIGIBILITY CHECKER VIEW ==================== -->
+        <div class="page-view" id="eligibility">
+          <div class="card" style="margin-bottom: var(--space-3);">
+            <div class="chart-header" style="margin-bottom: 0;">
+              <div>
+                <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">Eligibility Checker</h3>
+                <p style="color: var(--text-secondary); font-size: 13px;">Filter and shortlist candidates dynamically by academic thresholds and key criteria.</p>
               </div>
             </div>
             
-            <div class="col-6 col-lg-12">
-              <div class="card">
-                <h3 class="chart-container-title">Database Status</h3>
-                <div class="error-state" style="background-color: var(--primary-light); border-color: rgba(37,99,235,0.1); color: var(--text-primary);">
-                  <svg class="error-state-icon" style="color:var(--primary);" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                  <div class="error-state-title">MySQL Database Integrity Check</div>
-                  <div class="error-state-desc" style="color:var(--text-secondary);">Connection is live. Active tables: 9. Records count: 50+. Schema is WCAG compliant.</div>
-                  <button class="btn btn-secondary btn-sm" onclick="showToast('Integrity CheckPassed', 'All database tables verify matching index values.', 'success')">Run Table Check</button>
-                </div>
+            <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div>
+                <label class="form-label" style="font-size:12px; margin-bottom:6px;">Min CGPA</label>
+                <input type="number" id="elig-min-cgpa" class="input-field" placeholder="E.g. 7.50" min="0" max="10" step="0.1" oninput="runEligibilityCheck()">
+              </div>
+              <div>
+                <label class="form-label" style="font-size:12px; margin-bottom:6px;">Department Branch</label>
+                <select id="elig-branch" class="input-field select-custom" onchange="runEligibilityCheck()">
+                  <option value="All">All Branches</option>
+                  <option value="CSE">Computer Science (CSE)</option>
+                  <option value="IT">Information Technology (IT)</option>
+                  <option value="ECE">Electronics (ECE)</option>
+                  <option value="EE">Electrical (EE)</option>
+                  <option value="ME">Mechanical (ME)</option>
+                  <option value="CE">Civil (CE)</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label" style="font-size:12px; margin-bottom:6px;">Academic Year</label>
+                <input type="number" id="elig-year" class="input-field" placeholder="E.g. 2026" oninput="runEligibilityCheck()">
+              </div>
+              <div>
+                <label class="form-label" style="font-size:12px; margin-bottom:6px;">Key Skills (Comma separated)</label>
+                <input type="text" id="elig-skills" class="input-field" placeholder="E.g. React, Java" oninput="runEligibilityCheck()">
               </div>
             </div>
           </div>
+          
+          <div class="card" style="padding: 0; overflow-x: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 15px 20px; border-bottom: 1px solid var(--border-color);">
+              <h4 style="font-size:14px; font-weight:700; margin:0;" id="eligibility-results-count">Eligible Students (0)</h4>
+              <button class="btn btn-secondary btn-sm" onclick="exportEligibilityResultsCSV()">Export Filtered CSV</button>
+            </div>
+            <div id="eligibility-table-container"></div>
+          </div>
         </div>
+
+
 
         <!-- ==================== SETTINGS VIEW ==================== -->
         <div class="page-view" id="settings">
+          <?php if ($role === 'admin'): ?>
           <div class="card" style="margin-bottom:var(--space-3);">
             <h3 class="chart-container-title">Workspace Configuration</h3>
             <p style="color: var(--text-secondary); font-size: 13px;">Manage themes, verification parameters, and secure database backups.</p>
           </div>
+          <?php endif; ?>
 
           <div class="grid-12">
             <!-- User Preferences -->
-            <div class="col-6 col-lg-12" style="display:flex; flex-direction:column; gap:var(--space-3);">
+            <div class="<?php echo ($role === 'admin' || $role === 'tpo') ? 'col-6 col-lg-12' : 'col-12'; ?>" style="display:flex; flex-direction:column; gap:var(--space-3);">
+              <?php if ($role === 'admin'): ?>
               <div class="card">
                 <h4 style="font-weight: 700; margin-bottom: var(--space-2);">Profile Preferences</h4>
                  <div class="form-group">
@@ -3598,6 +3639,7 @@ try {
                    </select>
                  </div>
               </div>
+              <?php endif; ?>
               <div class="card">
                 <h4 style="font-weight: 700; margin-bottom: var(--space-2);">Change Password</h4>
                 <form id="settings-change-password-form" novalidate>
@@ -3618,17 +3660,17 @@ try {
                 </form>
               </div>
             </div>
-            <!-- Database Backup Utility (Visible to Admin only) -->
+            <!-- Database Backup Utility (Visible to Admin/TPO only) -->
+            <?php if ($role === 'admin' || $role === 'tpo'): ?>
             <div class="col-6 col-lg-12">
               <div class="card" style="height: 100%;">
                 <h4 style="font-weight: 700; margin-bottom: var(--space-2);">System Maintenance</h4>
-                <?php if ($role === 'admin' || $role === 'tpo'): ?>
                 <div style="display:flex; flex-direction:column; gap:var(--space-2);">
                   <div>
                     <label class="form-label">Backup Database Tables</label>
                     <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">Export database tables and seed files to local SQL format.</p>
                     <a href="api/actions.php?action=backup_database" class="btn btn-primary btn-sm" style="width:100%;">
-                      Download SQL Backup File
+                       Download SQL Backup File
                     </a>
                   </div>
                   <div style="border-top: 1px solid var(--border-color); padding-top:var(--space-2);">
@@ -3641,11 +3683,9 @@ try {
                     </form>
                   </div>
                 </div>
-                <?php else: ?>
-                <p style="font-size:13px; color:var(--text-secondary);">Database utilities are restricted to administrators and placement coordinators.</p>
-                <?php endif; ?>
               </div>
             </div>
+            <?php endif; ?>
           </div>
         </div>
 
@@ -4008,10 +4048,7 @@ try {
                 </select>
               </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Venue / Location</label>
-              <input type="text" class="input-field" name="venue" placeholder="Room 302, Admin Block / Zoom Link" required>
-            </div>
+            <input type="hidden" name="venue" value="Virtual">
             <div class="form-group">
               <label class="form-label">Meeting Link (for Online)</label>
               <input type="url" class="input-field" name="meeting_link" placeholder="https://meet.google.com/xyz">
@@ -4128,10 +4165,7 @@ try {
               <label class="form-label">Compensation LPA</label>
               <input type="number" class="input-field" name="package_lpa" placeholder="12" step="0.1" required>
             </div>
-            <div class="form-group">
-              <label class="form-label">Commencement Date</label>
-              <input type="date" class="input-field" name="drive_date" required>
-            </div>
+
             <div class="form-group">
               <label class="form-label">Registration Deadline</label>
               <input type="date" class="input-field" name="registration_deadline" required>

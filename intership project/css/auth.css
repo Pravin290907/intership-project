@@ -221,3 +221,13 @@ body.auth-body::after {
   color: #60A5FA !important;
   text-decoration: none !important;
 }
+
+.role-badge-link:not(.active):hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.role-badge-link.active:hover {
+  background-color: #1d4ed8 !important;
+}
+

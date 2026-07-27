@@ -80,11 +80,13 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_role'] === 'admin') {
         </button>
       </form>
 
-      <div class="auth-back-container">
-        <a href="../../index.php" class="back-to-home-link">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          Back to Homepage
-        </a>
+      <div class="auth-back-container" style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">Switch Portal Login</span>
+        <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+          <a href="../../student/login.php" class="role-badge-link" style="font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 20px; background: rgba(255,255,255,0.08); color: #cbd5e1; cursor: pointer; text-decoration: none; transition: all 0.2s;">Student</a>
+          <a href="../../company/login.php" class="role-badge-link" style="font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 20px; background: rgba(255,255,255,0.08); color: #cbd5e1; cursor: pointer; text-decoration: none; transition: all 0.2s;">Recruiter</a>
+          <a href="../../tpo/login.php" class="role-badge-link" style="font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 20px; background: rgba(255,255,255,0.08); color: #cbd5e1; cursor: pointer; text-decoration: none; transition: all 0.2s;">TPO Officer</a>
+        </div>
       </div>
 
     </div>

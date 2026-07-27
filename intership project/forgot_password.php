@@ -236,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </button>
 
         <div class="auth-footer-link" style="margin-top: var(--space-3);">
-          Remembered password? <a href="index.php">Back to Login</a>
+          Remembered password? <a href="index.php#login-portal">Back to Login</a>
         </div>
       </form>
 

@@ -595,12 +595,10 @@ class InterviewCalendar {
     this.listContainer = document.getElementById(listContainerId);
     this.interviews = interviews;
     
-    // Set viewDate to July 2026 initially for matching existing DB mock interviews
-    this.viewDate = new Date(2026, 6, 1); // July is index 6
-    
-    // Set active today to 2026-07-16 to match seeded records
-    this.today = new Date(2026, 6, 16);
-    this.selectedDateStr = "2026-07-16";
+    const sysDate = new Date();
+    this.viewDate = new Date(sysDate.getFullYear(), sysDate.getMonth(), 1);
+    this.today = sysDate;
+    this.selectedDateStr = `${sysDate.getFullYear()}-${String(sysDate.getMonth() + 1).padStart(2, '0')}-${String(sysDate.getDate()).padStart(2, '0')}`;
     this.timers = [];
 
     this.init();
@@ -749,9 +747,6 @@ class InterviewCalendar {
             <div>
               <span class="badge badge-primary">${int.deptCode}</span>
             </div>
-            <div class="interview-countdown" id="${elementId}">
-              Live Soon
-            </div>
           </div>
           
           <div class="interview-card-details">
@@ -788,10 +783,6 @@ class InterviewCalendar {
         </div>
       `;
 
-      // Set countdown trigger
-      setTimeout(() => {
-        this.bindCountdown(elementId, mockTimeStr);
-      }, 50);
     });
 
     this.listContainer.innerHTML = html;
@@ -811,8 +802,7 @@ class InterviewCalendar {
     const target = new Date(targetTimeStr).getTime();
     
     const update = () => {
-      // Since it's simulated, we mock the remaining hours dynamically relative to a fixed 11:00 AM July 16 start time.
-      const now = new Date("2026-07-16T11:08:32").getTime();
+      const now = new Date().getTime();
       const diff = target - now;
 
       if (diff < 0) {

@@ -110,7 +110,7 @@ require_once __DIR__ . '/../config/db.php';
         </div>
 
         <div class="auth-footer-link">
-          Already registered? <a href="login.php">Back to Login</a>
+          Already registered? <a href="../index.php#login-portal">Back to Login</a>
         </div>
       </form>
 
@@ -240,8 +240,8 @@ require_once __DIR__ . '/../config/db.php';
               </p>
 
               <div style="display: flex; flex-direction: column; gap: var(--space-15); max-width: 320px; margin: 0 auto;">
-                <a href="login.php" class="btn btn-primary" style="width: 100%; font-weight: 700; text-decoration: none; display: inline-block; padding: 12px; border-radius: var(--radius-md); text-align: center;">
-                  Go to Company Login
+                <a href="../index.php#login-portal" class="btn btn-primary" style="width: 100%; font-weight: 700; text-decoration: none; display: inline-block; padding: 12px; border-radius: var(--radius-md); text-align: center;">
+                  Go to Login Portal
                 </a>
                 <a href="../index.php" class="btn btn-ghost" style="width: 100%; font-weight: 600; text-decoration: none; display: inline-block; padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); color: var(--text-secondary); text-align: center; background: transparent;">
                   Return to Home
@@ -259,7 +259,7 @@ require_once __DIR__ . '/../config/db.php';
             }
             if (seconds <= 0) {
               clearInterval(interval);
-              window.location.href = "login.php";
+              window.location.href = "../index.php#login-portal";
             }
           }, 1000);
         } else {

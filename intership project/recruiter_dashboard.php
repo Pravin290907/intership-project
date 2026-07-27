@@ -291,7 +291,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
         <div class="logo-container">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
         </div>
-        <span class="logo-text">Campus Reqruitment</span>
+        <span class="logo-text">Campus Recruitment</span>
       </div>
 
       <nav class="sidebar-navigation">
@@ -3169,6 +3169,6 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
   </div>
 
-  <script src="<?php echo BASE_URL; ?>js/recruiter_app.js"></script>
+  <script src="<?php echo BASE_URL; ?>js/recruiter_app.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

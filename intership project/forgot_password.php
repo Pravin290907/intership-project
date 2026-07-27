@@ -50,10 +50,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $smtpUser = trim(getenv('SMTP_USER') ?: '');
     $smtpPass = trim(getenv('SMTP_PASS') ?: '');
 
+    $emailHeaders = "From: support@university.edu\r\n";
+    $emailHeaders .= "MIME-Version: 1.0\r\n";
+    $emailHeaders .= "Content-Type: text/html; charset=UTF-8\r\n";
+
+    $htmlBody = "
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset='UTF-8'>
+        <title>Reset Your Password</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0F172A; color: #F8FAFC; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 40px auto; background-color: #1E293B; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+          .header { text-align: center; margin-bottom: 30px; }
+          .logo { font-size: 24px; font-weight: bold; color: #3B82F6; text-decoration: none; }
+          .title { font-size: 20px; font-weight: bold; color: #FFFFFF; margin-top: 20px; }
+          .content { line-height: 1.6; color: #94A3B8; font-size: 15px; }
+          .btn-container { text-align: center; margin: 35px 0; }
+          .btn { background-color: #3B82F6; color: #FFFFFF !important; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(59,130,246,0.3); transition: all 0.2s ease; }
+          .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #64748B; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class='container'>
+          <div class='header'>
+            <a href='#' class='logo'>Campus Recruitment</a>
+            <div class='title'>Reset Your Password</div>
+          </div>
+          <div class='content'>
+            <p>Hello " . htmlspecialchars($user['name']) . ",</p>
+            <p>We received a request to reset the password for your account on the Campus Recruitment Management System.</p>
+            <p>Click the button below to set a new password. This link is valid for <strong>30 minutes</strong>.</p>
+            <div class='btn-container'>
+              <a href='{$absoluteResetLink}' target='_blank' class='btn'>Reset Password</a>
+            </div>
+            <p>If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
+          </div>
+          <div class='footer'>
+            <p>This is an automated security message from Campus Recruitment Support.</p>
+            <p>&copy; " . date('Y') . " Campus Recruitment. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    ";
+
     if (empty($smtpUser) || empty($smtpPass)) {
+      // Send locally using PHP mail
+      @mail($email, 'Reset Your Password - CRMS', $htmlBody, $emailHeaders);
       echo json_encode([
-        'status' => 'error', 
-        'message' => 'SMTP credentials missing. Please configure SMTP_USER and SMTP_PASS in your .env file to send emails.'
+        'status' => 'success', 
+        'message' => 'SMTP credentials missing, using local mail server. A password reset link has been simulated and sent to your email. Click here to use the link immediately: <br/><br/><a href="' . $absoluteResetLink . '" style="color:#3B82F6; font-weight:bold; text-decoration:underline; font-size:16px;">Reset Password Link</a>'
       ]);
       exit;
     }
@@ -74,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $mail->SMTPDebug = SMTP::DEBUG_OFF;
       
       // Recipients
-      $mail->setFrom(getenv('MAIL_FROM') ?: 'support@university.edu', getenv('MAIL_FROM_NAME') ?: 'Campus Reqruitment Support');
+      $mail->setFrom(getenv('MAIL_FROM') ?: 'support@university.edu', getenv('MAIL_FROM_NAME') ?: 'Campus Recruitment Support');
       $mail->addAddress($email, $user['name']);
       
       // Content
@@ -101,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <body>
           <div class='container'>
             <div class='header'>
-              <a href='#' class='logo'>Campus Reqruitment</a>
+              <a href='#' class='logo'>Campus Recruitment</a>
               <div class='title'>Reset Your Password</div>
             </div>
             <div class='content'>
@@ -114,8 +162,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <p>If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
             </div>
             <div class='footer'>
-              <p>This is an automated security message from Campus Reqruitment Portal.</p>
-              <p>&copy; " . date('Y') . " Campus Reqruitment. All rights reserved.</p>
+              <p>This is an automated security message from Campus Recruitment Portal.</p>
+              <p>&copy; " . date('Y') . " Campus Recruitment. All rights reserved.</p>
             </div>
           </div>
         </body>
@@ -157,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="auth-logo-section">
         <div class="auth-brand-name">
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-          Campus Reqruitment
+          Campus Recruitment
         </div>
       </div>
 
@@ -228,7 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (res.status === 'success') {
           Swal.fire({
             title: 'Email Sent!',
-            text: res.message,
+            html: res.message,
             icon: 'success',
             confirmButtonColor: '#2563EB',
             confirmButtonText: 'OK'

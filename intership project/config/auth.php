@@ -309,13 +309,13 @@ function sendSystemEmail($toEmail, $toName, $subject, $bodyHtml, $bccList = []) 
     $mail->SMTPDebug = 0; // Off
     
     $fromMail = getenv('MAIL_FROM') ?: 'support@university.edu';
-    $fromName = getenv('MAIL_FROM_NAME') ?: 'Campus Reqruitment Support';
+    $fromName = getenv('MAIL_FROM_NAME') ?: 'Campus Recruitment Support';
     $mail->setFrom($fromMail, $fromName);
 
     if (!empty($toEmail)) {
       $mail->addAddress($toEmail, $toName);
     } else {
-      $mail->addAddress($fromMail, 'Campus Reqruitment Recipients');
+      $mail->addAddress($fromMail, 'Campus Recruitment Recipients');
     }
 
     foreach ($bccList as $bcc) {

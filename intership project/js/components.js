@@ -66,6 +66,45 @@ class ModernDataTable {
 
     this.currentPage = 1;
     this.selectedIds = new Set();
+
+    if (this.container) {
+      this.container.addEventListener("click", (e) => {
+        const prevBtn = e.target.closest(".prev-page-btn");
+        if (prevBtn && !prevBtn.classList.contains("disabled")) {
+          e.stopPropagation();
+          e.preventDefault();
+          if (this.currentPage > 1) {
+            this.currentPage--;
+            this.render();
+          }
+          return;
+        }
+
+        const nextBtn = e.target.closest(".next-page-btn");
+        if (nextBtn && !nextBtn.classList.contains("disabled")) {
+          e.stopPropagation();
+          e.preventDefault();
+          if (this.currentPage < this.totalPages) {
+            this.currentPage++;
+            this.render();
+          }
+          return;
+        }
+
+        const numBtn = e.target.closest(".number-page-btn");
+        if (numBtn && !numBtn.classList.contains("active")) {
+          e.stopPropagation();
+          e.preventDefault();
+          const p = parseInt(numBtn.getAttribute("data-page"), 10);
+          if (p) {
+            this.currentPage = p;
+            this.render();
+          }
+          return;
+        }
+      });
+    }
+
     this.init();
   }
 
@@ -296,9 +335,9 @@ class ModernDataTable {
             <span style="font-weight: 600; color: var(--text-primary);">${this.data.length}</span> entries
           </div>
           <div class="page-links">
-            <button class="page-link prev-page-btn ${this.currentPage === 1 ? 'disabled' : ''}">Prev</button>
+            <button type="button" class="page-link prev-page-btn ${this.currentPage === 1 ? 'disabled' : ''}">Prev</button>
             ${this.renderPageNumbers()}
-            <button class="page-link next-page-btn ${this.currentPage === this.totalPages ? 'disabled' : ''}">Next</button>
+            <button type="button" class="page-link next-page-btn ${this.currentPage === this.totalPages ? 'disabled' : ''}">Next</button>
           </div>
         </div>
       </div>
@@ -322,7 +361,7 @@ class ModernDataTable {
 
     for (let i = startPage; i <= endPage; i++) {
       pages.push(`
-        <button class="page-link number-page-btn ${i === this.currentPage ? 'active' : ''}" data-page="${i}">${i}</button>
+        <button type="button" class="page-link number-page-btn ${i === this.currentPage ? 'active' : ''}" data-page="${i}">${i}</button>
       `);
     }
 
@@ -355,34 +394,7 @@ class ModernDataTable {
       });
     });
 
-    // 4. Page changes
-    const prevBtn = this.container.querySelector(".prev-page-btn");
-    if (prevBtn) {
-      prevBtn.addEventListener("click", () => {
-        if (this.currentPage > 1) {
-          this.currentPage--;
-          this.render();
-        }
-      });
-    }
-
-    const nextBtn = this.container.querySelector(".next-page-btn");
-    if (nextBtn) {
-      nextBtn.addEventListener("click", () => {
-        if (this.currentPage < this.totalPages) {
-          this.currentPage++;
-          this.render();
-        }
-      });
-    }
-
-    this.container.querySelectorAll(".number-page-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const p = parseInt(btn.getAttribute("data-page"), 10);
-        this.currentPage = p;
-        this.render();
-      });
-    });
+    // 4. Page changes (now handled via delegated event listener in constructor)
 
     // 5. Actions / Row Click
     this.container.querySelectorAll(".table-row-item").forEach(row => {

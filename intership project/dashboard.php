@@ -246,6 +246,20 @@ try {
     $profile = $db->prepare("SELECT * FROM companies WHERE user_id = ?");
     $profile->execute([$userId]);
     $profile = $profile->fetch();
+  } else if ($role === 'tpo') {
+    $profile = $db->prepare("SELECT * FROM tpo_details WHERE user_id = ?");
+    $profile->execute([$userId]);
+    $profile = $profile->fetch();
+    if (!$profile) {
+      $db->prepare("INSERT INTO tpo_details (user_id) VALUES (?)")->execute([$userId]);
+      $profile = [
+        'user_id' => $userId,
+        'designation' => 'Training & Placement Officer',
+        'department' => 'Training & Placement Cell',
+        'phone' => '',
+        'office_location' => ''
+      ];
+    }
   }
 
   if ($role === 'student' && !$profile) {
@@ -493,7 +507,7 @@ try {
     <aside class="sidebar" id="app-sidebar" aria-label="Sidebar Navigation">
       <div class="sidebar-brand">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-        <span class="brand-text">Campus Reqruitment</span>
+        <span class="brand-text">Campus Recruitment</span>
       </div>
 
       <nav class="sidebar-nav">
@@ -628,7 +642,7 @@ try {
           </button>
           
           <nav class="breadcrumbs" aria-label="Breadcrumb">
-            <span class="breadcrumb-item">Campus Reqruitment</span>
+            <span class="breadcrumb-item">Campus Recruitment</span>
             <span class="breadcrumb-separator">/</span>
             <span class="breadcrumb-item active" id="crumb-current">Dashboard</span>
           </nav>
@@ -3253,8 +3267,18 @@ try {
 
           <?php else: ?>
             <div class="card" style="margin-bottom: var(--space-3);">
-              <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">Interview Management</h3>
-              <p style="color: var(--text-secondary); font-size: 13px;">Track scheduled interviews, access meeting rooms, and monitor countdown timers.</p>
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-1);">
+                <div>
+                  <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">Interview Management</h3>
+                  <p style="color: var(--text-secondary); font-size: 13px;">Track scheduled interviews, access meeting rooms, and monitor countdown timers.</p>
+                </div>
+                <?php if ($role === 'admin' || $role === 'tpo'): ?>
+                <button class="btn btn-primary btn-sm" onclick="openModal('modal-schedule-interview')">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Schedule Interview
+                </button>
+                <?php endif; ?>
+              </div>
             </div>
 
             <div class="calendar-view-wrapper">
@@ -3343,6 +3367,28 @@ try {
                       <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="font-weight: 600; padding: 10px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-secondary); line-height: 1;">+91</span>
                         <input type="tel" class="input-field" name="phone" id="profile-phone" value="<?php echo $profile['phone'] ?? ''; ?>" inputmode="numeric" maxlength="10" required style="flex: 1;">
+                      </div>
+                    </div>
+                    <?php endif; ?>
+ 
+                    <?php if ($role === 'tpo'): ?>
+                    <div class="col-6 col-md-12 form-group">
+                      <label class="form-label">Office Designation</label>
+                      <input type="text" class="input-field" name="designation" id="profile-designation" value="<?php echo htmlspecialchars($profile['designation'] ?? ''); ?>" required placeholder="Example: Head of Placements">
+                    </div>
+                    <div class="col-6 col-md-12 form-group">
+                      <label class="form-label">Office / Department</label>
+                      <input type="text" class="input-field" name="department" id="profile-department" value="<?php echo htmlspecialchars($profile['department'] ?? ''); ?>" required placeholder="Example: Placements Cell">
+                    </div>
+                    <div class="col-6 col-md-12 form-group">
+                      <label class="form-label">Office Location / Cabin</label>
+                      <input type="text" class="input-field" name="office_location" id="profile-office-location" value="<?php echo htmlspecialchars($profile['office_location'] ?? ''); ?>" required placeholder="Example: Admin Block, Room 302">
+                    </div>
+                    <div class="col-6 col-md-12 form-group">
+                      <label class="form-label">Contact Phone</label>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: 600; padding: 10px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-secondary); line-height: 1;">+91</span>
+                        <input type="tel" class="input-field" name="phone" id="profile-phone" value="<?php echo htmlspecialchars($profile['phone'] ?? ''); ?>" inputmode="numeric" maxlength="10" required style="flex: 1;">
                       </div>
                     </div>
                     <?php endif; ?>
@@ -3448,6 +3494,8 @@ try {
                     <?php endif; ?>
                   </div>
                 </div>
+                <?php elseif ($role === 'tpo'): ?>
+                <p style="font-size:13px; color:var(--text-secondary);">Officially verified placement coordinator details.</p>
                 <?php else: ?>
                 <p style="font-size:13px; color:var(--text-secondary);">Recruiter profile logo can be configured under branding parameters.</p>
                 <?php endif; ?>
@@ -3538,8 +3586,8 @@ try {
 
           <div class="grid-12">
             <!-- User Preferences -->
-            <div class="col-6 col-lg-12">
-              <div class="card" style="height: 100%;">
+            <div class="col-6 col-lg-12" style="display:flex; flex-direction:column; gap:var(--space-3);">
+              <div class="card">
                 <h4 style="font-weight: 700; margin-bottom: var(--space-2);">Profile Preferences</h4>
                  <div class="form-group">
                    <label class="form-label">Portal Language</label>
@@ -3550,12 +3598,31 @@ try {
                    </select>
                  </div>
               </div>
+              <div class="card">
+                <h4 style="font-weight: 700; margin-bottom: var(--space-2);">Change Password</h4>
+                <form id="settings-change-password-form" novalidate>
+                  <input type="hidden" name="action" value="update_password">
+                  <div class="form-group" style="margin-bottom: var(--space-2);">
+                    <label class="form-label">Current Password</label>
+                    <input type="password" class="input-field" name="current_password" id="settings-current-pwd" placeholder="••••••••" required>
+                  </div>
+                  <div class="form-group" style="margin-bottom: var(--space-2);">
+                    <label class="form-label">New Password</label>
+                    <input type="password" class="input-field" name="new_password" id="settings-new-pwd" placeholder="Min 8 characters" required>
+                  </div>
+                  <div class="form-group" style="margin-bottom: var(--space-3);">
+                    <label class="form-label">Confirm New Password</label>
+                    <input type="password" class="input-field" name="confirm_password" id="settings-confirm-pwd" placeholder="Re-enter new password" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary" style="width: 100%;">Update Password</button>
+                </form>
+              </div>
             </div>
             <!-- Database Backup Utility (Visible to Admin only) -->
             <div class="col-6 col-lg-12">
               <div class="card" style="height: 100%;">
                 <h4 style="font-weight: 700; margin-bottom: var(--space-2);">System Maintenance</h4>
-                <?php if ($role === 'admin'): ?>
+                <?php if ($role === 'admin' || $role === 'tpo'): ?>
                 <div style="display:flex; flex-direction:column; gap:var(--space-2);">
                   <div>
                     <label class="form-label">Backup Database Tables</label>
@@ -3568,22 +3635,99 @@ try {
                     <label class="form-label">Restore Database Backup</label>
                     <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">Select a previously downloaded SQL dump file to restore.</p>
                     <form id="form-restore-db" enctype="multipart/form-data">
-                      <input type="hidden" name="action" value="restore_database">
-                      <input type="file" name="backup_file" class="input-field" style="padding:6px;" accept=".sql" required>
-                      <button type="submit" class="btn btn-danger btn-sm" style="width:100%; margin-top:8px;">Execute Database Restore</button>
+                       <input type="hidden" name="action" value="restore_database">
+                       <input type="file" name="backup_file" class="input-field" style="padding:6px;" accept=".sql" required>
+                       <button type="submit" class="btn btn-danger btn-sm" style="width:100%; margin-top:8px;">Execute Database Restore</button>
                     </form>
                   </div>
                 </div>
                 <?php else: ?>
-                <p style="font-size:13px; color:var(--text-secondary);">Database utilities are restricted to administrators.</p>
+                <p style="font-size:13px; color:var(--text-secondary);">Database utilities are restricted to administrators and placement coordinators.</p>
                 <?php endif; ?>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ==================== APTITUDE TESTS STUDENT VIEW ==================== -->
+        <!-- ==================== APTITUDE TESTS VIEW ==================== -->
         <div class="page-view" id="aptitude">
+          <?php if ($role === 'admin' || $role === 'tpo'): ?>
+          <!-- TPO/Admin Management View -->
+          <div class="card" style="margin-bottom: var(--space-3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-1);">
+              <div>
+                <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">Aptitude Tests & Online Evaluations</h3>
+                <p style="color: var(--text-secondary); font-size: 13px;">Create MCQs, set duration, schedule online tests, assign to drive applicants, and evaluate rankings.</p>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-aptitude')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Create Aptitude Test
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI Cards -->
+          <div class="grid-12" style="margin-bottom: var(--space-3);">
+            <div class="col-3 col-md-6">
+              <div class="card" style="padding: var(--space-2);">
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Total Tests</span>
+                <div style="font-size:24px; font-weight:700; color:var(--text-primary); margin-top:4px;" id="tpo-apt-kpi-total">0</div>
+              </div>
+            </div>
+            <div class="col-3 col-md-6">
+              <div class="card" style="padding: var(--space-2);">
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Active / Scheduled</span>
+                <div style="font-size:24px; font-weight:700; color:#10B981; margin-top:4px;" id="tpo-apt-kpi-active">0</div>
+              </div>
+            </div>
+            <div class="col-3 col-md-6">
+              <div class="card" style="padding: var(--space-2);">
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Total Candidates</span>
+                <div style="font-size:24px; font-weight:700; color:#3B82F6; margin-top:4px;" id="tpo-apt-kpi-candidates">0</div>
+              </div>
+            </div>
+            <div class="col-3 col-md-6">
+              <div class="card" style="padding: var(--space-2);">
+                <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Avg Pass Rate</span>
+                <div style="font-size:24px; font-weight:700; color:#F59E0B; margin-top:4px;" id="tpo-apt-kpi-pass">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tests Table -->
+          <div class="card">
+            <div style="display:flex; gap:12px; margin-bottom:var(--space-2); flex-wrap:wrap;">
+              <input type="text" class="input-field" id="tpo-apt-search" placeholder="Search tests..." style="flex:1; min-width:200px;">
+              <select class="input-field select-custom" id="tpo-apt-status-filter" style="width:160px;">
+                <option value="All">All Statuses</option>
+                <option value="Draft">Draft</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Active">Active</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Test Title</th>
+                    <th>Created By</th>
+                    <th>Duration</th>
+                    <th>Questions</th>
+                    <th>Assigned</th>
+                    <th>Status</th>
+                    <th>Scheduled</th>
+                    <th style="text-align:center;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tpo-aptitude-tests-tbody">
+                  <tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <?php else: ?>
+          <!-- Student View -->
           <div class="card" style="margin-bottom: var(--space-3);">
             <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">Assigned Aptitude & Online Evaluations</h3>
             <p style="color: var(--text-secondary); font-size: 13px;">Take assigned online tests, view instant automated evaluation scores, and track your campus rankings.</p>
@@ -3592,6 +3736,7 @@ try {
           <div id="student-aptitude-container">
             <!-- Rendered dynamically by js/app.js -->
           </div>
+          <?php endif; ?>
         </div>
 
         <!-- ==================== OFFER LETTERS STUDENT VIEW ==================== -->
@@ -3815,6 +3960,144 @@ try {
     </div>
     <?php endif; ?>
 
+    <?php if ($role === 'admin' || $role === 'tpo'): ?>
+    <!-- SCHEDULE INTERVIEW MODAL -->
+    <div class="modal-overlay" id="modal-schedule-interview">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Schedule Interview Round</h3>
+          <svg class="modal-close" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+        <form id="form-schedule-interview-api">
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">Application ID</label>
+              <select class="input-field select-custom" name="application_id" id="modal-interview-app-id" required>
+                <option value="">Select Candidate Application...</option>
+                <?php foreach ($applications as $app): ?>
+                <option value="<?php echo $app['id']; ?>">#<?php echo $app['id']; ?> — <?php echo htmlspecialchars($app['studentName']); ?> → <?php echo htmlspecialchars($app['companyName']); ?> (<?php echo htmlspecialchars($app['role']); ?>)</option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="grid-12">
+              <div class="col-6 col-md-12 form-group">
+                <label class="form-label">Interview Date</label>
+                <input type="date" class="input-field" name="date" required>
+              </div>
+              <div class="col-6 col-md-12 form-group">
+                <label class="form-label">Interview Time</label>
+                <input type="time" class="input-field" name="time" required>
+              </div>
+            </div>
+            <div class="grid-12">
+              <div class="col-6 col-md-12 form-group">
+                <label class="form-label">Interview Round</label>
+                <select class="input-field select-custom" name="interview_round">
+                  <option value="Technical">Technical</option>
+                  <option value="HR">HR</option>
+                  <option value="Aptitude">Aptitude</option>
+                  <option value="Group Discussion">Group Discussion</option>
+                  <option value="Final Round">Final Round</option>
+                </select>
+              </div>
+              <div class="col-6 col-md-12 form-group">
+                <label class="form-label">Interview Type</label>
+                <select class="input-field select-custom" name="interview_type" id="modal-interview-type">
+                  <option value="Online">Online (Virtual)</option>
+                  <option value="Offline">Offline (In-Person)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Venue / Location</label>
+              <input type="text" class="input-field" name="venue" placeholder="Room 302, Admin Block / Zoom Link" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Meeting Link (for Online)</label>
+              <input type="url" class="input-field" name="meeting_link" placeholder="https://meet.google.com/xyz">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Interviewer Name</label>
+              <input type="text" class="input-field" name="interviewer" placeholder="Prof. R. Sharma" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Instructions for Candidate</label>
+              <textarea class="input-field" name="instructions" rows="2" placeholder="Carry your ID card, resume, and certificates..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary modal-cancel-btn">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btn-schedule-int-submit">Schedule Interview</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- CREATE APTITUDE TEST MODAL -->
+    <div class="modal-overlay" id="modal-create-aptitude">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title" id="tpo-aptitude-modal-title">Create Aptitude Test</h3>
+          <svg class="modal-close" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+        <form id="form-create-aptitude-api">
+          <input type="hidden" name="test_id" id="tpo-aptitude-edit-id" value="">
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">Test Title</label>
+              <input type="text" class="input-field" name="title" id="tpo-apt-title" placeholder="Quantitative Aptitude Round 1" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="input-field" name="description" id="tpo-apt-desc" rows="2" placeholder="General analytical & quantitative aptitude screening."></textarea>
+            </div>
+            <div class="grid-12">
+              <div class="col-4 col-md-12 form-group">
+                <label class="form-label">Duration (Minutes)</label>
+                <input type="number" class="input-field" name="duration_minutes" id="tpo-apt-duration" value="30" min="5" required>
+              </div>
+              <div class="col-4 col-md-12 form-group">
+                <label class="form-label">Total Marks</label>
+                <input type="number" class="input-field" name="total_marks" id="tpo-apt-total" value="100" readonly style="cursor:not-allowed;">
+              </div>
+              <div class="col-4 col-md-12 form-group">
+                <label class="form-label">Pass Marks</label>
+                <input type="number" class="input-field" name="pass_marks" id="tpo-apt-pass" value="40" min="0" required>
+              </div>
+            </div>
+            <div class="grid-12">
+              <div class="col-4 col-md-12 form-group">
+                <label class="form-label">Scheduled Date</label>
+                <input type="date" class="input-field" name="scheduled_date" id="tpo-apt-date">
+              </div>
+              <div class="col-4 col-md-12 form-group">
+                <label class="form-label">Start Time</label>
+                <input type="time" class="input-field" name="start_time" id="tpo-apt-start" value="10:00">
+              </div>
+              <div class="col-4 col-md-12 form-group">
+                <label class="form-label">End Time</label>
+                <input type="time" class="input-field" name="end_time" id="tpo-apt-end" value="11:00">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Link to Drive (Optional)</label>
+              <select class="input-field select-custom" name="drive_id" id="tpo-apt-drive">
+                <option value="">No specific drive (General Test)</option>
+                <?php foreach ($drives as $d): ?>
+                <option value="<?php echo $d['id']; ?>"><?php echo htmlspecialchars($d['companyName'] . ' — ' . $d['job_role']); ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary modal-cancel-btn">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btn-create-apt-submit">Create Test</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <?php if ($role !== 'student'): ?>
     <!-- ADD PLACEMENT DRIVE MODAL -->
     <div class="modal-overlay" id="modal-add-drive">
@@ -3873,7 +4156,7 @@ try {
 
   </div>
 
-  <script src="js/components.js"></script>
+  <script src="js/components.js?v=<?php echo time(); ?>"></script>
   
   <!-- Custom UI hooks connecting endpoints -->
   <script>
@@ -4141,6 +4424,6 @@ try {
     </div>
 
   <!-- Load client app logic -->
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

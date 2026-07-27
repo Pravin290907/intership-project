@@ -82,6 +82,7 @@ function initializeTables($pdo) {
     migrateAptitudeTables($pdo);
     migrateOffersTable($pdo);
     migrateUserSettingsTable($pdo);
+    migrateTpoDetailsTable($pdo);
     return; // Tables already exist — do not overwrite any data
   } catch (PDOException $e) {
     // Table does not exist yet — continue with creation below
@@ -133,6 +134,16 @@ function initializeTables($pdo) {
       `company_logo` VARCHAR(255) DEFAULT NULL,
       `phone` VARCHAR(15) DEFAULT NULL,
       `website` VARCHAR(100) DEFAULT NULL,
+      FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    -- TPO Details Table
+    CREATE TABLE IF NOT EXISTS `tpo_details` (
+      `user_id` INT PRIMARY KEY,
+      `designation` VARCHAR(100) DEFAULT 'Training & Placement Officer',
+      `department` VARCHAR(100) DEFAULT 'Training & Placement Cell',
+      `phone` VARCHAR(20) DEFAULT NULL,
+      `office_location` VARCHAR(100) DEFAULT NULL,
       FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -702,6 +713,25 @@ function migrateUserSettingsTable($pdo) {
       $pdo->exec("ALTER TABLE `user_settings` ADD COLUMN `$colName` $colType");
     }
   }
+}
+
+function migrateTpoDetailsTable($pdo) {
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS `tpo_details` (
+      `user_id` INT PRIMARY KEY,
+      `designation` VARCHAR(100) DEFAULT 'Training & Placement Officer',
+      `department` VARCHAR(100) DEFAULT 'Training & Placement Cell',
+      `phone` VARCHAR(20) DEFAULT NULL,
+      `office_location` VARCHAR(100) DEFAULT NULL,
+      FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  ");
+
+  $pdo->exec("
+    INSERT INTO `tpo_details` (`user_id`, `designation`, `department`, `phone`, `office_location`)
+    VALUES (2, 'Training & Placement Officer', 'Training & Placement Cell', '+919876543210', 'Placement Cell, Administrative Block')
+    ON DUPLICATE KEY UPDATE user_id=user_id
+  ");
 }
 
 // Global initialization

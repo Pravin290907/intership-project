@@ -673,6 +673,32 @@ try {
       echo json_encode(['status' => 'success', 'message' => 'Student deleted successfully']);
       break;
 
+    case 'delete_company':
+      if ($role !== 'admin' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+
+      $companyId = (int)($_POST['company_id'] ?? 0);
+
+      // Verify the company exists and actually has the role 'company'
+      $stmtCheck = $db->prepare("SELECT name FROM users WHERE id = ? AND role = 'company'");
+      $stmtCheck->execute([$companyId]);
+      $companyName = $stmtCheck->fetchColumn();
+
+      if (!$companyName) {
+        echo json_encode(['status' => 'error', 'message' => 'Company record not found.']);
+        exit;
+      }
+
+      $stmtDelete = $db->prepare("DELETE FROM users WHERE id = ? AND role = 'company'");
+      $stmtDelete->execute([$companyId]);
+
+      logActivity("Deleted company profile: $companyName", "success");
+
+      echo json_encode(['status' => 'success', 'message' => 'Company deleted successfully']);
+      break;
+
     // 4. PUBLISH RESULTS / GENERATE OFFER / UPDATE CANDIDATE FUNNEL
     case 'publish_selection':
       if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
@@ -1278,8 +1304,8 @@ try {
 
     // 5. DATABASE BACKUP UTILITY (SQL Exporter)
     case 'backup_database':
-      if ($role !== 'admin') {
-        echo json_encode(['status' => 'error', 'message' => 'Only systems administrator can backup database tables.']);
+      if ($role !== 'admin' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Only systems administrator or placement coordinator can backup database tables.']);
         exit;
       }
 
@@ -1317,8 +1343,8 @@ try {
 
     // 6. DATABASE RESTORE UTILITY
     case 'restore_database':
-      if ($role !== 'admin') {
-        echo json_encode(['status' => 'error', 'message' => 'Access restricted.']);
+      if ($role !== 'admin' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Access restricted. Only administrators or placement coordinators can restore backups.']);
         exit;
       }
 
@@ -1422,6 +1448,26 @@ try {
         if (!empty($industry)) {
           $db->prepare("UPDATE companies SET industry = ? WHERE user_id = ?")->execute([$industry, $_SESSION['user_id']]);
         }
+      } else if ($role === 'tpo') {
+        $designation = trim($_POST['designation'] ?? '');
+        $department = trim($_POST['department'] ?? '');
+        $office_location = trim($_POST['office_location'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+
+        if (!empty($phone) && !preg_match('/^[0-9]{10}$/', $phone)) {
+          echo json_encode(['status' => 'error', 'message' => 'Please enter a valid 10-digit mobile number.']);
+          exit;
+        }
+
+        $stmtTpo = $db->prepare("
+          UPDATE tpo_details SET 
+            designation = ?, department = ?, office_location = ?, phone = ?
+          WHERE user_id = ?
+        ");
+        $stmtTpo->execute([
+          $designation, $department, $office_location, $phone,
+          $_SESSION['user_id']
+        ]);
       }
 
       $db->commit();
@@ -1602,11 +1648,12 @@ try {
         $stmt->execute([$_SESSION['user_id']]);
       } else {
         $stmt = $db->prepare("
-          SELECT t.*,
+          SELECT t.*, u.name as company_name,
                  (SELECT COUNT(*) FROM aptitude_questions q WHERE q.test_id = t.id) as question_count,
                  (SELECT COUNT(*) FROM aptitude_assignments a WHERE a.test_id = t.id) as assigned_count,
                  (SELECT COUNT(*) FROM aptitude_assignments a WHERE a.test_id = t.id AND a.status = 'Evaluated') as evaluated_count
           FROM aptitude_tests t
+          LEFT JOIN users u ON t.company_id = u.id
           WHERE t.company_id = ? OR ? IN ('admin', 'tpo')
           ORDER BY t.id DESC
         ");

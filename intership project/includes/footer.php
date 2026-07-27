@@ -6,7 +6,7 @@
 <footer class="app-dashboard-footer" role="contentinfo" aria-label="Application Footer">
   <div class="custom-premium-footer-bar">
     <div class="footer-copyright-text">
-      &copy; <?php echo date('Y'); ?> <span class="brand-highlight">Campus Reqruitment</span>. All rights reserved.
+      &copy; <?php echo date('Y'); ?> <span class="brand-highlight">Campus Recruitment</span>. All rights reserved.
     </div>
   </div>
 </footer>

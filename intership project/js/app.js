@@ -99,7 +99,11 @@ document.addEventListener("DOMContentLoaded", () => {
           renderCalendar();
         }
       } else if (viewId === "aptitude") {
-        studentAptitudeRender();
+        if (data.role === 'student') {
+          studentAptitudeRender();
+        } else {
+          tpoAptitudeRender();
+        }
       } else if (viewId === "offers") {
         if (data.role === 'student') {
           studentOffersRender();
@@ -367,6 +371,81 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem("lang", nextLang);
         saveSettingsAPI();
         setTimeout(() => window.location.reload(), 500);
+      });
+    }
+  }
+
+  function initChangePasswordForm() {
+    const pwdForm = document.getElementById("settings-change-password-form");
+    if (pwdForm) {
+      pwdForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        
+        const curr = document.getElementById("settings-current-pwd").value;
+        const newP = document.getElementById("settings-new-pwd").value;
+        const conf = document.getElementById("settings-confirm-pwd").value;
+
+        if (newP !== conf) {
+          Swal.fire({
+            title: 'Password Mismatch',
+            text: 'New password and confirmation do not match.',
+            icon: 'error',
+            confirmButtonColor: '#EF4444'
+          });
+          return;
+        }
+
+        if (newP.length < 8) {
+          Swal.fire({
+            title: 'Password Too Short',
+            text: 'New password must be at least 8 characters long.',
+            icon: 'error',
+            confirmButtonColor: '#EF4444'
+          });
+          return;
+        }
+
+        const submitBtn = pwdForm.querySelector("button[type='submit']");
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Updating Password...";
+
+        const f = new FormData(pwdForm);
+        fetch('api/actions.php', {
+          method: 'POST',
+          body: f
+        })
+        .then(res => res.json())
+        .then(res => {
+          submitBtn.disabled = false;
+          submitBtn.innerText = "Update Password";
+          
+          if (res.status === 'success') {
+            pwdForm.reset();
+            Swal.fire({
+              title: 'Success!',
+              text: res.message,
+              icon: 'success',
+              confirmButtonColor: '#10B981'
+            });
+          } else {
+            Swal.fire({
+              title: 'Error',
+              text: res.message,
+              icon: 'error',
+              confirmButtonColor: '#EF4444'
+            });
+          }
+        })
+        .catch(err => {
+          submitBtn.disabled = false;
+          submitBtn.innerText = "Update Password";
+          Swal.fire({
+            title: 'Request Failed',
+            text: 'Could not connect to the API server.',
+            icon: 'error',
+            confirmButtonColor: '#EF4444'
+          });
+        });
       });
     }
   }
@@ -996,16 +1075,44 @@ document.addEventListener("DOMContentLoaded", () => {
       itemsPerPage: 10,
       onDelete: (id) => {
         Swal.fire({
-          title: 'Are you sure?',
-          text: "Do you want to suspend this student account?",
+          title: 'Delete Student Profile?',
+          text: "Are you sure you want to permanently delete this student profile and all associated records? This action cannot be undone.",
           icon: 'warning',
           showCancelButton: true,
           confirmButtonColor: '#EF4444',
           cancelButtonColor: '#6B7280',
-          confirmButtonText: 'Yes, suspend it!'
+          confirmButtonText: 'Yes, delete permanently'
         }).then((result) => {
           if (result.isConfirmed) {
-            updateStatusAPI(id, 'suspended');
+            Swal.fire({ title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const f = new FormData();
+            f.append("action", "delete_student");
+            f.append("student_id", id);
+            
+            fetch('api/actions.php', {
+              method: 'POST',
+              body: f
+            })
+            .then(res => res.json())
+            .then(res => {
+              Swal.close();
+              if (res.status === 'success') {
+                Swal.fire({
+                  title: 'Deleted!',
+                  text: res.message,
+                  icon: 'success',
+                  timer: 1500,
+                  showConfirmButton: false
+                });
+                setTimeout(() => window.location.reload(), 1500);
+              } else {
+                Swal.fire({
+                  title: 'Error',
+                  text: res.message,
+                  icon: 'error'
+                });
+              }
+            });
           }
         });
       },
@@ -1129,7 +1236,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
     companyTableInstance = new ModernDataTable("companies-table-container", data.companies, cols, {
       itemsPerPage: 10,
-      onDelete: (id) => updateStatusAPI(id, 'suspended')
+      onDelete: (id) => {
+        Swal.fire({
+          title: 'Delete Recruiter Profile?',
+          text: "Are you sure you want to permanently delete this company profile and all associated recruitment drives? This action cannot be undone.",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#EF4444',
+          cancelButtonColor: '#6B7280',
+          confirmButtonText: 'Yes, delete permanently'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            Swal.fire({ title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const f = new FormData();
+            f.append("action", "delete_company");
+            f.append("company_id", id);
+            
+            fetch('api/actions.php', {
+              method: 'POST',
+              body: f
+            })
+            .then(res => res.json())
+            .then(res => {
+              Swal.close();
+              if (res.status === 'success') {
+                Swal.fire({
+                  title: 'Deleted!',
+                  text: res.message,
+                  icon: 'success',
+                  timer: 1500,
+                  showConfirmButton: false
+                });
+                setTimeout(() => window.location.reload(), 1500);
+              } else {
+                Swal.fire({
+                  title: 'Error',
+                  text: res.message,
+                  icon: 'error'
+                });
+              }
+            });
+          }
+        });
+      }
     });
 
     document.getElementById("companies-table-container").addEventListener("click", (e) => {
@@ -1161,7 +1310,7 @@ document.addEventListener("DOMContentLoaded", () => {
       onDelete: (id) => {
         Swal.fire({
           title: 'Delete Campaign?',
-          text: 'Are you sure you want to delete this drive campaign?',
+          text: 'Are you sure you want to delete this placement drive campaign? All applicant histories for this drive will be deleted.',
           icon: 'warning',
           showCancelButton: true,
           confirmButtonColor: '#EF4444',
@@ -1169,7 +1318,36 @@ document.addEventListener("DOMContentLoaded", () => {
           confirmButtonText: 'Yes, delete'
         }).then((result) => {
           if (result.isConfirmed) {
-            showToast("Drives", "Deleting campaign is simulation only", "info");
+            Swal.fire({ title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const f = new FormData();
+            f.append("action", "drives_bulk_operations");
+            f.append("operation", "delete");
+            f.append("drive_ids[]", id);
+            
+            fetch('api/actions.php', {
+              method: 'POST',
+              body: f
+            })
+            .then(res => res.json())
+            .then(res => {
+              Swal.close();
+              if (res.status === 'success') {
+                Swal.fire({
+                  title: 'Deleted!',
+                  text: res.message,
+                  icon: 'success',
+                  timer: 1500,
+                  showConfirmButton: false
+                });
+                setTimeout(() => window.location.reload(), 1500);
+              } else {
+                Swal.fire({
+                  title: 'Error',
+                  text: res.message,
+                  icon: 'error'
+                });
+              }
+            });
           }
         });
       },
@@ -2783,6 +2961,202 @@ Date generated: ${new Date().toLocaleDateString()}
     });
   };
 
+  // ==================== TPO APTITUDE TESTS MANAGEMENT ====================
+  window.tpoAptitudeTests = [];
+
+  window.tpoAptitudeRender = function() {
+    fetch('api/actions.php?action=get_aptitude_tests')
+      .then(r => r.json())
+      .then(r => {
+        if (r.status === 'success') {
+          window.tpoAptitudeTests = r.tests || [];
+          renderTpoAptitudeTable();
+          updateTpoAptitudeKPIs();
+        }
+      });
+  };
+
+  function updateTpoAptitudeKPIs() {
+    const tests = window.tpoAptitudeTests;
+    const totalEl = document.getElementById('tpo-apt-kpi-total');
+    const activeEl = document.getElementById('tpo-apt-kpi-active');
+    const candidatesEl = document.getElementById('tpo-apt-kpi-candidates');
+    const passEl = document.getElementById('tpo-apt-kpi-pass');
+
+    if (totalEl) totalEl.textContent = tests.length;
+    if (activeEl) activeEl.textContent = tests.filter(t => t.status === 'Scheduled' || t.status === 'Active').length;
+    if (candidatesEl) candidatesEl.textContent = tests.reduce((s, t) => s + parseInt(t.assigned_count || 0), 0);
+
+    const evaluated = tests.filter(t => parseInt(t.evaluated_count || 0) > 0);
+    if (passEl) {
+      if (evaluated.length === 0) { passEl.textContent = '—'; }
+      else {
+        const avg = evaluated.reduce((s, t) => {
+          const passRate = parseInt(t.evaluated_count) > 0 ? (parseInt(t.evaluated_count) / parseInt(t.assigned_count || 1)) * 100 : 0;
+          return s + passRate;
+        }, 0) / evaluated.length;
+        passEl.textContent = avg.toFixed(0) + '%';
+      }
+    }
+  }
+
+  function renderTpoAptitudeTable() {
+    const tbody = document.getElementById('tpo-aptitude-tests-tbody');
+    if (!tbody) return;
+
+    const search = (document.getElementById('tpo-apt-search')?.value || '').toLowerCase();
+    const statusFilter = document.getElementById('tpo-apt-status-filter')?.value || 'All';
+
+    let filtered = window.tpoAptitudeTests.filter(t => {
+      const matchSearch = !search || (t.title || '').toLowerCase().includes(search) || (t.company_name || '').toLowerCase().includes(search);
+      const matchStatus = statusFilter === 'All' || t.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">
+        <strong>No Aptitude Tests Found</strong>
+        <p style="font-size:12px; margin-top:4px;">Click "Create Aptitude Test" to set up your first online candidate evaluation.</p>
+      </td></tr>`;
+      return;
+    }
+
+    const statusBadge = (s) => {
+      const colors = { Draft:'secondary', Scheduled:'primary', Active:'success', Completed:'warning' };
+      return `<span class="badge badge-${colors[s] || 'secondary'}">${s}</span>`;
+    };
+
+    tbody.innerHTML = filtered.map(t => `
+      <tr>
+        <td><strong>${t.title || 'Untitled'}</strong></td>
+        <td>${t.company_name || '—'}</td>
+        <td>${t.duration_minutes} min</td>
+        <td>${t.question_count || 0}</td>
+        <td>${t.assigned_count || 0}</td>
+        <td>${statusBadge(t.status)}</td>
+        <td>${t.scheduled_date || '—'}</td>
+        <td style="text-align:center;">
+          <div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="tpoEditAptitudeTest(${t.id})">Edit</button>
+            <button class="btn btn-danger btn-sm" style="padding:4px 8px; font-size:11px;" onclick="tpoDeleteAptitudeTest(${t.id})">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // Search & filter listeners
+  document.getElementById('tpo-apt-search')?.addEventListener('input', renderTpoAptitudeTable);
+  document.getElementById('tpo-apt-status-filter')?.addEventListener('change', renderTpoAptitudeTable);
+
+  window.tpoEditAptitudeTest = function(testId) {
+    const test = window.tpoAptitudeTests.find(t => t.id == testId);
+    if (!test) return;
+    const titleEl = document.getElementById('tpo-aptitude-modal-title');
+    const editIdEl = document.getElementById('tpo-aptitude-edit-id');
+    if (titleEl) titleEl.innerText = "Edit Aptitude Test";
+    if (editIdEl) editIdEl.value = testId;
+    document.getElementById('tpo-apt-title').value = test.title || '';
+    document.getElementById('tpo-apt-desc').value = test.description || '';
+    document.getElementById('tpo-apt-duration').value = test.duration_minutes || 30;
+    document.getElementById('tpo-apt-pass').value = test.pass_marks || 40;
+    document.getElementById('tpo-apt-date').value = test.scheduled_date || '';
+    document.getElementById('tpo-apt-start').value = test.start_time || '10:00';
+    document.getElementById('tpo-apt-end').value = test.end_time || '11:00';
+    if (test.drive_id) document.getElementById('tpo-apt-drive').value = test.drive_id;
+    openModal('modal-create-aptitude');
+  };
+
+  window.tpoDeleteAptitudeTest = function(testId) {
+    Swal.fire({
+      title: 'Delete Aptitude Test?',
+      text: 'This will permanently remove the test and all related assignments.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      confirmButtonText: 'Delete'
+    }).then(result => {
+      if (result.isConfirmed) {
+        const f = new FormData();
+        f.append('action', 'delete_aptitude_test');
+        f.append('test_id', testId);
+        fetch('api/actions.php', { method: 'POST', body: f })
+          .then(r => r.json())
+          .then(r => {
+            if (r.status === 'success') {
+              Swal.fire({ title: 'Deleted!', text: r.message, icon: 'success', timer: 1500 });
+              tpoAptitudeRender();
+            } else {
+              Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+            }
+          });
+      }
+    });
+  };
+
+  // Create / Edit aptitude test form
+  const aptForm = document.getElementById('form-create-aptitude-api');
+  if (aptForm) {
+    aptForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const testId = document.getElementById('tpo-aptitude-edit-id').value;
+      const f = new FormData(aptForm);
+      f.append('action', testId ? 'edit_aptitude_test' : 'create_aptitude_test');
+      const btn = document.getElementById('btn-create-apt-submit');
+      btn.disabled = true;
+
+      fetch('api/actions.php', { method: 'POST', body: f })
+        .then(r => r.json())
+        .then(r => {
+          btn.disabled = false;
+          if (r.status === 'success') {
+            closeModal('modal-create-aptitude');
+            aptForm.reset();
+            document.getElementById('tpo-aptitude-edit-id').value = '';
+            document.getElementById('tpo-aptitude-modal-title').innerText = 'Create Aptitude Test';
+            Swal.fire({ title: 'Success!', text: r.message, icon: 'success', timer: 1500 });
+            tpoAptitudeRender();
+          } else {
+            Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+          }
+        })
+        .catch(() => { btn.disabled = false; });
+    });
+  }
+
+  // ==================== SCHEDULE INTERVIEW FORM ====================
+  const intForm = document.getElementById('form-schedule-interview-api');
+  if (intForm) {
+    intForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const f = new FormData(intForm);
+      f.append('action', 'schedule_interview');
+      const btn = document.getElementById('btn-schedule-int-submit');
+      btn.disabled = true;
+      btn.innerText = 'Scheduling...';
+
+      fetch('api/actions.php', { method: 'POST', body: f })
+        .then(r => r.json())
+        .then(r => {
+          btn.disabled = false;
+          btn.innerText = 'Schedule Interview';
+          if (r.status === 'success') {
+            closeModal('modal-schedule-interview');
+            intForm.reset();
+            Swal.fire({ title: 'Interview Scheduled!', text: r.message, icon: 'success', timer: 2000 });
+            // Reload interviews data
+            setTimeout(() => window.location.reload(), 2000);
+          } else {
+            Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+          }
+        })
+        .catch(() => {
+          btn.disabled = false;
+          btn.innerText = 'Schedule Interview';
+        });
+    });
+  }
+
   // Start polling
   initSidebar();
   initDropdowns();
@@ -2790,6 +3164,7 @@ Date generated: ${new Date().toLocaleDateString()}
   initFAB();
   initGlobalSearch();
   initLanguageSelector();
+  initChangePasswordForm();
   initProfileForm();
   initDriveForm();
   initWelcomeGreeting();

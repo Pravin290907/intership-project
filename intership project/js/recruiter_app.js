@@ -720,6 +720,37 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
+  window.cancelInterviewDirectly = function (interviewId) {
+    Swal.fire({
+      title: 'Cancel Scheduled Interview?',
+      text: 'Are you sure you want to cancel this interview? An email notification will be sent to the candidate.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'Yes, cancel it'
+    }).then(res => {
+      if (res.isConfirmed) {
+        Swal.fire({ title: 'Cancelling...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const f = new FormData();
+        f.append('action', 'cancel_interview');
+        f.append('interview_id', interviewId);
+
+        fetch('api/actions.php', { method: 'POST', body: f })
+          .then(r => r.json())
+          .then(r => {
+            Swal.close();
+            if (r.status === 'success') {
+              Swal.fire({ title: 'Cancelled', text: r.message, icon: 'success', timer: 1500, showConfirmButton: false });
+              setTimeout(() => window.location.reload(), 1500);
+            } else {
+              Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+            }
+          });
+      }
+    });
+  };
+
   window.openOfferModalDirectly = function () {
     window.switchRecruiterView('offers');
     window.switchOfferTab('release-offer');
@@ -1547,7 +1578,10 @@ document.addEventListener("DOMContentLoaded", () => {
       <div style="border:1px solid var(--border-color); border-radius:var(--radius-md); padding:16px; margin-bottom:12px; background-color:white;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <span class="badge badge-primary">${int.interview_round || 'Technical'}</span>
-          <span style="font-size:12px; font-weight:700; color:var(--primary);">${int.time}</span>
+          <div style="display:flex; gap:6px; align-items:center;">
+            ${int.result === 'Cancelled' ? `<span class="badge badge-danger">Cancelled</span>` : ''}
+            <span style="font-size:12px; font-weight:700; color:var(--primary);">${int.time}</span>
+          </div>
         </div>
         <h4 style="font-size:14px; font-weight:700; margin-bottom:4px;">${int.studentName}</h4>
         <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Role Designation: ${int.role}</p>
@@ -1558,15 +1592,32 @@ document.addEventListener("DOMContentLoaded", () => {
           ${int.meeting_link ? `<div>Link: <a href="${int.meeting_link}" target="_blank">${int.meeting_link}</a></div>` : ''}
         </div>
 
-        <div style="display:flex; gap:8px; align-items:center;">
-          <button class="btn btn-secondary btn-sm" onclick="openFeedbackModal(${int.id})" style="flex:1;">Complete & Rate</button>
-          <button class="btn btn-ghost btn-sm btn-icon-only" onclick="window.showModuleDetails('interview', ${int.id})" title="View Details">
-            <i data-lucide="eye" style="width:14px; height:14px; color:var(--primary);"></i>
-          </button>
-          <button class="btn btn-ghost btn-sm" onclick="openEditInterviewModalDirectly(${int.id})">Reschedule</button>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+          ${int.result === 'Scheduled' ? `
+            <button class="btn btn-secondary btn-sm" onclick="openFeedbackModal(${int.id})" style="padding: 6px 4px; font-size: 11px;">Complete & Rate</button>
+            <button class="btn btn-ghost btn-sm" onclick="openEditInterviewModalDirectly(${int.id})" style="border: 1px solid var(--border-color); padding: 6px 4px; font-size: 11px;">Reschedule</button>
+            <button class="btn btn-ghost btn-sm" onclick="window.showModuleDetails('interview', ${int.id})" style="border: 1px solid var(--border-color); padding: 6px 4px; font-size: 11px;">
+              <i data-lucide="eye" style="width:12px; height:12px; margin-right:4px; vertical-align:middle; display:inline-block; margin-top:-2px;"></i> Details
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="cancelInterviewDirectly(${int.id})" style="color:var(--color-danger); border:1px solid rgba(239, 68, 68, 0.2); padding: 6px 4px; font-size: 11px;">
+              <i data-lucide="x-circle" style="width:12px; height:12px; margin-right:4px; vertical-align:middle; display:inline-block; margin-top:-2px;"></i> Cancel
+            </button>
+          ` : int.result === 'Cancelled' ? `
+            <button class="btn btn-ghost btn-sm" onclick="window.showModuleDetails('interview', ${int.id})" style="border: 1px solid var(--border-color); padding: 6px 4px; font-size: 11px;">
+              <i data-lucide="eye" style="width:12px; height:12px; margin-right:4px; vertical-align:middle; display:inline-block; margin-top:-2px;"></i> Details
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteInterviewDirectly(${int.id})" style="color:var(--color-danger); border:1px solid rgba(239, 68, 68, 0.2); padding: 6px 4px; font-size: 11px;">
+              <i data-lucide="trash-2" style="width:12px; height:12px; margin-right:4px; vertical-align:middle; display:inline-block; margin-top:-2px;"></i> Delete
+            </button>
+          ` : `
+            <button class="btn btn-ghost btn-sm" onclick="window.showModuleDetails('interview', ${int.id})" style="border: 1px solid var(--border-color); padding: 6px 4px; font-size: 11px; grid-column: span 2; width: 100%;">
+              <i data-lucide="eye" style="width:12px; height:12px; margin-right:4px; vertical-align:middle; display:inline-block; margin-top:-2px;"></i> View Details
+            </button>
+          `}
         </div>
       </div>
     `).join('');
+    if (window.lucide) window.lucide.createIcons();
   }
 
   window.openFeedbackModal = function (interviewId) {

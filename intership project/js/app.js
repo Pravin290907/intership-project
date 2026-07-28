@@ -114,6 +114,8 @@ document.addEventListener("DOMContentLoaded", () => {
         loadNotificationsPage();
       } else if (viewId === "eligibility") {
         runEligibilityCheck();
+      } else if (viewId === "support-queries") {
+        renderSupportQueriesTable();
       }
     }
   }
@@ -337,6 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
       settings: "Settings",
       my_profile: "My Profile",
       activity_history: "Activity History",
+      support_queries: "Support Inquiries",
       search_placeholder: "Search profiles, drives, metrics...",
       morning: "Good Morning",
       afternoon: "Good Afternoon",
@@ -354,6 +357,7 @@ document.addEventListener("DOMContentLoaded", () => {
       settings: "सेटिंग्स",
       my_profile: "मेरी प्रोफ़ाइल",
       activity_history: "गतिविधि इतिहास",
+      support_queries: "सहायता पूछताछ",
       search_placeholder: "प्रोफाइल, ड्राइव, मेट्रिक्स खोजें...",
       morning: "शुभ प्रभात",
       afternoon: "शुभ दोपहर",
@@ -719,6 +723,7 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (target === "settings") labelEl.innerText = t.settings;
         else if (target === "profile-tab") labelEl.innerText = t.my_profile;
         else if (target === "activitylogs") labelEl.innerText = t.activity_history;
+        else if (target === "support-queries") labelEl.innerText = t.support_queries;
       }
     });
 
@@ -3586,5 +3591,149 @@ Date generated: ${new Date().toLocaleDateString()}
     }
     arr.push(col.trim());
     return arr;
+  }
+
+  let supportQueriesTableInstance = null;
+  let supportQueriesData = [];
+
+  window.renderSupportQueriesTable = function() {
+    fetch('api/actions.php?action=get_support_queries')
+      .then(res => res.json())
+      .then(res => {
+        if (res.status === 'success') {
+          supportQueriesData = res.queries;
+          
+          const cols = [
+            { key: "id", label: "ID" },
+            { key: "name", label: "Visitor Details", render: (val, row) => `
+              <div>
+                <div style="font-weight: 600;">${val}</div>
+                <div style="font-size: 11px; color: var(--text-secondary);"><a href="mailto:${row.email}" style="color:var(--primary); text-decoration:underline;">${row.email}</a></div>
+              </div>
+            `},
+            { key: "message", label: "Message", render: val => `
+              <div style="max-width: 300px; white-space: normal; word-break: break-word; font-size: 13px;">${val}</div>
+            `},
+            { key: "created_at", label: "Submitted At", render: val => `
+              <span style="font-size: 12px; color: var(--text-secondary);">${val}</span>
+            `},
+            { key: "status", label: "Status", render: (val, row) => {
+              const badgeClass = val === 'Resolved' ? 'badge-success' : (val === 'Pending' ? 'badge-warning' : 'badge-danger');
+              return `<span class="badge ${badgeClass}">${val}</span>`;
+            }},
+            { key: "remarks", label: "TPO Remarks", render: (val, row) => {
+              if (row.status === 'Resolved' && val) {
+                return `<div style="font-size: 12px; max-width: 200px; white-space: normal; color: var(--color-success); font-style: italic;">"${val}"</div>`;
+              } else if (row.status === 'Ignored') {
+                return `<span style="color: var(--text-secondary); font-size:12px; font-style: italic;">Ignored</span>`;
+              }
+              return `<span style="color: var(--text-secondary); font-size:12px; font-style: italic;">None</span>`;
+            }},
+            { key: "actions", label: "Actions", render: (val, row) => {
+              if (row.status === 'Pending') {
+                return `
+                  <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-success btn-sm resolve-query-btn" data-id="${row.id}" style="padding: 4px 8px; font-size: 11px;">Resolve</button>
+                    <button class="btn btn-secondary btn-sm ignore-query-btn" data-id="${row.id}" style="padding: 4px 8px; font-size: 11px; background:#EF4444; color:#FFF; border:none;">Ignore</button>
+                  </div>
+                `;
+              }
+              return `<span style="color:var(--text-secondary); font-size:11px;">Completed</span>`;
+            }}
+          ];
+
+          if (supportQueriesTableInstance) {
+            supportQueriesTableInstance.setData(supportQueriesData);
+          } else {
+            supportQueriesTableInstance = new ModernDataTable("support-queries-table-container", supportQueriesData, cols, {
+              itemsPerPage: 10,
+              selectable: false
+            });
+            
+            // Bind filter change
+            const statusFilter = document.getElementById("filter-query-status");
+            if (statusFilter) {
+              statusFilter.addEventListener("change", (e) => {
+                supportQueriesTableInstance.setFilter('status', e.target.value);
+              });
+            }
+            
+            // Bind action buttons click handlers
+            const tableContainer = document.getElementById("support-queries-table-container");
+            tableContainer.addEventListener("click", (e) => {
+              if (e.target.classList.contains("resolve-query-btn")) {
+                const id = e.target.getAttribute("data-id");
+                handleResolveQuery(id);
+              } else if (e.target.classList.contains("ignore-query-btn")) {
+                const id = e.target.getAttribute("data-id");
+                handleIgnoreQuery(id);
+              }
+            });
+          }
+        }
+      });
+  };
+
+  function handleResolveQuery(id) {
+    Swal.fire({
+      title: 'Resolve Support Inquiry',
+      input: 'textarea',
+      inputLabel: 'Remarks/Action Taken',
+      inputPlaceholder: 'Enter any resolution details here (optional)...',
+      inputAttributes: {
+        'aria-label': 'Type your remarks'
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Mark Resolved',
+      confirmButtonColor: '#10B981',
+      cancelButtonColor: '#6B7280',
+      preConfirm: (remarks) => {
+        return remarks;
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const remarks = result.value || '';
+        submitQueryStatusUpdate(id, 'Resolved', remarks);
+      }
+    });
+  }
+
+  function handleIgnoreQuery(id) {
+    Swal.fire({
+      title: 'Ignore Inquiry?',
+      text: "Are you sure you want to mark this inquiry as Ignored? It will be archived.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'Yes, Ignore it'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        submitQueryStatusUpdate(id, 'Ignored', 'Ignored by TPO/Admin');
+      }
+    });
+  }
+
+  function submitQueryStatusUpdate(id, status, remarks) {
+    const f = new FormData();
+    f.append('action', 'update_query_status');
+    f.append('query_id', id);
+    f.append('status', status);
+    f.append('remarks', remarks);
+
+    fetch('api/actions.php', {
+      method: 'POST',
+      body: f
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.status === 'success') {
+        Swal.fire('Updated!', res.message, 'success');
+        // Reload queries
+        renderSupportQueriesTable();
+      } else {
+        Swal.fire('Error', res.message, 'error');
+      }
+    });
   }
 });

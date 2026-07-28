@@ -83,6 +83,7 @@ function initializeTables($pdo) {
     migrateOffersTable($pdo);
     migrateUserSettingsTable($pdo);
     migrateTpoDetailsTable($pdo);
+    migrateSupportQueriesTable($pdo);
     return; // Tables already exist — do not overwrite any data
   } catch (PDOException $e) {
     // Table does not exist yet — continue with creation below
@@ -318,6 +319,7 @@ function initializeTables($pdo) {
   ";
 
   $pdo->exec($sql);
+  migrateSupportQueriesTable($pdo);
 
   // Seed default admin and TPO accounts
   $adminPass = password_hash('admin123', PASSWORD_BCRYPT);
@@ -731,6 +733,21 @@ function migrateTpoDetailsTable($pdo) {
     INSERT INTO `tpo_details` (`user_id`, `designation`, `department`, `phone`, `office_location`)
     VALUES (2, 'Training & Placement Officer', 'Training & Placement Cell', '+919876543210', 'Placement Cell, Administrative Block')
     ON DUPLICATE KEY UPDATE user_id=user_id
+  ");
+}
+
+function migrateSupportQueriesTable($pdo) {
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS `support_queries` (
+      `id` INT AUTO_INCREMENT PRIMARY KEY,
+      `name` VARCHAR(100) NOT NULL,
+      `email` VARCHAR(100) NOT NULL,
+      `message` TEXT NOT NULL,
+      `status` ENUM('Pending', 'Resolved', 'Ignored') DEFAULT 'Pending',
+      `remarks` TEXT DEFAULT NULL,
+      `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      `resolved_at` DATETIME DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   ");
 }
 

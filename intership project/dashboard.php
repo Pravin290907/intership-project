@@ -543,6 +543,13 @@ try {
             <span class="nav-label">Companies</span>
           </div>
         </div>
+
+        <div class="nav-item" data-target="support-queries" role="link" aria-label="Support Queries">
+          <div class="nav-item-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="nav-label">Support Queries</span>
+          </div>
+        </div>
         <?php endif; ?>
 
         <div class="nav-divider"></div>
@@ -2063,6 +2070,28 @@ try {
           </div>
 
           <div id="companies-table-container"></div>
+        </div>
+
+        <!-- ==================== SUPPORT QUERIES VIEW ==================== -->
+        <div class="page-view" id="support-queries">
+          <div class="card" style="margin-bottom: var(--space-3);">
+            <div class="chart-header" style="margin-bottom: 0;">
+              <div>
+                <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">Support Inquiries</h3>
+                <p style="color: var(--text-secondary); font-size: 13px;">Manage and resolve support tickets submitted by visitors from the landing page.</p>
+              </div>
+              <div style="display: flex; gap: var(--space-1); flex-wrap: wrap;">
+                <select class="input-field select-custom btn-sm" id="filter-query-status" style="width: 160px;">
+                  <option value="All">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Ignored">Ignored</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div id="support-queries-table-container"></div>
         </div>
         <?php endif; ?>
 

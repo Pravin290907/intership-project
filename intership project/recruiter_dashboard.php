@@ -1326,9 +1326,14 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
                           <?php echo htmlspecialchars($int['venue']); ?>
                         <?php endif; ?>
                       </td>
-                      <td><span class="badge <?php echo $int['result'] === 'Scheduled' ? 'badge-primary' : ($int['result'] === 'Passed' ? 'badge-success' : 'badge-danger'); ?>"><?php echo $int['result']; ?></span></td>
+                      <td><span class="badge <?php echo $int['result'] === 'Scheduled' ? 'badge-primary' : ($int['result'] === 'Passed' ? 'badge-success' : ($int['result'] === 'Cancelled' ? 'badge-warning' : 'badge-danger')); ?>"><?php echo $int['result']; ?></span></td>
                       <td>
                         <div style="display:inline-flex; gap:4px;">
+                          <?php if ($int['result'] === 'Scheduled'): ?>
+                            <button class="btn btn-ghost btn-sm btn-icon-only" onclick="cancelInterviewDirectly(<?php echo $int['id']; ?>)" style="color:var(--color-danger);" title="Cancel Interview">
+                              <i data-lucide="x-circle" style="width:14px; height:14px;"></i>
+                            </button>
+                          <?php endif; ?>
                           <button class="btn btn-ghost btn-sm btn-icon-only" onclick="openEditInterviewModalDirectly(<?php echo $int['id']; ?>)" title="Modify details">
                             <i data-lucide="edit" style="width:14px; height:14px;"></i>
                           </button>

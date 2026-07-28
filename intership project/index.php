@@ -1206,17 +1206,17 @@ try {
 
       <div style="background:#FFFFFF; border:1px solid var(--border-color); border-radius:16px; padding:32px; box-shadow:var(--shadow-sm);">
         <h3 style="font-size:18px; font-weight:700; margin-bottom:16px;">Send Quick Support Inquiry</h3>
-        <form onsubmit="event.preventDefault(); Swal.fire('Inquiry Sent!', 'Thank you. The TPO Cell support team will respond shortly.', 'success');">
+        <form onsubmit="submitInquiry(event);">
           <div style="margin-bottom:12px;">
-            <input type="text" class="input-field" placeholder="Your Full Name" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color);">
+            <input type="text" id="inquiry-name" name="name" class="input-field" placeholder="Your Full Name" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color);">
           </div>
           <div style="margin-bottom:12px;">
-            <input type="email" class="input-field" placeholder="Email Address" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color);">
+            <input type="email" id="inquiry-email" name="email" class="input-field" placeholder="Email Address" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color);">
           </div>
           <div style="margin-bottom:16px;">
-            <textarea class="input-field" rows="3" placeholder="Describe your inquiry..." required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color);"></textarea>
+            <textarea id="inquiry-message" name="message" class="input-field" rows="3" placeholder="Describe your inquiry..." required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color);"></textarea>
           </div>
-          <button type="submit" class="btn btn-primary" style="width:100%; padding:10px;">Send Message</button>
+          <button type="submit" id="inquiry-submit-btn" class="btn btn-primary" style="width:100%; padding:10px;">Send Message</button>
         </form>
       </div>
     </div>
@@ -1228,6 +1228,56 @@ try {
   <script>
     if (window.lucide) {
       lucide.createIcons();
+    }
+
+    function submitInquiry(event) {
+      event.preventDefault();
+      const form = event.target;
+      const submitBtn = document.getElementById("inquiry-submit-btn");
+      submitBtn.disabled = true;
+      const originalText = submitBtn.innerText;
+      submitBtn.innerText = "Sending...";
+
+      const f = new FormData();
+      f.append("name", document.getElementById("inquiry-name").value.trim());
+      f.append("email", document.getElementById("inquiry-email").value.trim());
+      f.append("message", document.getElementById("inquiry-message").value.trim());
+
+      fetch("api/submit_inquiry.php", {
+        method: "POST",
+        body: f
+      })
+      .then(res => res.json())
+      .then(res => {
+        submitBtn.disabled = false;
+        submitBtn.innerText = originalText;
+        if (res.status === "success") {
+          Swal.fire({
+            title: "Inquiry Sent!",
+            text: res.message,
+            icon: "success",
+            confirmButtonColor: "#2563EB"
+          });
+          form.reset();
+        } else {
+          Swal.fire({
+            title: "Submission Failed",
+            text: res.message,
+            icon: "error",
+            confirmButtonColor: "#2563EB"
+          });
+        }
+      })
+      .catch(err => {
+        submitBtn.disabled = false;
+        submitBtn.innerText = originalText;
+        Swal.fire({
+          title: "Connection Error",
+          text: "Could not connect to the server. Please try again.",
+          icon: "error",
+          confirmButtonColor: "#2563EB"
+        });
+      });
     }
 
     // FAQ Accordion Toggle

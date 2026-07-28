@@ -18,6 +18,40 @@ $role = $_SESSION['user_role'];
 
 try {
   switch ($action) {
+    // SUPPORT QUERIES ACTIONS
+    case 'get_support_queries':
+      if ($role !== 'admin' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Insufficient privilege.']);
+        exit;
+      }
+      $stmt = $db->query("SELECT * FROM support_queries ORDER BY created_at DESC");
+      $queries = $stmt->fetchAll();
+      echo json_encode(['status' => 'success', 'queries' => $queries]);
+      exit;
+
+    case 'update_query_status':
+      if ($role !== 'admin' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Insufficient privilege.']);
+        exit;
+      }
+      $queryId = (int)($_POST['query_id'] ?? 0);
+      $newStatus = trim($_POST['status'] ?? ''); // 'Pending', 'Resolved', 'Ignored'
+      $remarks = trim($_POST['remarks'] ?? '');
+      
+      if (!in_array($newStatus, ['Pending', 'Resolved', 'Ignored'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Invalid status.']);
+        exit;
+      }
+      
+      $resolvedAt = ($newStatus === 'Resolved') ? date('Y-m-d H:i:s') : null;
+      
+      $stmt = $db->prepare("UPDATE support_queries SET status = ?, remarks = ?, resolved_at = ? WHERE id = ?");
+      $stmt->execute([$newStatus, $remarks, $resolvedAt, $queryId]);
+      
+      logActivity("Updated support query ID {$queryId} status to {$newStatus}", "success");
+      echo json_encode(['status' => 'success', 'message' => 'Inquiry status updated successfully.']);
+      exit;
+
     // 1. APPROVE / SUSPEND / ACTIVATE USERS (Admin / TPO privilege)
     case 'update_user_status':
       if ($role !== 'admin' && $role !== 'tpo') {
@@ -410,17 +444,17 @@ try {
       $appId = (int)$_POST['application_id'];
       $date = $_POST['date'];
       $time = $_POST['time'];
-      $venue = filter_input(INPUT_POST, 'venue', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Virtual';
-      $interviewer = filter_input(INPUT_POST, 'interviewer', FILTER_SANITIZE_SPECIAL_CHARS);
+      $venue = (filter_input(INPUT_POST, 'venue', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['venue'] ?? '')) ?: 'Virtual';
+      $interviewer = filter_input(INPUT_POST, 'interviewer', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['interviewer'] ?? '');
       
-      $interviewRound = filter_input(INPUT_POST, 'interview_round', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Technical';
-      $interviewType = filter_input(INPUT_POST, 'interview_type', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Online';
-      $meetingLink = filter_input(INPUT_POST, 'meeting_link', FILTER_SANITIZE_URL) ?: null;
-      $instructions = filter_input(INPUT_POST, 'instructions', FILTER_SANITIZE_SPECIAL_CHARS) ?: null;
-      $notes = filter_input(INPUT_POST, 'notes', FILTER_SANITIZE_SPECIAL_CHARS) ?: null;
+      $interviewRound = (filter_input(INPUT_POST, 'interview_round', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['interview_round'] ?? '')) ?: 'Technical';
+      $interviewType = (filter_input(INPUT_POST, 'interview_type', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['interview_type'] ?? '')) ?: 'Online';
+      $meetingLink = filter_input(INPUT_POST, 'meeting_link', FILTER_SANITIZE_URL) ?: ($_POST['meeting_link'] ?? null);
+      $instructions = filter_input(INPUT_POST, 'instructions', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['instructions'] ?? null);
+      $notes = filter_input(INPUT_POST, 'notes', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['notes'] ?? null);
 
       // Verify application exists
-      $stmtApp = $db->prepare("SELECT a.id, u.name as stu_name, a.student_id FROM applications a JOIN users u ON a.student_id=u.id WHERE a.id = ?");
+      $stmtApp = $db->prepare("SELECT a.id, u.name as stu_name, u.email as stu_email, a.student_id FROM applications a JOIN users u ON a.student_id=u.id WHERE a.id = ?");
       $stmtApp->execute([$appId]);
       $app = $stmtApp->fetch();
 
@@ -454,6 +488,58 @@ try {
         "interviews"
       );
 
+      // Send email to candidate
+      $emailSubject = "Interview Scheduled - " . $interviewRound;
+      $emailBody = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset='UTF-8'>
+          <title>Interview Scheduled</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #F8FAFC; color: #0F172A; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 40px auto; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #E2E8F0; padding-bottom: 20px; }
+            .logo { font-size: 24px; font-weight: bold; color: #2563EB; text-decoration: none; }
+            .title { font-size: 20px; font-weight: bold; color: #0F172A; margin-top: 10px; }
+            .content { line-height: 1.6; color: #475569; font-size: 15px; }
+            .details-box { background-color: #F1F5F9; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .details-row { margin-bottom: 10px; font-size: 14px; color: #475569; }
+            .details-row strong { color: #0F172A; }
+            .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class='container'>
+            <div class='header'>
+              <span class='logo'>Campus Recruitment</span>
+              <div class='title'>Interview Scheduled</div>
+            </div>
+            <div class='content'>
+              <p>Dear " . htmlspecialchars($app['stu_name']) . ",</p>
+              <p>An interview has been scheduled for you. Please find the details below:</p>
+              <div class='details-box'>
+                <div class='details-row'><strong>Round:</strong> " . htmlspecialchars($interviewRound) . "</div>
+                <div class='details-row'><strong>Type:</strong> " . htmlspecialchars($interviewType) . "</div>
+                <div class='details-row'><strong>Date:</strong> " . htmlspecialchars($date) . "</div>
+                <div class='details-row'><strong>Time:</strong> " . htmlspecialchars($time) . "</div>
+                <div class='details-row'><strong>Venue/Location:</strong> " . htmlspecialchars($venue) . "</div>
+                <div class='details-row'><strong>Interviewer:</strong> " . htmlspecialchars($interviewer) . "</div>
+                " . ($meetingLink ? "<div class='details-row'><strong>Meeting Link:</strong> <a href='" . htmlspecialchars($meetingLink) . "' style='color:#2563EB;'>" . htmlspecialchars($meetingLink) . "</a></div>" : "") . "
+                " . ($instructions ? "<div class='details-row'><strong>Instructions:</strong> " . nl2br(htmlspecialchars($instructions)) . "</div>" : "") . "
+              </div>
+              <p>Make sure to be prepared and join on time. Best of luck!</p>
+            </div>
+            <div class='footer'>
+              This is an automated email from the Campus Recruitment Management System.
+            </div>
+          </div>
+        </body>
+        </html>
+      ";
+
+      sendSystemEmail($app['stu_email'], $app['stu_name'], $emailSubject, $emailBody);
+
       echo json_encode(['status' => 'success', 'message' => 'Interview round scheduled successfully']);
       break;
 
@@ -466,18 +552,18 @@ try {
       $interviewId = (int)$_POST['interview_id'];
       $date = $_POST['date'];
       $time = $_POST['time'];
-      $venue = filter_input(INPUT_POST, 'venue', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Virtual';
-      $interviewer = filter_input(INPUT_POST, 'interviewer', FILTER_SANITIZE_SPECIAL_CHARS);
+      $venue = (filter_input(INPUT_POST, 'venue', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['venue'] ?? '')) ?: 'Virtual';
+      $interviewer = filter_input(INPUT_POST, 'interviewer', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['interviewer'] ?? '');
       
-      $interviewRound = filter_input(INPUT_POST, 'interview_round', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Technical';
-      $interviewType = filter_input(INPUT_POST, 'interview_type', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Online';
-      $meetingLink = filter_input(INPUT_POST, 'meeting_link', FILTER_SANITIZE_URL) ?: null;
-      $instructions = filter_input(INPUT_POST, 'instructions', FILTER_SANITIZE_SPECIAL_CHARS) ?: null;
-      $notes = filter_input(INPUT_POST, 'notes', FILTER_SANITIZE_SPECIAL_CHARS) ?: null;
-      $status = filter_input(INPUT_POST, 'status', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'Scheduled';
+      $interviewRound = (filter_input(INPUT_POST, 'interview_round', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['interview_round'] ?? '')) ?: 'Technical';
+      $interviewType = (filter_input(INPUT_POST, 'interview_type', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['interview_type'] ?? '')) ?: 'Online';
+      $meetingLink = filter_input(INPUT_POST, 'meeting_link', FILTER_SANITIZE_URL) ?: ($_POST['meeting_link'] ?? null);
+      $instructions = filter_input(INPUT_POST, 'instructions', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['instructions'] ?? null);
+      $notes = filter_input(INPUT_POST, 'notes', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['notes'] ?? null);
+      $status = (filter_input(INPUT_POST, 'status', FILTER_SANITIZE_SPECIAL_CHARS) ?: ($_POST['status'] ?? '')) ?: 'Scheduled';
 
       // Verify interview exists
-      $stmtInt = $db->prepare("SELECT i.id, i.application_id, u.name as stu_name, a.student_id FROM interviews i JOIN applications a ON i.application_id = a.id JOIN users u ON a.student_id = u.id WHERE i.id = ?");
+      $stmtInt = $db->prepare("SELECT i.id, i.application_id, u.name as stu_name, u.email as stu_email, a.student_id FROM interviews i JOIN applications a ON i.application_id = a.id JOIN users u ON a.student_id = u.id WHERE i.id = ?");
       $stmtInt->execute([$interviewId]);
       $interview = $stmtInt->fetch();
 
@@ -503,6 +589,59 @@ try {
         "high",
         "interviews"
       );
+
+      // Send email to candidate
+      $emailSubject = "Interview Schedule Updated - " . $interviewRound;
+      $emailBody = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset='UTF-8'>
+          <title>Interview Schedule Updated</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #F8FAFC; color: #0F172A; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 40px auto; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #E2E8F0; padding-bottom: 20px; }
+            .logo { font-size: 24px; font-weight: bold; color: #2563EB; text-decoration: none; }
+            .title { font-size: 20px; font-weight: bold; color: #0F172A; margin-top: 10px; }
+            .content { line-height: 1.6; color: #475569; font-size: 15px; }
+            .details-box { background-color: #F1F5F9; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .details-row { margin-bottom: 10px; font-size: 14px; color: #475569; }
+            .details-row strong { color: #0F172A; }
+            .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class='container'>
+            <div class='header'>
+              <span class='logo'>Campus Recruitment</span>
+              <div class='title'>Interview Schedule Updated</div>
+            </div>
+            <div class='content'>
+              <p>Dear " . htmlspecialchars($interview['stu_name']) . ",</p>
+              <p>The schedule of your interview has been updated. Please find the new details below:</p>
+              <div class='details-box'>
+                <div class='details-row'><strong>Round:</strong> " . htmlspecialchars($interviewRound) . "</div>
+                <div class='details-row'><strong>Type:</strong> " . htmlspecialchars($interviewType) . "</div>
+                <div class='details-row'><strong>Date:</strong> " . htmlspecialchars($date) . "</div>
+                <div class='details-row'><strong>Time:</strong> " . htmlspecialchars($time) . "</div>
+                <div class='details-row'><strong>Venue/Location:</strong> " . htmlspecialchars($venue) . "</div>
+                <div class='details-row'><strong>Interviewer:</strong> " . htmlspecialchars($interviewer) . "</div>
+                <div class='details-row'><strong>Status:</strong> " . htmlspecialchars($status) . "</div>
+                " . ($meetingLink ? "<div class='details-row'><strong>Meeting Link:</strong> <a href='" . htmlspecialchars($meetingLink) . "' style='color:#2563EB;'>" . htmlspecialchars($meetingLink) . "</a></div>" : "") . "
+                " . ($instructions ? "<div class='details-row'><strong>Instructions:</strong> " . nl2br(htmlspecialchars($instructions)) . "</div>" : "") . "
+              </div>
+              <p>Please make sure to note the changes. Best of luck!</p>
+            </div>
+            <div class='footer'>
+              This is an automated email from the Campus Recruitment Management System.
+            </div>
+          </div>
+        </body>
+        </html>
+      ";
+
+      sendSystemEmail($interview['stu_email'], $interview['stu_name'], $emailSubject, $emailBody);
 
       echo json_encode(['status' => 'success', 'message' => 'Interview updated successfully']);
       break;
@@ -552,6 +691,89 @@ try {
       );
 
       echo json_encode(['status' => 'success', 'message' => 'Interview evaluation submitted successfully']);
+      break;
+
+    case 'cancel_interview':
+      if ($role !== 'admin' && $role !== 'company' && $role !== 'tpo') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+        exit;
+      }
+
+      $interviewId = (int)$_POST['interview_id'];
+
+      // Verify interview exists
+      $stmtInt = $db->prepare("SELECT i.id, i.interview_round, i.date, i.time, u.name as stu_name, u.email as stu_email, a.student_id FROM interviews i JOIN applications a ON i.application_id = a.id JOIN users u ON a.student_id = u.id WHERE i.id = ?");
+      $stmtInt->execute([$interviewId]);
+      $interview = $stmtInt->fetch();
+
+      if (!$interview) {
+        echo json_encode(['status' => 'error', 'message' => 'Interview not found.']);
+        exit;
+      }
+
+      // Update status to 'Cancelled'
+      $stmtUpdate = $db->prepare("UPDATE interviews SET result = 'Cancelled' WHERE id = ?");
+      $stmtUpdate->execute([$interviewId]);
+
+      // Notify the student
+      createUserNotification(
+        $interview['student_id'],
+        "Interview Cancelled",
+        "Your scheduled {$interview['interview_round']} interview on {$interview['date']} has been cancelled.",
+        "interview",
+        "high",
+        "interviews"
+      );
+
+      // Send email to candidate
+      $emailSubject = "Interview Cancelled - " . $interview['interview_round'];
+      $emailBody = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset='UTF-8'>
+          <title>Interview Cancelled</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #F8FAFC; color: #0F172A; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 40px auto; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #E2E8F0; padding-bottom: 20px; }
+            .logo { font-size: 24px; font-weight: bold; color: #EF4444; text-decoration: none; }
+            .title { font-size: 20px; font-weight: bold; color: #0F172A; margin-top: 10px; }
+            .content { line-height: 1.6; color: #475569; font-size: 15px; }
+            .details-box { background-color: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .details-row { margin-bottom: 10px; font-size: 14px; color: #991B1B; }
+            .details-row strong { color: #991B1B; }
+            .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class='container'>
+            <div class='header'>
+              <span class='logo'>Campus Recruitment</span>
+              <div class='title' style='color:#EF4444;'>Interview Cancelled</div>
+            </div>
+            <div class='content'>
+              <p>Dear " . htmlspecialchars($interview['stu_name']) . ",</p>
+              <p>We regret to inform you that your scheduled interview has been cancelled. Details of the cancelled round:</p>
+              <div class='details-box'>
+                <div class='details-row'><strong>Round:</strong> " . htmlspecialchars($interview['interview_round']) . "</div>
+                <div class='details-row'><strong>Date:</strong> " . htmlspecialchars($interview['date']) . "</div>
+                <div class='details-row'><strong>Time:</strong> " . htmlspecialchars($interview['time']) . "</div>
+              </div>
+              <p>If you have any questions or require rescheduling, please contact your TPO cell or the company coordinator.</p>
+            </div>
+            <div class='footer'>
+              This is an automated email from the Campus Recruitment Management System.
+            </div>
+          </div>
+        </body>
+        </html>
+      ";
+
+      sendSystemEmail($interview['stu_email'], $interview['stu_name'], $emailSubject, $emailBody);
+
+      logActivity("Interview ID {$interviewId} status updated to Cancelled", "success");
+      echo json_encode(['status' => 'success', 'message' => 'Interview cancelled successfully.']);
       break;
 
     case 'delete_interview':

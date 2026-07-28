@@ -123,18 +123,20 @@ try {
     $drives = $db->query("
       SELECT d.id, d.company_id, d.job_role as jobRole, d.eligibility_cgpa as eligibilityCGPA,
              d.package_lpa as packageLPA, d.drive_date as date, d.status, d.skills_required,
-             d.registration_deadline, d.departments, c.company_name as companyName, c.company_logo as companyLogo
+             d.registration_deadline, d.departments, COALESCE(c.company_name, cu.name) as companyName, c.company_logo as companyLogo
       FROM drives d
-      JOIN companies c ON d.company_id = c.user_id
+      JOIN users cu ON d.company_id = cu.id
+      LEFT JOIN companies c ON d.company_id = c.user_id
       ORDER BY d.id DESC
     ")->fetchAll();
   } else {
     $stmtDrives = $db->prepare("
       SELECT d.id, d.company_id, d.job_role as jobRole, d.eligibility_cgpa as eligibilityCGPA,
              d.package_lpa as packageLPA, d.drive_date as date, d.status, d.skills_required,
-             d.registration_deadline, d.departments, c.company_name as companyName, c.company_logo as companyLogo
+             d.registration_deadline, d.departments, COALESCE(c.company_name, cu.name) as companyName, c.company_logo as companyLogo
       FROM drives d
-      JOIN companies c ON d.company_id = c.user_id
+      JOIN users cu ON d.company_id = cu.id
+      LEFT JOIN companies c ON d.company_id = c.user_id
       WHERE d.company_id = ?
       ORDER BY d.id DESC
     ");
@@ -144,13 +146,14 @@ try {
 
   $applicationsQueryStr = "
     SELECT a.id, a.student_id as studentId, a.drive_id as driveId, a.applied_date, a.status,
-           u.name as studentName, s.department, s.cgpa, d.job_role as role, c.company_name as companyName,
+           u.name as studentName, s.department, s.cgpa, d.job_role as role, COALESCE(c.company_name, cu.name) as companyName,
            d.package_lpa as lpa, d.drive_date as driveDate, c.company_logo as companyLogo
     FROM applications a
     JOIN users u ON a.student_id = u.id
     JOIN students s ON u.id = s.user_id
     JOIN drives d ON a.drive_id = d.id
-    JOIN companies c ON d.company_id = c.user_id
+    JOIN users cu ON d.company_id = cu.id
+    LEFT JOIN companies c ON d.company_id = c.user_id
   ";
   // Filter for student / company role security
   if ($role === 'student') {
@@ -174,13 +177,14 @@ try {
   // 5. Fetch Interviews
   $interviewsQueryStr = "
     SELECT i.id, i.application_id, i.date, i.time, i.venue, i.interviewer, i.remarks, i.result, i.attendance, i.meeting_link,
-           u.name as studentName, s.department, d.job_role as role, c.company_name as companyName, c.company_logo as companyLogo
+           u.name as studentName, s.department, d.job_role as role, COALESCE(c.company_name, cu.name) as companyName, c.company_logo as companyLogo
     FROM interviews i
     JOIN applications a ON i.application_id = a.id
     JOIN users u ON a.student_id = u.id
     JOIN students s ON u.id = s.user_id
     JOIN drives d ON a.drive_id = d.id
-    JOIN companies c ON d.company_id = c.user_id
+    JOIN users cu ON d.company_id = cu.id
+    LEFT JOIN companies c ON d.company_id = c.user_id
   ";
   if ($role === 'student') {
     $interviewsQueryStr .= " WHERE a.student_id = :sid";
@@ -204,13 +208,14 @@ try {
   $offersQueryStr = "
     SELECT o.id, o.application_id, o.salary_lpa as packageLPA, o.designation as role, o.joining_date as date, o.location, o.status,
            o.offer_date, o.expiry_date, o.sent_date, o.viewed_date, o.accepted_date, o.rejected_date,
-           u.name as studentName, s.department, c.company_name as companyName, o.offer_letter_path, c.company_logo as companyLogo
+           u.name as studentName, s.department, COALESCE(c.company_name, cu.name) as companyName, o.offer_letter_path, c.company_logo as companyLogo
     FROM offers o
     JOIN applications a ON o.application_id = a.id
     JOIN users u ON a.student_id = u.id
     JOIN students s ON u.id = s.user_id
     JOIN drives d ON a.drive_id = d.id
-    JOIN companies c ON d.company_id = c.user_id
+    JOIN users cu ON d.company_id = cu.id
+    LEFT JOIN companies c ON d.company_id = c.user_id
   ";
   if ($role === 'student') {
     $offersQueryStr .= " WHERE a.student_id = :sid";
@@ -2338,8 +2343,8 @@ try {
             </div>
 
             <!-- Job Details Modal Overlay -->
-            <div class="modal-overlay" id="modal-job-details" style="display: none; align-items: center; justify-content: center; z-index: 1000; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5);">
-              <div class="modal-card" style="max-width: 620px; width: 90%; border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-card); box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
+            <div class="modal-overlay" id="modal-job-details">
+              <div class="modal-content" style="max-width: 620px; display: flex; flex-direction: column;">
                 <div style="padding: var(--space-25); display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color);">
                   <div style="display: flex; gap: 16px; align-items: center;">
                     <div id="modal-job-company-logo" style="width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; color: #FFFFFF; flex-shrink: 0;">
@@ -2895,11 +2900,11 @@ try {
                   }
 
                   // Show modal
-                  document.getElementById("modal-job-details").style.display = "flex";
+                  openModal("modal-job-details");
                 };
 
                 window.closeJobDetailsModal = function() {
-                  document.getElementById("modal-job-details").style.display = "none";
+                  closeModal("modal-job-details");
                 };
 
                 // Trigger Apply functionality
@@ -3294,7 +3299,7 @@ try {
                   <p style="color: var(--text-secondary); font-size: 13px;">Track scheduled interviews, access meeting rooms, and monitor countdown timers.</p>
                 </div>
                 <?php if ($role === 'admin' || $role === 'tpo'): ?>
-                <button class="btn btn-primary btn-sm" onclick="openModal('modal-schedule-interview')">
+                <button class="btn btn-primary btn-sm" onclick="openScheduleInterviewModal()">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                   Schedule Interview
                 </button>
@@ -4005,12 +4010,21 @@ try {
     <div class="modal-overlay" id="modal-schedule-interview">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title">Schedule Interview Round</h3>
+          <h3 class="modal-title" id="modal-interview-title">Schedule Interview Round</h3>
           <svg class="modal-close" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </div>
         <form id="form-schedule-interview-api">
+          <input type="hidden" name="interview_id" id="modal-interview-edit-id" value="">
           <div class="modal-body">
-            <div class="form-group">
+            <div class="form-group" id="modal-interview-status-group" style="display: none; margin-bottom: var(--space-2);">
+              <label class="form-label">Interview Status</label>
+              <select class="input-field select-custom" name="status" id="modal-interview-status">
+                <option value="Scheduled">Scheduled (Upcoming)</option>
+                <option value="Passed">Passed</option>
+                <option value="Failed">Failed</option>
+              </select>
+            </div>
+            <div class="form-group" id="modal-interview-app-wrapper">
               <label class="form-label">Application ID</label>
               <select class="input-field select-custom" name="application_id" id="modal-interview-app-id" required>
                 <option value="">Select Candidate Application...</option>
@@ -4018,6 +4032,10 @@ try {
                 <option value="<?php echo $app['id']; ?>">#<?php echo $app['id']; ?> — <?php echo htmlspecialchars($app['studentName']); ?> → <?php echo htmlspecialchars($app['companyName']); ?> (<?php echo htmlspecialchars($app['role']); ?>)</option>
                 <?php endforeach; ?>
               </select>
+            </div>
+            <div class="form-group" id="modal-interview-app-readonly" style="display: none;">
+              <label class="form-label">Candidate & Position</label>
+              <input type="text" class="input-field" id="modal-interview-app-readonly-text" readonly style="background: rgba(0,0,0,0.02); cursor: not-allowed;">
             </div>
             <div class="grid-12">
               <div class="col-6 col-md-12 form-group">

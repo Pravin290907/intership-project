@@ -3130,27 +3130,105 @@ Date generated: ${new Date().toLocaleDateString()}
     });
   }
 
-  // ==================== SCHEDULE INTERVIEW FORM ====================
+  // ==================== SCHEDULE / EDIT / DELETE INTERVIEW FLOW ====================
+  window.openScheduleInterviewModal = function() {
+    const form = document.getElementById('form-schedule-interview-api');
+    if (form) {
+      form.reset();
+      document.getElementById('modal-interview-edit-id').value = '';
+      document.getElementById('modal-interview-title').innerText = 'Schedule Interview Round';
+      document.getElementById('modal-interview-app-wrapper').style.display = 'block';
+      document.getElementById('modal-interview-app-readonly').style.display = 'none';
+      document.getElementById('modal-interview-status-group').style.display = 'none';
+      document.getElementById('btn-schedule-int-submit').innerText = 'Schedule Interview';
+    }
+    openModal('modal-schedule-interview');
+  };
+
+  window.tpoEditInterview = function(interviewId) {
+    const int = globalData.interviews.find(i => String(i.id) === String(interviewId));
+    if (!int) return;
+
+    const form = document.getElementById('form-schedule-interview-api');
+    if (!form) return;
+
+    form.reset();
+    document.getElementById('modal-interview-edit-id').value = int.id;
+    document.getElementById('modal-interview-title').innerText = 'Modify Interview Schedule';
+
+    document.getElementById('modal-interview-app-wrapper').style.display = 'none';
+    document.getElementById('modal-interview-app-readonly').style.display = 'block';
+    document.getElementById('modal-interview-status-group').style.display = 'block';
+    
+    document.getElementById('modal-interview-app-readonly-text').value = `${int.studentName} → ${int.companyName} (${int.role})`;
+
+    form.querySelector("[name='date']").value = int.date;
+    form.querySelector("[name='time']").value = int.time.slice(0, 5); // hh:mm
+    form.querySelector("[name='interview_round']").value = int.interview_round || 'Technical';
+    form.querySelector("[name='interview_type']").value = int.interview_type || 'Online';
+    form.querySelector("[name='meeting_link']").value = int.meeting_link || '';
+    form.querySelector("[name='interviewer']").value = int.interviewer;
+    form.querySelector("[name='instructions']").value = int.instructions || '';
+    form.querySelector("[name='notes']").value = int.notes || '';
+    document.getElementById('modal-interview-status').value = int.result || 'Scheduled';
+    document.getElementById('btn-schedule-int-submit').innerText = 'Update Schedule';
+
+    openModal('modal-schedule-interview');
+  };
+
+  window.tpoDeleteInterview = function(interviewId) {
+    Swal.fire({
+      title: 'Delete Interview Schedule?',
+      text: 'Are you sure you want to permanently delete this interview? This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'Yes, Delete'
+    }).then(res => {
+      if (res.isConfirmed) {
+        Swal.fire({ title: 'Deleting interview...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const f = new FormData();
+        f.append('action', 'delete_interview');
+        f.append('interview_id', interviewId);
+        
+        fetch('api/actions.php', { method: 'POST', body: f })
+          .then(r => r.json())
+          .then(r => {
+            Swal.close();
+            if (r.status === 'success') {
+              Swal.fire({ title: 'Deleted!', text: r.message, icon: 'success', timer: 1500, showConfirmButton: false });
+              setTimeout(() => window.location.reload(), 1500);
+            } else {
+              Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
+            }
+          });
+      }
+    });
+  };
+
   const intForm = document.getElementById('form-schedule-interview-api');
   if (intForm) {
     intForm.addEventListener('submit', (e) => {
       e.preventDefault();
+      const isEdit = document.getElementById('modal-interview-edit-id').value !== '';
       const f = new FormData(intForm);
-      f.append('action', 'schedule_interview');
+      f.append('action', isEdit ? 'edit_interview' : 'schedule_interview');
+      
       const btn = document.getElementById('btn-schedule-int-submit');
       btn.disabled = true;
-      btn.innerText = 'Scheduling...';
+      const originalText = btn.innerText;
+      btn.innerText = isEdit ? 'Updating...' : 'Scheduling...';
 
       fetch('api/actions.php', { method: 'POST', body: f })
         .then(r => r.json())
         .then(r => {
           btn.disabled = false;
-          btn.innerText = 'Schedule Interview';
+          btn.innerText = originalText;
           if (r.status === 'success') {
             closeModal('modal-schedule-interview');
             intForm.reset();
-            Swal.fire({ title: 'Interview Scheduled!', text: r.message, icon: 'success', timer: 2000 });
-            // Reload interviews data
+            Swal.fire({ title: isEdit ? 'Interview Updated!' : 'Interview Scheduled!', text: r.message, icon: 'success', timer: 2000 });
             setTimeout(() => window.location.reload(), 2000);
           } else {
             Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
@@ -3158,7 +3236,7 @@ Date generated: ${new Date().toLocaleDateString()}
         })
         .catch(() => {
           btn.disabled = false;
-          btn.innerText = 'Schedule Interview';
+          btn.innerText = originalText;
         });
     });
   }

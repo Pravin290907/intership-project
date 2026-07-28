@@ -1367,7 +1367,7 @@ try {
 
     // 7. UPDATE PROFILE DETAILS
     case 'update_profile':
-      $name = trim($_POST['name'] ?? '');
+      $name = trim($_POST['name'] ?? $_POST['company_name'] ?? $_POST['recruiter_name'] ?? '');
       if (empty($name)) {
         echo json_encode(['status' => 'error', 'message' => 'Full name cannot be empty.']);
         exit;
@@ -1612,12 +1612,18 @@ try {
       $scheduledDate = !empty($_POST['scheduled_date']) ? $_POST['scheduled_date'] : null;
       $startTime = !empty($_POST['start_time']) ? $_POST['start_time'] : null;
       $endTime = !empty($_POST['end_time']) ? $_POST['end_time'] : null;
-      $status = $_POST['status'] ?? 'Draft';
 
       if (!$testId || empty($title)) {
         echo json_encode(['status' => 'error', 'message' => 'Test ID and Title are required.']);
         exit;
       }
+
+      // Fetch existing status as fallback
+      $stmtEx = $db->prepare("SELECT status FROM aptitude_tests WHERE id = ?");
+      $stmtEx->execute([$testId]);
+      $existingStatus = $stmtEx->fetchColumn() ?: 'Draft';
+
+      $status = $_POST['status'] ?? ( !empty($scheduledDate) && $existingStatus === 'Draft' ? 'Scheduled' : $existingStatus );
 
       $stmt = $db->prepare("UPDATE aptitude_tests SET title = ?, description = ?, duration_minutes = ?, total_marks = ?, pass_marks = ?, status = ?, scheduled_date = ?, start_time = ?, end_time = ? WHERE id = ?");
       $stmt->execute([$title, $description, $duration, $totalMarks, $passMarks, $status, $scheduledDate, $startTime, $endTime, $testId]);
@@ -1632,10 +1638,18 @@ try {
         exit;
       }
       $testId = (int)($_POST['test_id'] ?? 0);
-      $stmt = $db->prepare("DELETE FROM aptitude_tests WHERE id = ?");
-      $stmt->execute([$testId]);
+      if (!$testId) {
+        echo json_encode(['status' => 'error', 'message' => 'Invalid test ID.']);
+        exit;
+      }
 
-      echo json_encode(['status' => 'success', 'message' => 'Aptitude Test deleted.']);
+      // Delete related records first to avoid foreign key constraint failures
+      $db->prepare("DELETE FROM aptitude_assignments WHERE test_id = ?")->execute([$testId]);
+      $db->prepare("DELETE FROM aptitude_questions WHERE test_id = ?")->execute([$testId]);
+      $db->prepare("DELETE FROM aptitude_tests WHERE id = ?")->execute([$testId]);
+
+      logActivity("Deleted Aptitude Test (ID: $testId)", "success");
+      echo json_encode(['status' => 'success', 'message' => 'Aptitude Test deleted successfully.']);
       break;
 
     case 'get_aptitude_tests':

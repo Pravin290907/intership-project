@@ -780,6 +780,12 @@ class InterviewCalendar {
               </a>
             `}
           </div>
+          ${(window.campusRecruitmentData && (window.campusRecruitmentData.role === 'tpo' || window.campusRecruitmentData.role === 'admin')) ? `
+            <div style="margin-top: 8px; display: flex; gap: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+              <button class="btn btn-secondary btn-sm btn-edit-interview" style="flex:1; padding: 4px 8px; font-size: 11px;" data-id="${int.id}">Edit</button>
+              <button class="btn btn-danger btn-sm btn-delete-interview" style="flex:1; padding: 4px 8px; font-size: 11px;" data-id="${int.id}">Delete</button>
+            </div>
+          ` : ''}
         </div>
       `;
 
@@ -791,6 +797,24 @@ class InterviewCalendar {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         showToast("Accessing Video Conferencing", "Initializing secure connection to virtual room.", "info");
+      });
+    });
+
+    this.listContainer.querySelectorAll(".btn-edit-interview").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        if (typeof window.tpoEditInterview === "function") {
+          window.tpoEditInterview(id);
+        }
+      });
+    });
+
+    this.listContainer.querySelectorAll(".btn-delete-interview").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        if (typeof window.tpoDeleteInterview === "function") {
+          window.tpoDeleteInterview(id);
+        }
       });
     });
   }

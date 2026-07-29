@@ -1706,6 +1706,7 @@ try {
       break;
 
     // 7.5 UPDATE PASSWORD
+    case 'change_password':
     case 'update_password':
       $currentPassword = $_POST['current_password'] ?? '';
       $newPassword = $_POST['new_password'] ?? '';
@@ -1721,8 +1722,8 @@ try {
         exit;
       }
 
-      if (strlen($newPassword) < 8) {
-        echo json_encode(['status' => 'error', 'message' => 'Password must be at least 8 characters long.']);
+      if (strlen($newPassword) < 6) {
+        echo json_encode(['status' => 'error', 'message' => 'Password must be at least 6 characters long.']);
         exit;
       }
 

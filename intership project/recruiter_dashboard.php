@@ -1885,7 +1885,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
                   <div class="form-input-wrapper">
                     <label class="form-input-label">New Password *</label>
                     <div style="position:relative;">
-                      <input type="password" class="input-field-custom" id="pwd-new" onkeyup="checkPasswordRequirements(this.value)" required placeholder="New password (Min 8 chars)">
+                      <input type="password" class="input-field-custom" id="pwd-new" onkeyup="checkPasswordRequirements(this.value)" required placeholder="New password (Min 6 chars)">
                       <button type="button" onclick="togglePasswordVisibility('pwd-new')" style="position:absolute; right:12px; top:12px; border:none; background:none; cursor:pointer; color:var(--text-muted);">
                         <i data-lucide="eye" style="width:16px; height:16px;"></i>
                       </button>
@@ -1896,7 +1896,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
                         <div class="password-meter-fill" id="pwd-strength-fill" style="height:100%; width:0%; background:var(--color-danger); transition:all 0.3s;"></div>
                       </div>
                       <div class="password-requirements-list" style="font-size:11px; color:var(--text-secondary); display:flex; flex-direction:column; gap:4px;">
-                        <div class="password-req-item" id="req-len"><span>&bull;</span> Min 8 characters</div>
+                        <div class="password-req-item" id="req-len"><span>&bull;</span> Min 6 characters</div>
                         <div class="password-req-item" id="req-upper"><span>&bull;</span> 1 Uppercase letter</div>
                         <div class="password-req-item" id="req-num"><span>&bull;</span> 1 Number</div>
                         <div class="password-req-item" id="req-spec"><span>&bull;</span> 1 Special character</div>
@@ -2230,10 +2230,9 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
 
 
+        <!-- --- PROFESSIONAL DASHBOARD FOOTER --- -->
+        <?php include __DIR__ . '/includes/footer.php'; ?>
       </div>
-
-      <!-- --- PROFESSIONAL DASHBOARD FOOTER --- -->
-      <?php include __DIR__ . '/includes/footer.php'; ?>
     </main>
 
     <!-- --- CREATE DRIVE DIALOG POPUP --- -->

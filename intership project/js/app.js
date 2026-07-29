@@ -401,10 +401,10 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        if (newP.length < 8) {
+        if (newP.length < 6) {
           Swal.fire({
             title: 'Password Too Short',
-            text: 'New password must be at least 8 characters long.',
+            text: 'New password must be at least 6 characters long.',
             icon: 'error',
             confirmButtonColor: '#EF4444'
           });

@@ -280,13 +280,29 @@ try {
       
       $tpoStats['active_drives'] = (int)$db->query("SELECT COUNT(*) FROM drives WHERE LOWER(status) IN ('open', 'upcoming')")->fetchColumn();
 
-      $maxDrive = (float)$db->query("SELECT MAX(package_lpa) FROM drives")->fetchColumn();
-      $maxComp = (float)$db->query("SELECT MAX(highest_package) FROM companies")->fetchColumn();
-      $tpoStats['highest_ctc'] = max($maxDrive, $maxComp, 0.0);
+      if ($tpoStats['placed_students'] > 0) {
+        $tpoStats['highest_ctc'] = (float)$db->query("
+          SELECT COALESCE(MAX(o.salary_lpa), 0) 
+          FROM offers o
+          JOIN applications a ON o.application_id = a.id
+          WHERE LOWER(o.status) = 'accepted'
+        ")->fetchColumn();
 
-      $tpoStats['avg_ctc'] = (float)$db->query("SELECT AVG(package_lpa) FROM drives WHERE LOWER(status) IN ('open', 'upcoming')")->fetchColumn();
-      if ($tpoStats['avg_ctc'] == 0) {
-        $tpoStats['avg_ctc'] = (float)$db->query("SELECT AVG(avg_package) FROM companies")->fetchColumn();
+        $tpoStats['avg_ctc'] = (float)$db->query("
+          SELECT COALESCE(AVG(o.salary_lpa), 0) 
+          FROM offers o
+          JOIN applications a ON o.application_id = a.id
+          WHERE LOWER(o.status) = 'accepted'
+        ")->fetchColumn();
+      } else {
+        $maxDrive = (float)$db->query("SELECT MAX(package_lpa) FROM drives")->fetchColumn();
+        $maxComp = (float)$db->query("SELECT MAX(highest_package) FROM companies")->fetchColumn();
+        $tpoStats['highest_ctc'] = max($maxDrive, $maxComp, 0.0);
+
+        $tpoStats['avg_ctc'] = (float)$db->query("SELECT AVG(package_lpa) FROM drives WHERE LOWER(status) IN ('open', 'upcoming')")->fetchColumn();
+        if ($tpoStats['avg_ctc'] == 0) {
+          $tpoStats['avg_ctc'] = (float)$db->query("SELECT AVG(avg_package) FROM companies")->fetchColumn();
+        }
       }
       
       $pendingStudentsQueue = $db->query("
@@ -3367,11 +3383,6 @@ try {
               <div style="display: flex; gap: var(--space-1);">
                 <select class="input-field select-custom btn-sm" id="filter-app-status" style="width: 180px;">
                   <option value="All">All Stages</option>
-                  <option value="Applied">Applied</option>
-                  <option value="Eligible">Eligible</option>
-                  <option value="Aptitude">Aptitude</option>
-                  <option value="Technical">Technical</option>
-                  <option value="HR">HR</option>
                   <option value="Selected">Selected</option>
                   <option value="Rejected">Rejected</option>
                 </select>
@@ -3958,7 +3969,7 @@ try {
                   </div>
                   <div class="form-group" style="margin-bottom: var(--space-2);">
                     <label class="form-label">New Password</label>
-                    <input type="password" class="input-field" name="new_password" id="settings-new-pwd" placeholder="Min 8 characters" required>
+                    <input type="password" class="input-field" name="new_password" id="settings-new-pwd" placeholder="Min 6 characters" required>
                   </div>
                   <div class="form-group" style="margin-bottom: var(--space-3);">
                     <label class="form-label">Confirm New Password</label>
@@ -4120,8 +4131,8 @@ try {
           </div>
         </div>
 
+        <?php require_once __DIR__ . '/includes/footer.php'; ?>
       </div>
-      <?php require_once __DIR__ . '/includes/footer.php'; ?>
     </main>
 
     <!-- --- NOTIFICATION SLIDE-OUT DRAWER --- -->

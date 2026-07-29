@@ -8,12 +8,15 @@
     <div class="footer-copyright-text">
       &copy; <?php echo date('Y'); ?> <span class="brand-highlight">Campus Recruitment</span>. All rights reserved.
     </div>
+    <div class="footer-links">
+      <a href="<?php echo BASE_URL; ?>terms.php" class="footer-link">Terms &amp; Conditions</a>
+    </div>
   </div>
 </footer>
 
 <style>
 .app-dashboard-footer {
-  margin-top: auto;
+  margin-top: 40px;
   width: 100%;
   clear: both;
 }
@@ -26,8 +29,11 @@
   color: #94A3B8;
   padding: 20px 36px;
   display: flex;
+  flex-direction: row;
   justify-content: center;
   align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
   font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 13px;
   width: 100%;
@@ -49,5 +55,21 @@
 .brand-highlight {
   color: #38BDF8;
   font-weight: 600;
+}
+
+.footer-links {
+  display: flex;
+  gap: 24px;
+}
+
+.footer-link {
+  color: #94A3B8;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.footer-link:hover {
+  color: #38BDF8;
 }
 </style>

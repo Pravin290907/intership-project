@@ -1834,38 +1834,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Password update
-  const passwordForm = document.getElementById('recruiter-password-form');
-  if (passwordForm) {
-    passwordForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const current = document.getElementById('pwd-current').value;
-      const newPwd = document.getElementById('pwd-new').value;
-      const confirmPwd = document.getElementById('pwd-confirm').value;
-
-      if (newPwd !== confirmPwd) {
-        Swal.fire({ title: 'Error', text: 'New passwords do not match.', icon: 'error' });
-        return;
-      }
-
-      const f = new FormData();
-      f.append('action', 'change_password');
-      f.append('current_password', current);
-      f.append('new_password', newPwd);
-      f.append('confirm_password', confirmPwd);
-
-      fetch('api/actions.php', { method: 'POST', body: f })
-        .then(r => r.json())
-        .then(r => {
-          if (r.status === 'success') {
-            passwordForm.reset();
-            Swal.fire({ title: 'Success', text: 'Password Changed Successfully', icon: 'success', timer: 1500 });
-          } else {
-            Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
-          }
-        });
-    });
-  }
+  // Password update is handled by the inline onsubmit form handler submitRecruiterPasswordForm(event)
 
   // Save Settings
   window.submitRecruiterSettingsForm = function (ev) {
@@ -3062,45 +3031,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   };
 
-  window.submitRecruiterPasswordForm = function (event) {
-    if (event) event.preventDefault();
-    const currentPwd = document.getElementById('pwd-current')?.value;
-    const newPwd = document.getElementById('pwd-new')?.value;
-    const confirmPwd = document.getElementById('pwd-confirm')?.value;
-
-    if (!currentPwd || !newPwd || !confirmPwd) {
-      Swal.fire({ title: 'Required Fields', text: 'Please fill in all password fields.', icon: 'warning' });
-      return;
-    }
-
-    if (newPwd !== confirmPwd) {
-      Swal.fire({ title: 'Password Mismatch', text: 'New password and confirm password do not match.', icon: 'error' });
-      return;
-    }
-
-    if (newPwd.length < 8) {
-      Swal.fire({ title: 'Weak Password', text: 'Password must be at least 8 characters long.', icon: 'warning' });
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('action', 'change_password');
-    formData.append('current_password', currentPwd);
-    formData.append('new_password', newPwd);
-
-    Swal.fire({ title: 'Updating Password...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-    fetch('api/actions.php', { method: 'POST', body: formData })
-      .then(r => r.json())
-      .then(res => {
-        if (res.status === 'success') {
-          Swal.fire({ title: 'Password Changed!', text: res.message || 'Security password updated successfully.', icon: 'success' });
-          document.getElementById('recruiter-password-form').reset();
-        } else {
-          Swal.fire({ title: 'Change Failed', text: res.message || 'Current password was incorrect.', icon: 'error' });
-        }
-      });
-  };
 
   // Branding Upload & Drag-and-Drop
   window.handleBrandingDrop = function (e, type) {
@@ -3216,7 +3146,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const reqSpec = document.getElementById('req-spec');
 
     let score = 0;
-    if (val.length >= 8) { score++; if (reqLen) reqLen.classList.add('met'); } else if (reqLen) reqLen.classList.remove('met');
+    if (val.length >= 6) { score++; if (reqLen) reqLen.classList.add('met'); } else if (reqLen) reqLen.classList.remove('met');
     if (/[A-Z]/.test(val)) { score++; if (reqUpper) reqUpper.classList.add('met'); } else if (reqUpper) reqUpper.classList.remove('met');
     if (/[0-9]/.test(val)) { score++; if (reqNum) reqNum.classList.add('met'); } else if (reqNum) reqNum.classList.remove('met');
     if (/[^A-Za-z0-9]/.test(val)) { score++; if (reqSpec) reqSpec.classList.add('met'); } else if (reqSpec) reqSpec.classList.remove('met');
@@ -3249,8 +3179,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (newP.length < 8) {
-      Swal.fire({ title: 'Weak Password', text: 'Password must be at least 8 characters long.', icon: 'error' });
+    if (newP.length < 6) {
+      Swal.fire({ title: 'Weak Password', text: 'Password must be at least 6 characters long.', icon: 'error' });
       return;
     }
 

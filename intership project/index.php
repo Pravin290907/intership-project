@@ -50,24 +50,35 @@ try {
   $offersCount = (int)$stmtOffersCount->fetchColumn();
   $stats['placed'] = $offersCount;
 
-  // Highest package (max from drives and company table)
-  $stmtMaxDrive = $db->query("SELECT MAX(package_lpa) FROM drives");
-  $maxDrive = (float)$stmtMaxDrive->fetchColumn();
-  $stmtMaxComp = $db->query("SELECT MAX(highest_package) FROM companies");
-  $maxComp = (float)$stmtMaxComp->fetchColumn();
-  $maxPackage = max($maxDrive, $maxComp);
-  $stats['highest'] = ($maxPackage > 0 ? number_format($maxPackage, 1) : '0.0') . ' LPA';
+  // Highest package and Average package (calculated from active offers if available, otherwise fallback)
+  if ($offersCount > 0) {
+    $stmtMaxOffer = $db->query("SELECT MAX(salary_lpa) FROM offers WHERE LOWER(status) IN ('accepted', 'released')");
+    $maxPackage = (float)$stmtMaxOffer->fetchColumn();
+    $stats['highest'] = ($maxPackage > 0 ? number_format($maxPackage, 1) : '0.0') . ' LPA';
 
-  // Average package (average of open/upcoming drives)
-  $stmtAvg = $db->query("SELECT AVG(package_lpa) FROM drives WHERE LOWER(status) IN ('open', 'upcoming')");
-  $avgVal = (float)$stmtAvg->fetchColumn();
-  if ($avgVal > 0) {
-    $stats['avg_package'] = number_format($avgVal, 1) . ' LPA';
+    $stmtAvgOffer = $db->query("SELECT AVG(salary_lpa) FROM offers WHERE LOWER(status) IN ('accepted', 'released')");
+    $avgVal = (float)$stmtAvgOffer->fetchColumn();
+    $stats['avg_package'] = ($avgVal > 0 ? number_format($avgVal, 1) : '0.0') . ' LPA';
   } else {
-    // try global average from companies
-    $stmtAvgComp = $db->query("SELECT AVG(avg_package) FROM companies");
-    $avgCompVal = (float)$stmtAvgComp->fetchColumn();
-    $stats['avg_package'] = ($avgCompVal > 0 ? number_format($avgCompVal, 1) : '0.0') . ' LPA';
+    // Highest package (max from drives and company table)
+    $stmtMaxDrive = $db->query("SELECT MAX(package_lpa) FROM drives");
+    $maxDrive = (float)$stmtMaxDrive->fetchColumn();
+    $stmtMaxComp = $db->query("SELECT MAX(highest_package) FROM companies");
+    $maxComp = (float)$stmtMaxComp->fetchColumn();
+    $maxPackage = max($maxDrive, $maxComp);
+    $stats['highest'] = ($maxPackage > 0 ? number_format($maxPackage, 1) : '0.0') . ' LPA';
+
+    // Average package (average of open/upcoming drives)
+    $stmtAvg = $db->query("SELECT AVG(package_lpa) FROM drives WHERE LOWER(status) IN ('open', 'upcoming')");
+    $avgVal = (float)$stmtAvg->fetchColumn();
+    if ($avgVal > 0) {
+      $stats['avg_package'] = number_format($avgVal, 1) . ' LPA';
+    } else {
+      // try global average from companies
+      $stmtAvgComp = $db->query("SELECT AVG(avg_package) FROM companies");
+      $avgCompVal = (float)$stmtAvgComp->fetchColumn();
+      $stats['avg_package'] = ($avgCompVal > 0 ? number_format($avgCompVal, 1) : '0.0') . ' LPA';
+    }
   }
 
   // Placement success rate

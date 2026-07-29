@@ -3048,8 +3048,8 @@ Date generated: ${new Date().toLocaleDateString()}
         <td>${t.scheduled_date || '—'}</td>
         <td style="text-align:center;">
           <div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">
-            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="tpoEditAptitudeTest(${t.id})">Edit</button>
-            <button class="btn btn-danger btn-sm" style="padding:4px 8px; font-size:11px;" onclick="tpoDeleteAptitudeTest(${t.id})">Delete</button>
+            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="window.tpoEditAptitudeTest(${t.id})">Edit</button>
+            <button class="btn btn-danger btn-sm" style="padding:4px 8px; font-size:11px;" onclick="window.tpoDeleteAptitudeTest(${t.id})">Delete</button>
           </div>
         </td>
       </tr>
@@ -3060,6 +3060,22 @@ Date generated: ${new Date().toLocaleDateString()}
   document.getElementById('tpo-apt-search')?.addEventListener('input', renderTpoAptitudeTable);
   document.getElementById('tpo-apt-status-filter')?.addEventListener('change', renderTpoAptitudeTable);
 
+  window.openCreateAptitudeModal = function() {
+    const form = document.getElementById('form-create-aptitude-api');
+    if (form) {
+      form.reset();
+      const editIdEl = document.getElementById('tpo-aptitude-edit-id');
+      if (editIdEl) editIdEl.value = '';
+      const titleEl = document.getElementById('tpo-aptitude-modal-title');
+      if (titleEl) titleEl.innerText = 'Create Aptitude Test';
+      const submitBtn = document.getElementById('btn-create-apt-submit');
+      if (submitBtn) submitBtn.innerText = 'Create Test';
+      const driveEl = document.getElementById('tpo-apt-drive');
+      if (driveEl) driveEl.value = '';
+    }
+    window.openModal('modal-create-aptitude');
+  };
+
   window.tpoEditAptitudeTest = function(testId) {
     const test = window.tpoAptitudeTests.find(t => t.id == testId);
     if (!test) return;
@@ -3067,15 +3083,25 @@ Date generated: ${new Date().toLocaleDateString()}
     const editIdEl = document.getElementById('tpo-aptitude-edit-id');
     if (titleEl) titleEl.innerText = "Edit Aptitude Test";
     if (editIdEl) editIdEl.value = testId;
-    document.getElementById('tpo-apt-title').value = test.title || '';
-    document.getElementById('tpo-apt-desc').value = test.description || '';
-    document.getElementById('tpo-apt-duration').value = test.duration_minutes || 30;
-    document.getElementById('tpo-apt-pass').value = test.pass_marks || 40;
-    document.getElementById('tpo-apt-date').value = test.scheduled_date || '';
-    document.getElementById('tpo-apt-start').value = test.start_time || '10:00';
-    document.getElementById('tpo-apt-end').value = test.end_time || '11:00';
-    if (test.drive_id) document.getElementById('tpo-apt-drive').value = test.drive_id;
-    openModal('modal-create-aptitude');
+
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val || '';
+    };
+
+    setVal('tpo-apt-title', test.title);
+    setVal('tpo-apt-desc', test.description);
+    setVal('tpo-apt-duration', test.duration_minutes || 30);
+    setVal('tpo-apt-pass', test.pass_marks || 40);
+    setVal('tpo-apt-date', test.scheduled_date);
+    setVal('tpo-apt-start', test.start_time || '10:00');
+    setVal('tpo-apt-end', test.end_time || '11:00');
+    setVal('tpo-apt-drive', test.drive_id);
+    
+    const submitBtn = document.getElementById('btn-create-apt-submit');
+    if (submitBtn) submitBtn.innerText = 'Save Changes';
+    
+    window.openModal('modal-create-aptitude');
   };
 
   window.tpoDeleteAptitudeTest = function(testId) {
@@ -3096,7 +3122,7 @@ Date generated: ${new Date().toLocaleDateString()}
           .then(r => {
             if (r.status === 'success') {
               Swal.fire({ title: 'Deleted!', text: r.message, icon: 'success', timer: 1500 });
-              tpoAptitudeRender();
+              window.tpoAptitudeRender();
             } else {
               Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
             }
@@ -3140,14 +3166,20 @@ Date generated: ${new Date().toLocaleDateString()}
     const form = document.getElementById('form-schedule-interview-api');
     if (form) {
       form.reset();
-      document.getElementById('modal-interview-edit-id').value = '';
-      document.getElementById('modal-interview-title').innerText = 'Schedule Interview Round';
-      document.getElementById('modal-interview-app-wrapper').style.display = 'block';
-      document.getElementById('modal-interview-app-readonly').style.display = 'none';
-      document.getElementById('modal-interview-status-group').style.display = 'none';
-      document.getElementById('btn-schedule-int-submit').innerText = 'Schedule Interview';
+      const editIdEl = document.getElementById('modal-interview-edit-id');
+      if (editIdEl) editIdEl.value = '';
+      const titleEl = document.getElementById('modal-interview-title');
+      if (titleEl) titleEl.innerText = 'Schedule Interview Round';
+      const appWrapperEl = document.getElementById('modal-interview-app-wrapper');
+      if (appWrapperEl) appWrapperEl.style.display = 'block';
+      const appReadonlyEl = document.getElementById('modal-interview-app-readonly');
+      if (appReadonlyEl) appReadonlyEl.style.display = 'none';
+      const statusGroupEl = document.getElementById('modal-interview-status-group');
+      if (statusGroupEl) statusGroupEl.style.display = 'none';
+      const submitBtn = document.getElementById('btn-schedule-int-submit');
+      if (submitBtn) submitBtn.innerText = 'Schedule Interview';
     }
-    openModal('modal-schedule-interview');
+    window.openModal('modal-schedule-interview');
   };
 
   window.tpoEditInterview = function(interviewId) {
@@ -3158,27 +3190,42 @@ Date generated: ${new Date().toLocaleDateString()}
     if (!form) return;
 
     form.reset();
-    document.getElementById('modal-interview-edit-id').value = int.id;
-    document.getElementById('modal-interview-title').innerText = 'Modify Interview Schedule';
+    const editIdEl = document.getElementById('modal-interview-edit-id');
+    if (editIdEl) editIdEl.value = int.id;
+    const titleEl = document.getElementById('modal-interview-title');
+    if (titleEl) titleEl.innerText = 'Modify Interview Schedule';
 
-    document.getElementById('modal-interview-app-wrapper').style.display = 'none';
-    document.getElementById('modal-interview-app-readonly').style.display = 'block';
-    document.getElementById('modal-interview-status-group').style.display = 'block';
+    const appWrapperEl = document.getElementById('modal-interview-app-wrapper');
+    if (appWrapperEl) appWrapperEl.style.display = 'none';
+    const appReadonlyEl = document.getElementById('modal-interview-app-readonly');
+    if (appReadonlyEl) appReadonlyEl.style.display = 'block';
+    const statusGroupEl = document.getElementById('modal-interview-status-group');
+    if (statusGroupEl) statusGroupEl.style.display = 'block';
     
-    document.getElementById('modal-interview-app-readonly-text').value = `${int.studentName} → ${int.companyName} (${int.role})`;
+    const readonlyTextEl = document.getElementById('modal-interview-app-readonly-text');
+    if (readonlyTextEl) readonlyTextEl.value = `${int.studentName} → ${int.companyName} (${int.role})`;
 
-    form.querySelector("[name='date']").value = int.date;
-    form.querySelector("[name='time']").value = int.time.slice(0, 5); // hh:mm
-    form.querySelector("[name='interview_round']").value = int.interview_round || 'Technical';
-    form.querySelector("[name='interview_type']").value = int.interview_type || 'Online';
-    form.querySelector("[name='meeting_link']").value = int.meeting_link || '';
-    form.querySelector("[name='interviewer']").value = int.interviewer;
-    form.querySelector("[name='instructions']").value = int.instructions || '';
-    form.querySelector("[name='notes']").value = int.notes || '';
-    document.getElementById('modal-interview-status').value = int.result || 'Scheduled';
-    document.getElementById('btn-schedule-int-submit').innerText = 'Update Schedule';
+    const setFormValue = (name, val) => {
+      const el = form.querySelector(`[name='${name}']`);
+      if (el) el.value = val || '';
+    };
 
-    openModal('modal-schedule-interview');
+    setFormValue('date', int.date);
+    setFormValue('time', int.time ? int.time.slice(0, 5) : '10:00');
+    setFormValue('interview_round', int.interview_round || 'Technical');
+    setFormValue('interview_type', int.interview_type || 'Online');
+    setFormValue('meeting_link', int.meeting_link);
+    setFormValue('interviewer', int.interviewer);
+    setFormValue('instructions', int.instructions);
+    setFormValue('notes', int.notes);
+
+    const statusEl = document.getElementById('modal-interview-status');
+    if (statusEl) statusEl.value = int.result || 'Scheduled';
+
+    const submitBtn = document.getElementById('btn-schedule-int-submit');
+    if (submitBtn) submitBtn.innerText = 'Update Schedule';
+
+    window.openModal('modal-schedule-interview');
   };
 
   window.tpoDeleteInterview = function(interviewId) {

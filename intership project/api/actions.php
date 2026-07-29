@@ -69,7 +69,7 @@ try {
       }
 
       // Check target role
-      $stmtCheck = $db->prepare("SELECT name, role FROM users WHERE id = ?");
+      $stmtCheck = $db->prepare("SELECT name, email, role FROM users WHERE id = ?");
       $stmtCheck->execute([$targetUserId]);
       $target = $stmtCheck->fetch();
 
@@ -95,6 +95,10 @@ try {
           "registration_status",
           "high"
         );
+
+        if ($target['role'] === 'student' || $target['role'] === 'company') {
+          sendApprovalEmail($target['name'], $target['email'], $target['role']);
+        }
 
         if ($target['role'] === 'student') {
           // Auto-assign any active general/global tests to this newly approved student
@@ -2378,5 +2382,67 @@ function autoAssignAptitudeTest($db, $testId) {
       }
     }
   }
+}
+
+/**
+ * Dispatch registration approval notification email
+ */
+function sendApprovalEmail($name, $email, $role) {
+  // Determine portal URL
+  $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+  $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+  $requestUri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
+  $baseDir = preg_replace('/\/api\/[a-zA-Z0-9_\-]+\.php.*/', '/', $requestUri);
+  $portalUrl = $protocol . $host . $baseDir;
+
+  $subject = ($role === 'company') ? 'Your Recruiter Account Approved - Campus Recruitment' : 'Your Student Profile Approved - Campus Recruitment';
+  
+  $roleTitle = ($role === 'company') ? 'Recruiter' : 'Student';
+  $dashboardText = ($role === 'company') 
+    ? 'post new recruitment campaigns, define CGPA cutoffs, view student applications, and manage interview rounds.'
+    : 'browse open placement drives, apply to companies, take aptitude tests, and track your interview rounds.';
+
+  $htmlBody = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset='UTF-8'>
+      <title>Account Approved</title>
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0F172A; color: #F8FAFC; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #1E293B; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { font-size: 24px; font-weight: bold; color: #3B82F6; text-decoration: none; }
+        .title { font-size: 20px; font-weight: bold; color: #FFFFFF; margin-top: 20px; }
+        .content { line-height: 1.6; color: #94A3B8; font-size: 15px; }
+        .btn-container { text-align: center; margin: 35px 0; }
+        .btn { background-color: #3B82F6; color: #FFFFFF !important; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(59,130,246,0.3); transition: all 0.2s ease; }
+        .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #64748B; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class='container'>
+        <div class='header'>
+          <a href='#' class='logo'>Campus Recruitment</a>
+          <div class='title'>Account Verification Successful</div>
+        </div>
+        <div class='content'>
+          <p>Hello " . htmlspecialchars($name) . ",</p>
+          <p>We are pleased to inform you that your registration as a <strong>{$roleTitle}</strong> has been verified and approved by the Training & Placement Cell.</p>
+          <p>You can now log in to the portal using your registered email address to {$dashboardText}</p>
+          <div class='btn-container'>
+            <a href='{$portalUrl}' target='_blank' class='btn'>Log In to Portal</a>
+          </div>
+          <p>If you have any questions or require further assistance, please contact the TPO Support Cell.</p>
+        </div>
+        <div class='footer'>
+          <p>This is an automated notification. Please do not reply directly to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  ";
+
+  return sendSystemEmail($email, $name, $subject, $htmlBody);
 }
 ?>

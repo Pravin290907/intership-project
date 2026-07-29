@@ -241,6 +241,74 @@ try {
     $logs = $db->query("SELECT id, username, role, action, ip_address, browser, status, created_at FROM activity_logs ORDER BY id DESC LIMIT 500")->fetchAll();
   }
 
+  // 7.5. Fetch TPO/Admin specific dashboard statistics
+  $tpoStats = [
+    'total_students' => 0,
+    'placed_students' => 0,
+    'unplaced_students' => 0,
+    'pending_students' => 0,
+    'total_companies' => 0,
+    'pending_companies' => 0,
+    'active_drives' => 0,
+    'placement_rate' => 0.0,
+    'highest_ctc' => 0.0,
+    'avg_ctc' => 0.0
+  ];
+  $pendingStudentsQueue = [];
+  $pendingCompaniesQueue = [];
+
+  if ($role === 'admin' || $role === 'tpo') {
+    try {
+      $tpoStats['total_students'] = (int)$db->query("SELECT COUNT(*) FROM users WHERE role = 'student' AND status = 'approved'")->fetchColumn();
+      $tpoStats['pending_students'] = (int)$db->query("SELECT COUNT(*) FROM users WHERE role = 'student' AND status = 'pending'")->fetchColumn();
+      
+      $tpoStats['placed_students'] = (int)$db->query("
+        SELECT COUNT(DISTINCT a.student_id) 
+        FROM offers o 
+        JOIN applications a ON o.application_id = a.id 
+        WHERE LOWER(o.status) = 'accepted'
+      ")->fetchColumn();
+      
+      $tpoStats['unplaced_students'] = max(0, $tpoStats['total_students'] - $tpoStats['placed_students']);
+      
+      if ($tpoStats['total_students'] > 0) {
+        $tpoStats['placement_rate'] = round(($tpoStats['placed_students'] / $tpoStats['total_students']) * 100, 1);
+      }
+
+      $tpoStats['total_companies'] = (int)$db->query("SELECT COUNT(*) FROM users WHERE role = 'company' AND status = 'approved'")->fetchColumn();
+      $tpoStats['pending_companies'] = (int)$db->query("SELECT COUNT(*) FROM users WHERE role = 'company' AND status = 'pending'")->fetchColumn();
+      
+      $tpoStats['active_drives'] = (int)$db->query("SELECT COUNT(*) FROM drives WHERE LOWER(status) IN ('open', 'upcoming')")->fetchColumn();
+
+      $maxDrive = (float)$db->query("SELECT MAX(package_lpa) FROM drives")->fetchColumn();
+      $maxComp = (float)$db->query("SELECT MAX(highest_package) FROM companies")->fetchColumn();
+      $tpoStats['highest_ctc'] = max($maxDrive, $maxComp, 0.0);
+
+      $tpoStats['avg_ctc'] = (float)$db->query("SELECT AVG(package_lpa) FROM drives WHERE LOWER(status) IN ('open', 'upcoming')")->fetchColumn();
+      if ($tpoStats['avg_ctc'] == 0) {
+        $tpoStats['avg_ctc'] = (float)$db->query("SELECT AVG(avg_package) FROM companies")->fetchColumn();
+      }
+      
+      $pendingStudentsQueue = $db->query("
+        SELECT u.id, u.name, u.email, s.department, s.cgpa 
+        FROM users u 
+        LEFT JOIN students s ON u.id = s.user_id 
+        WHERE u.role = 'student' AND u.status = 'pending' 
+        ORDER BY u.id ASC 
+        LIMIT 5
+      ")->fetchAll();
+
+      $pendingCompaniesQueue = $db->query("
+        SELECT u.id, u.name, u.email, c.industry, c.website 
+        FROM users u 
+        LEFT JOIN companies c ON u.id = c.user_id 
+        WHERE u.role = 'company' AND u.status = 'pending' 
+        ORDER BY u.id ASC 
+        LIMIT 5
+      ")->fetchAll();
+    } catch (Exception $e) {}
+  }
+
   // 8. Fetch Profile details
   $profile = [];
   if ($role === 'student') {
@@ -3057,7 +3125,213 @@ try {
                 // Init load
                 processAndRenderJobs(false);
               });
-            </script>          <?php else: ?>
+            </script>
+          <?php elseif ($role === 'admin' || $role === 'tpo'): ?>
+            <!-- ==================== TPO / ADMIN EXECUTIVE SUMMARY DASHBOARD ==================== -->
+            <div style="margin-bottom: var(--space-3); background: linear-gradient(135deg, var(--primary) 0%, #1D4ED8 100%); padding: 24px; border-radius: var(--radius-xl); color: #FFFFFF; box-shadow: var(--shadow-md); margin-top: 4px;">
+              <h2 style="font-size: 24px; font-weight: 800; color: #FFFFFF; margin-bottom: 6px;">Welcome back, <?php echo htmlspecialchars($userName); ?>!</h2>
+              <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 0; line-height: 1.5;">You are logged in to the Training & Placement Officer Workspace. Track real-time placement stats, manage pending verification queues, and configure corporate hiring rounds.</p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid-12" style="margin-bottom: var(--space-4);">
+              <!-- Placement Rate Card -->
+              <div class="col-3 col-md-6 col-lg-12">
+                <div class="card card-lift" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; min-height: 120px; padding: 20px;">
+                  <div>
+                    <span style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Placement success rate</span>
+                    <h3 style="font-size:28px; font-weight:800; color:var(--primary); margin:8px 0 4px 0;"><?php echo $tpoStats['placement_rate']; ?>%</h3>
+                  </div>
+                  <div style="font-size:12px; color:var(--text-secondary);">
+                    <strong><?php echo $tpoStats['placed_students']; ?></strong> of <strong><?php echo $tpoStats['total_students']; ?></strong> students placed
+                  </div>
+                </div>
+              </div>
+
+              <!-- Recruiting Partners Card -->
+              <div class="col-3 col-md-6 col-lg-12">
+                <div class="card card-lift" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; min-height: 120px; padding: 20px;">
+                  <div>
+                    <span style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Corporate Partners</span>
+                    <h3 style="font-size:28px; font-weight:800; color:#10B981; margin:8px 0 4px 0;"><?php echo $tpoStats['total_companies']; ?></h3>
+                  </div>
+                  <div style="font-size:12px; color:var(--text-secondary);">
+                    <?php if ($tpoStats['pending_companies'] > 0): ?>
+                      <span style="color:var(--color-warning); font-weight:600;">⚠️ <?php echo $tpoStats['pending_companies']; ?> pending verification</span>
+                    <?php else: ?>
+                      🟢 All recruiter accounts verified
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Active Drives Card -->
+              <div class="col-3 col-md-6 col-lg-12">
+                <div class="card card-lift" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; min-height: 120px; padding: 20px;">
+                  <div>
+                    <span style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Active Campaigns</span>
+                    <h3 style="font-size:28px; font-weight:800; color:#F59E0B; margin:8px 0 4px 0;"><?php echo $tpoStats['active_drives']; ?></h3>
+                  </div>
+                  <div style="font-size:12px; color:var(--text-secondary);">
+                    Open and upcoming hiring events
+                  </div>
+                </div>
+              </div>
+
+              <!-- Highest Package Card -->
+              <div class="col-3 col-md-6 col-lg-12">
+                <div class="card card-lift" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; min-height: 120px; padding: 20px;">
+                  <div>
+                    <span style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Highest Package (LPA)</span>
+                    <h3 style="font-size:28px; font-weight:800; color:#7C3AED; margin:8px 0 4px 0;">₹<?php echo number_format($tpoStats['highest_ctc'], 1); ?></h3>
+                  </div>
+                  <div style="font-size:12px; color:var(--text-secondary);">
+                    Average CTC: <strong>₹<?php echo number_format($tpoStats['avg_ctc'], 1); ?> LPA</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pending Approvals & Verification queues -->
+            <div class="grid-12" style="margin-bottom: var(--space-4);">
+              <!-- Student Approvals Queue -->
+              <div class="col-6 col-lg-12">
+                <div class="card" style="height:100%; padding: 24px;">
+                  <h3 class="chart-container-title" style="margin-bottom:var(--space-2); display:flex; justify-content:space-between; align-items:center; font-size:15px; font-weight:700;">
+                    <span>🎓 Student Verification Queue</span>
+                    <span class="badge <?php echo $tpoStats['pending_students'] > 0 ? 'badge-warning' : 'badge-success'; ?>" style="font-size:10px;">
+                      <?php echo $tpoStats['pending_students']; ?> Pending
+                    </span>
+                  </h3>
+                  
+                  <?php if (!empty($pendingStudentsQueue)): ?>
+                    <div style="display:flex; flex-direction:column; gap:12px; max-height:360px; overflow-y:auto; padding-right:4px; margin-top: 12px;">
+                      <?php foreach ($pendingStudentsQueue as $pStu): ?>
+                        <div style="background:rgba(0,0,0,0.015); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; justify-content:space-between; align-items:center; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                          <div>
+                            <div style="font-weight:700; color:var(--text-primary); font-size:13px;"><?php echo htmlspecialchars($pStu['name']); ?></div>
+                            <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">
+                              Dept: <strong><?php echo htmlspecialchars(getDeptCode($pStu['department'])); ?></strong> | CGPA: <strong><?php echo number_format($pStu['cgpa'], 2); ?></strong>
+                            </div>
+                          </div>
+                          <button class="btn btn-success btn-sm" onclick="quickApproveUser(<?php echo $pStu['id']; ?>, '<?php echo htmlspecialchars(addslashes($pStu['name'])); ?>')" style="padding:4px 10px; font-size:11px; font-weight:700;">Approve</button>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                  <?php else: ?>
+                    <div style="text-align:center; padding:40px 20px; color:var(--text-secondary); border:1px dashed var(--border-color); border-radius:var(--radius-md); margin-top: 12px;">
+                      <div style="font-size:24px; margin-bottom:8px;">🟢</div>
+                      <div style="font-weight:600; font-size:13px;">All Student accounts verified</div>
+                      <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">New registrations will appear here.</div>
+                    </div>
+                  <?php endif; ?>
+                </div>
+              </div>
+
+              <!-- Recruiter Approvals Queue -->
+              <div class="col-6 col-lg-12">
+                <div class="card" style="height:100%; padding: 24px;">
+                  <h3 class="chart-container-title" style="margin-bottom:var(--space-2); display:flex; justify-content:space-between; align-items:center; font-size:15px; font-weight:700;">
+                    <span>🏢 Recruiter Verification Queue</span>
+                    <span class="badge <?php echo $tpoStats['pending_companies'] > 0 ? 'badge-warning' : 'badge-success'; ?>" style="font-size:10px;">
+                      <?php echo $tpoStats['pending_companies']; ?> Pending
+                    </span>
+                  </h3>
+
+                  <?php if (!empty($pendingCompaniesQueue)): ?>
+                    <div style="display:flex; flex-direction:column; gap:12px; max-height:360px; overflow-y:auto; padding-right:4px; margin-top: 12px;">
+                      <?php foreach ($pendingCompaniesQueue as $pComp): ?>
+                        <div style="background:rgba(0,0,0,0.015); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; justify-content:space-between; align-items:center; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                          <div>
+                            <div style="font-weight:700; color:var(--text-primary); font-size:13px;"><?php echo htmlspecialchars($pComp['name']); ?></div>
+                            <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">
+                              Industry: <strong><?php echo htmlspecialchars($pComp['industry'] ?: 'Technology'); ?></strong>
+                            </div>
+                          </div>
+                          <button class="btn btn-success btn-sm" onclick="quickApproveUser(<?php echo $pComp['id']; ?>, '<?php echo htmlspecialchars(addslashes($pComp['name'])); ?>')" style="padding:4px 10px; font-size:11px; font-weight:700;">Approve</button>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                  <?php else: ?>
+                    <div style="text-align:center; padding:40px 20px; color:var(--text-secondary); border:1px dashed var(--border-color); border-radius:var(--radius-md); margin-top: 12px;">
+                      <div style="font-size:24px; margin-bottom:8px;">🟢</div>
+                      <div style="font-weight:600; font-size:13px;">All Recruiter accounts verified</div>
+                      <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">New recruiter enrollments will appear here.</div>
+                    </div>
+                  <?php endif; ?>
+                </div>
+              </div>
+            </div>
+
+            <!-- Operations Shortcut Panel -->
+            <div class="card" style="margin-bottom:var(--space-3); padding: 24px;">
+              <h3 class="chart-container-title" style="margin-bottom:var(--space-2); font-size:15px; font-weight:700;">TPO Operations Panel</h3>
+              <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:12px; margin-top: 12px;">
+                <button class="btn btn-secondary" onclick="document.querySelector('[data-target=\'students\']').click()" style="display:flex; align-items:center; gap:8px; justify-content:flex-start; padding:12px var(--space-2); font-size: 13px; font-weight:600;">
+                  <span>🎓 Students Directory</span>
+                </button>
+                <button class="btn btn-secondary" onclick="document.querySelector('[data-target=\'companies\']').click()" style="display:flex; align-items:center; gap:8px; justify-content:flex-start; padding:12px var(--space-2); font-size: 13px; font-weight:600;">
+                  <span>🏢 Recruiter Listings</span>
+                </button>
+                <button class="btn btn-secondary" onclick="document.querySelector('[data-target=\'drives\']').click()" style="display:flex; align-items:center; gap:8px; justify-content:flex-start; padding:12px var(--space-2); font-size: 13px; font-weight:600;">
+                  <span>💼 Drives Management</span>
+                </button>
+                <button class="btn btn-secondary" onclick="document.querySelector('[data-target=\'pipeline\']').click()" style="display:flex; align-items:center; gap:8px; justify-content:flex-start; padding:12px var(--space-2); font-size: 13px; font-weight:600;">
+                  <span>📊 Kanban Pipeline</span>
+                </button>
+                <button class="btn btn-secondary" onclick="document.querySelector('[data-target=\'interviews\']').click()" style="display:flex; align-items:center; gap:8px; justify-content:flex-start; padding:12px var(--space-2); font-size: 13px; font-weight:600;">
+                  <span>📅 Interviews Hub</span>
+                </button>
+                <button class="btn btn-secondary" onclick="document.querySelector('[data-target=\'aptitude\']').click()" style="display:flex; align-items:center; gap:8px; justify-content:flex-start; padding:12px var(--space-2); font-size: 13px; font-weight:600;">
+                  <span>📝 Aptitude Assessments</span>
+                </button>
+              </div>
+            </div>
+
+            <script>
+            function quickApproveUser(userId, name) {
+              Swal.fire({
+                title: 'Verify Registration?',
+                text: "Confirm and approve the login registration for: " + name,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#10B981',
+                cancelButtonColor: '#EF4444',
+                confirmButtonText: 'Yes, Verify & Approve'
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  const f = new FormData();
+                  f.append("action", "update_user_status");
+                  f.append("target_user_id", userId);
+                  f.append("status", "approved");
+
+                  fetch('api/actions.php', {
+                    method: 'POST',
+                    body: f
+                  })
+                  .then(res => res.json())
+                  .then(res => {
+                    if (res.status === 'success') {
+                      Swal.fire({
+                        title: 'Approved!',
+                        text: res.message,
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                      });
+                      setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                      Swal.fire('Error', res.message, 'error');
+                    }
+                  })
+                  .catch(err => {
+                    Swal.fire('Error', 'Communication failure with backend API.', 'error');
+                  });
+                }
+              });
+            }
+            </script>
+          <?php else: ?>
             <div class="card" style="margin-bottom: var(--space-3);">
               <div class="chart-header" style="margin-bottom: 0;">
                 <div>
@@ -3733,7 +4007,7 @@ try {
                 <h3 class="chart-container-title" style="margin-bottom: var(--space-05);">Aptitude Tests & Online Evaluations</h3>
                 <p style="color: var(--text-secondary); font-size: 13px;">Create MCQs, set duration, schedule online tests, assign to drive applicants, and evaluate rankings.</p>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-aptitude')">
+              <button class="btn btn-primary btn-sm" onclick="openCreateAptitudeModal()">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Create Aptitude Test
               </button>

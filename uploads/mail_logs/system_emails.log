@@ -1,0 +1,45 @@
+[2026-07-28 11:23:25] TO: Ahad <aarav.sharma@university.edu> | SUBJECT: Interview Cancelled - HR Round
+BODY:
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset='UTF-8'>
+          <title>Interview Cancelled</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #F8FAFC; color: #0F172A; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 40px auto; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #E2E8F0; padding-bottom: 20px; }
+            .logo { font-size: 24px; font-weight: bold; color: #EF4444; text-decoration: none; }
+            .title { font-size: 20px; font-weight: bold; color: #0F172A; margin-top: 10px; }
+            .content { line-height: 1.6; color: #475569; font-size: 15px; }
+            .details-box { background-color: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .details-row { margin-bottom: 10px; font-size: 14px; color: #991B1B; }
+            .details-row strong { color: #991B1B; }
+            .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class='container'>
+            <div class='header'>
+              <span class='logo'>Campus Recruitment</span>
+              <div class='title' style='color:#EF4444;'>Interview Cancelled</div>
+            </div>
+            <div class='content'>
+              <p>Dear Ahad,</p>
+              <p>We regret to inform you that your scheduled interview has been cancelled. Details of the cancelled round:</p>
+              <div class='details-box'>
+                <div class='details-row'><strong>Round:</strong> HR Round</div>
+                <div class='details-row'><strong>Date:</strong> 2026-08-15</div>
+                <div class='details-row'><strong>Time:</strong> 10:00:00</div>
+              </div>
+              <p>If you have any questions or require rescheduling, please contact your TPO cell or the company coordinator.</p>
+            </div>
+            <div class='footer'>
+              This is an automated email from the Campus Recruitment Management System.
+            </div>
+          </div>
+        </body>
+        </html>
+      
+--------------------------------------------------------------------------------

@@ -676,14 +676,13 @@ try {
           </div>
         </div>
 
-        <?php if ($role === 'admin' || $role === 'tpo'): ?>
+        <?php if ($role === 'admin'): ?>
         <div class="nav-item" data-target="eligibility" role="link" aria-label="Eligibility Checker">
           <div class="nav-item-left">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             <span class="nav-label">Eligibility Checker</span>
           </div>
         </div>
-
         <?php endif; ?>
 
         <?php if ($role === 'student'): ?>
@@ -3682,6 +3681,7 @@ try {
         <?php endif; ?>
 
         <!-- ==================== ELIGIBILITY CHECKER VIEW ==================== -->
+        <?php if ($role === 'admin'): ?>
         <div class="page-view" id="eligibility">
           <div class="card" style="margin-bottom: var(--space-3);">
             <div class="chart-header" style="margin-bottom: 0;">
@@ -3727,6 +3727,7 @@ try {
             <div id="eligibility-table-container"></div>
           </div>
         </div>
+        <?php endif; ?>
 
 
 
@@ -4040,7 +4041,7 @@ try {
             </div>
             <div class="form-group">
               <label class="form-label">Cumulative GPA</label>
-              <input type="number" class="input-field" name="cgpa" placeholder="8.5" min="0" max="10" step="0.01" required>
+              <input type="text" class="input-field" name="cgpa" placeholder="8.50" maxlength="5" required>
             </div>
             <div class="form-group">
               <label class="form-label">Contact Phone</label>
@@ -4249,7 +4250,7 @@ try {
               <select class="input-field select-custom" name="drive_id" id="tpo-apt-drive">
                 <option value="">No specific drive (General Test)</option>
                 <?php foreach ($drives as $d): ?>
-                <option value="<?php echo $d['id']; ?>"><?php echo htmlspecialchars($d['companyName'] . ' — ' . $d['job_role']); ?></option>
+                <option value="<?php echo $d['id']; ?>"><?php echo htmlspecialchars($d['companyName'] . ' — ' . ($d['jobRole'] ?? $d['job_role'] ?? '')); ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
@@ -4543,6 +4544,15 @@ try {
             Swal.fire({
               title: 'Validation Error',
               text: 'Full Candidate Name can only contain letters, spaces, hyphens, apostrophes, and periods.',
+              icon: 'error'
+            });
+            return;
+          }
+          const cgpa = addStuForm.querySelector("[name='cgpa']").value;
+          if (!/^\d\.\d{2}$|^10\.00$/.test(cgpa.trim())) {
+            Swal.fire({
+              title: 'Validation Error',
+              text: 'Cumulative CGPA must be a valid number with exactly 2 decimal places (e.g., 8.50 or 10.00).',
               icon: 'error'
             });
             return;

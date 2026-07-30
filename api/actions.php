@@ -894,9 +894,15 @@ try {
       $email = trim($_POST['email'] ?? '');
       $rollNumber = trim($_POST['roll_number'] ?? '');
       $department = trim($_POST['department'] ?? '');
-      $cgpa = (float)($_POST['cgpa'] ?? 0.0);
+      $cgpa_raw = trim($_POST['cgpa'] ?? '');
       $academicYear = trim($_POST['academic_year'] ?? '');
       $phone = trim($_POST['phone'] ?? '');
+
+      if (!preg_match('/^\d\.\d{2}$|^10\.00$/', $cgpa_raw)) {
+        echo json_encode(['status' => 'error', 'message' => 'Cumulative CGPA must be a valid number with exactly 2 decimal places (e.g., 8.50 or 10.00).']);
+        exit;
+      }
+      $cgpa = (float)$cgpa_raw;
 
       if (!$studentId || empty($name) || empty($email) || empty($rollNumber) || empty($department) || $cgpa <= 0 || empty($academicYear)) {
         echo json_encode(['status' => 'error', 'message' => 'Please fill in all required fields.']);

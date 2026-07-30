@@ -2109,7 +2109,7 @@ $recruiterNotifications = $stmtNotifications->fetchAll();
 
             <div class="form-input-wrapper">
               <label class="form-input-label">Cumulative CGPA (1.00 - 10.00) *</label>
-              <input type="number" class="input-field-custom" name="cgpa" id="edit-student-cgpa" step="0.01" min="1.00" max="10.00" required>
+              <input type="text" class="input-field-custom" name="cgpa" id="edit-student-cgpa" placeholder="8.50" maxlength="5" required>
             </div>
 
             <div class="form-input-wrapper">

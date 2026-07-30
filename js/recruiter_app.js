@@ -498,9 +498,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // CGPA Validation
-    const cgpa = parseFloat(form.cgpa.value);
-    if (isNaN(cgpa) || cgpa < 1.00 || cgpa > 10.00) {
-      Swal.fire({ title: 'Validation Error', text: 'CGPA must be a value between 1.00 and 10.00.', icon: 'error' });
+    const cgpaStr = form.cgpa.value.trim();
+    if (!/^\d\.\d{2}$|^10\.00$/.test(cgpaStr)) {
+      Swal.fire({ title: 'Validation Error', text: 'Cumulative CGPA must be a valid number with exactly 2 decimal places (e.g., 8.50 or 10.00).', icon: 'error' });
       if (btn) btn.disabled = false;
       return;
     }

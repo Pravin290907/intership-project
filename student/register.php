@@ -89,7 +89,7 @@ require_once __DIR__ . '/../config/db.php';
           <!-- CGPA -->
           <div class="col-6 col-md-12 form-group">
             <label class="form-label" for="reg-cgpa">Cumulative CGPA</label>
-            <input type="number" class="input-field" id="reg-cgpa" name="cgpa" placeholder="8.50" min="0" max="10" step="0.01" required>
+            <input type="text" class="input-field" id="reg-cgpa" name="cgpa" placeholder="8.50" maxlength="5" required>
           </div>
 
           <!-- Phone -->
@@ -197,6 +197,12 @@ require_once __DIR__ . '/../config/db.php';
 
       if (!/^[a-zA-Z\s'\-\.]+$/.test(name)) {
         errorMsg.innerText = "Full name can only contain letters, spaces, hyphens, apostrophes, and periods.";
+        errorBanner.classList.add("active");
+        return;
+      }
+
+      if (!/^\d\.\d{2}$|^10\.00$/.test(cgpa.trim())) {
+        errorMsg.innerText = "Cumulative CGPA must be a valid number with exactly 2 decimal places (e.g., 8.50 or 10.00).";
         errorBanner.classList.add("active");
         return;
       }

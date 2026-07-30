@@ -59,7 +59,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function switchView(viewId) {
     const pages = document.querySelectorAll(".page-view");
-    const targetPage = document.getElementById(viewId);
+    let targetPage = document.getElementById(viewId);
+
+    if (!targetPage) {
+      viewId = 'dashboard';
+      targetPage = document.getElementById(viewId);
+    }
 
     if (targetPage) {
       pages.forEach(p => p.classList.remove("active"));
@@ -112,7 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshCharts();
       } else if (viewId === "notifications") {
         loadNotificationsPage();
-      } else if (viewId === "eligibility") {
+      } else if (viewId === "eligibility" && data.role === 'admin') {
         runEligibilityCheck();
       } else if (viewId === "support-queries") {
         renderSupportQueriesTable();

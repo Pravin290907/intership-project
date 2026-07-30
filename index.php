@@ -860,7 +860,6 @@ if (count($testimonialsList) < 3) {
         <li class="nav-menu-item"><a href="#features">Features</a></li>
         <li class="nav-menu-item"><a href="#stats">Statistics</a></li>
         <li class="nav-menu-item"><a href="#drives">Open Drives</a></li>
-        <li class="nav-menu-item"><a href="#testimonials">Testimonials</a></li>
         <li class="nav-menu-item"><a href="#faq">FAQ</a></li>
         <li class="nav-menu-item"><a href="#contact">Contact</a></li>
       </ul>
@@ -1153,7 +1152,7 @@ if (count($testimonialsList) < 3) {
 
               <div style="font-size:13px; color:#64748B; margin-bottom:16px;">
                 <div><strong>CTC Package:</strong> ₹<?php echo number_format($drive['package_lpa'], 2); ?> LPA</div>
-                <div><strong>Location:</strong> <?php echo htmlspecialchars($drive['job_location'] ?: 'Pune HQ'); ?></div>
+                <div><strong>Location:</strong> <?php echo htmlspecialchars($drive['job_location'] ?? 'Pune HQ'); ?></div>
               </div>
             </div>
 
@@ -1165,36 +1164,6 @@ if (count($testimonialsList) < 3) {
           Open placement drives are actively being posted by recruiters.
         </div>
       <?php endif; ?>
-    </div>
-  </section>
-
-  <!-- ==================== STUDENT TESTIMONIALS ==================== -->
-  <section class="landing-section" id="testimonials">
-    <div class="section-header">
-      <div class="section-subtitle">Student Testimonials</div>
-      <h2 class="section-title">Success Stories from Placed Candidates</h2>
-      <p class="section-desc">
-        Hear how Campus Recruitment helped students land their dream corporate roles.
-      </p>
-    </div>
-
-    <div class="testimonials-grid">
-      <?php foreach ($testimonialsList as $t): ?>
-        <div class="testimonial-card">
-          <p class="testimonial-quote">
-            <?php echo htmlspecialchars($t['quote']); ?>
-          </p>
-          <div class="testimonial-author">
-            <div class="author-avatar" style="background:<?php echo $t['avatar_bg']; ?>; color:#FFFFFF; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; border-radius:50%; width:44px; height:44px; flex-shrink:0;">
-              <?php echo htmlspecialchars($t['avatar']); ?>
-            </div>
-            <div>
-              <div class="author-name"><?php echo htmlspecialchars($t['name']); ?></div>
-              <div class="author-role">Placed at <?php echo htmlspecialchars($t['company_name']); ?> • ₹<?php echo number_format($t['salary_lpa'], 1); ?> LPA</div>
-            </div>
-          </div>
-        </div>
-      <?php endforeach; ?>
     </div>
   </section>
 

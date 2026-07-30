@@ -59,13 +59,14 @@ try {
   if ($registerType === 'student') {
     $roll = filter_input(INPUT_POST, 'roll_number', FILTER_SANITIZE_SPECIAL_CHARS);
     $dept = filter_input(INPUT_POST, 'department', FILTER_SANITIZE_SPECIAL_CHARS);
-    $cgpa = filter_input(INPUT_POST, 'cgpa', FILTER_VALIDATE_FLOAT);
+    $cgpa_raw = trim($_POST['cgpa'] ?? '');
     $phone = filter_input(INPUT_POST, 'phone', FILTER_SANITIZE_SPECIAL_CHARS);
 
-    if (empty($roll) || empty($dept) || $cgpa === false) {
-      echo json_encode(['status' => 'error', 'message' => 'Please provide roll number, department, and valid CGPA.']);
+    if (empty($roll) || empty($dept) || !preg_match('/^\d\.\d{2}$|^10\.00$/', $cgpa_raw)) {
+      echo json_encode(['status' => 'error', 'message' => 'Please provide roll number, department, and valid Cumulative CGPA with exactly 2 decimal places (e.g. 8.50).']);
       exit;
     }
+    $cgpa = (float)$cgpa_raw;
 
     if (!preg_match('/^[0-9]{10}$/', $phone)) {
       echo json_encode(['status' => 'error', 'message' => 'Please enter a valid mobile number in the format +91 XXXXXXXXXX.']);

@@ -38,15 +38,25 @@ function getDB() {
     return $pdo;
   }
 
+  $lockFile = __DIR__ . '/.migrated';
+  $isMigrated = file_exists($lockFile) && !isset($_GET['migrate']);
+
   try {
-    // Connect to MySQL server first to check database existence
-    $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";charset=utf8mb4";
     $options = [
       PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
       PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
       PDO::ATTR_EMULATE_PREPARES   => false,
     ];
-    
+
+    if ($isMigrated) {
+      // Connect directly to the specific database without extra migration/schema checking overhead
+      $dsnWithDB = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+      $pdo = new PDO($dsnWithDB, DB_USER, DB_PASS, $options);
+      return $pdo;
+    }
+
+    // Connect to MySQL server first to check database existence
+    $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";charset=utf8mb4";
     $temp_pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
     
     // Create database if not exists
@@ -59,6 +69,9 @@ function getDB() {
 
     // Initialize tables if they don't exist
     initializeTables($pdo);
+
+    // Mark as migrated to prevent checking table structures on subsequent requests
+    file_put_contents($lockFile, date('Y-m-d H:i:s'));
 
     return $pdo;
   } catch (PDOException $e) {

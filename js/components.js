@@ -153,11 +153,28 @@ class ModernDataTable {
         let valA = a[k];
         let valB = b[k];
         
-        if (typeof valA === 'string') {
-          return desc ? valB.localeCompare(valA) : valA.localeCompare(valB);
-        } else {
-          return desc ? valB - valA : valA - valB;
+        // Handle null, undefined, and empty string normalization
+        if (valA === undefined || valA === null) valA = '';
+        if (valB === undefined || valB === null) valB = '';
+
+        if (valA === '' && valB === '') return 0;
+        if (valA === '') return 1; // Put empty/null values at the bottom
+        if (valB === '') return -1;
+
+        // Check if both are numeric (or string representations of numbers)
+        const numA = Number(valA);
+        const numB = Number(valB);
+        const isNumA = !isNaN(numA) && valA !== '';
+        const isNumB = !isNaN(numB) && valB !== '';
+
+        if (isNumA && isNumB) {
+          return desc ? numB - numA : numA - numB;
         }
+
+        // Fallback to string comparison
+        const strA = String(valA);
+        const strB = String(valB);
+        return desc ? strB.localeCompare(strA) : strA.localeCompare(strB);
       });
     }
 
@@ -250,6 +267,8 @@ class ModernDataTable {
       if (!this.selectedIds.has(item.id)) selectAllChecked = false;
     });
 
+    const hasActions = !!(this.options.onRowClick || this.options.onEdit || this.options.onDelete);
+
     let html = `
       <div class="data-table-wrapper">
         <table class="data-table">
@@ -271,13 +290,13 @@ class ModernDataTable {
                   </div>
                 </th>
               `).join('')}
-              <th width="120" style="text-align: right;">Actions</th>
+              ${hasActions ? '<th width="120" style="text-align: right;">Actions</th>' : ''}
             </tr>
           </thead>
           <tbody>
             ${paginated.length === 0 ? `
               <tr>
-                <td colspan="${this.columns.length + (this.options.selectable ? 2 : 1)}" style="text-align: center; padding: 40px;">
+                <td colspan="${this.columns.length + (this.options.selectable ? 1 : 0) + (hasActions ? 1 : 0)}" style="text-align: center; padding: 40px;">
                   <div class="empty-state">
                     <svg class="empty-state-illust" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
                       <circle cx="12" cy="12" r="10" />
@@ -303,6 +322,7 @@ class ModernDataTable {
                   ${this.columns.map(col => `
                     <td>${col.render ? col.render(row[col.key], row) : (row[col.key] || '')}</td>
                   `).join('')}
+                  ${hasActions ? `
                   <td style="text-align: right;" class="actions-cell">
                     <div style="display: inline-flex; gap: 4px; justify-content: flex-end;">
                       ${this.options.onRowClick ? `
@@ -322,6 +342,7 @@ class ModernDataTable {
                       ` : ''}
                     </div>
                   </td>
+                  ` : ''}
                 </tr>
               `;
             }).join('')}

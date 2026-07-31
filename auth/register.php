@@ -62,11 +62,11 @@ try {
     $cgpa_raw = trim($_POST['cgpa'] ?? '');
     $phone = filter_input(INPUT_POST, 'phone', FILTER_SANITIZE_SPECIAL_CHARS);
 
-    if (empty($roll) || empty($dept) || !preg_match('/^\d\.\d{2}$|^10\.00$/', $cgpa_raw)) {
-      echo json_encode(['status' => 'error', 'message' => 'Please provide roll number, department, and valid Cumulative CGPA with exactly 2 decimal places (e.g. 8.50).']);
+    if (empty($roll) || empty($dept) || !is_numeric($cgpa_raw) || (float)$cgpa_raw < 0 || (float)$cgpa_raw > 10) {
+      echo json_encode(['status' => 'error', 'message' => 'Please provide roll number, department, and valid Cumulative CGPA between 0.00 and 10.00.']);
       exit;
     }
-    $cgpa = (float)$cgpa_raw;
+    $cgpa = (float)number_format((float)$cgpa_raw, 2, '.', '');
 
     if (!preg_match('/^[0-9]{10}$/', $phone)) {
       echo json_encode(['status' => 'error', 'message' => 'Please enter a valid mobile number in the format +91 XXXXXXXXXX.']);

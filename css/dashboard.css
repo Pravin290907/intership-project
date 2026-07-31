@@ -1065,6 +1065,7 @@
   gap: var(--space-1);
   pointer-events: none;
   opacity: 0;
+  visibility: hidden;
   transform: translateY(20px) scale(0.95);
   transition: all var(--transition-normal);
 }
@@ -1072,6 +1073,7 @@
 .fab-container.active .fab-menu {
   pointer-events: auto;
   opacity: 1;
+  visibility: visible;
   transform: translateY(0) scale(1);
 }
 
@@ -1090,7 +1092,6 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   white-space: nowrap;
-  pointer-events: auto;
 }
 
 .fab-menu-item:hover {

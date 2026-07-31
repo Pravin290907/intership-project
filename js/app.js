@@ -303,14 +303,24 @@ document.addEventListener("DOMContentLoaded", () => {
   function initFAB() {
     const fab = document.getElementById("fab-element");
     const trigger = document.getElementById("fab-trigger-btn");
+    const fabMenu = fab ? fab.querySelector(".fab-menu") : null;
 
     if (fab && trigger) {
+      if (fabMenu) {
+        fabMenu.style.display = 'none';
+      }
       trigger.addEventListener("click", (e) => {
         e.stopPropagation();
-        fab.classList.toggle("active");
+        const isActive = fab.classList.toggle("active");
+        if (fabMenu) {
+          fabMenu.style.display = isActive ? 'flex' : 'none';
+        }
       });
       document.addEventListener("click", () => {
         fab.classList.remove("active");
+        if (fabMenu) {
+          fabMenu.style.display = 'none';
+        }
       });
     }
   }
@@ -1374,6 +1384,13 @@ document.addEventListener("DOMContentLoaded", () => {
         updateStatusAPI(id, 'approved');
       }
     });
+
+    const statusFilter = document.getElementById("filter-company-status");
+    if (statusFilter) {
+      statusFilter.addEventListener("change", (e) => {
+        companyTableInstance.setFilter('status', e.target.value);
+      });
+    }
   };
 
   window.renderDrivesTable = function() {
@@ -1456,7 +1473,16 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('edit-drive-role').value = drive.jobRole;
         document.getElementById('edit-drive-cgpa').value = drive.eligibilityCGPA;
         document.getElementById('edit-drive-package').value = drive.packageLPA;
-        document.getElementById('edit-drive-deadline').value = drive.registration_deadline;
+        const deadlineEl = document.getElementById('edit-drive-deadline');
+        if (deadlineEl) {
+          const todayStr = getTodayDateString();
+          if (drive.registration_deadline && drive.registration_deadline < todayStr) {
+            deadlineEl.min = drive.registration_deadline;
+          } else {
+            deadlineEl.min = todayStr;
+          }
+          deadlineEl.value = drive.registration_deadline;
+        }
         document.getElementById('edit-drive-departments').value = drive.departments;
         document.getElementById('edit-drive-skills').value = drive.skills_required || '';
         document.getElementById('edit-drive-status').value = drive.status;
@@ -1468,6 +1494,13 @@ document.addEventListener("DOMContentLoaded", () => {
       },
       selectable: false
     });
+
+    const driveStatusFilter = document.getElementById("filter-drive-status");
+    if (driveStatusFilter) {
+      driveStatusFilter.addEventListener("change", (e) => {
+        driveTableInstance.setFilter('status', e.target.value);
+      });
+    }
   };
 
   function showDriveDetails(id) {
@@ -3225,6 +3258,10 @@ Date generated: ${new Date().toLocaleDateString()}
     const form = document.getElementById('form-create-aptitude-api');
     if (form) {
       form.reset();
+      const dateEl = document.getElementById('tpo-apt-date');
+      if (dateEl) {
+        dateEl.min = getTodayDateString();
+      }
       const editIdEl = document.getElementById('tpo-aptitude-edit-id');
       if (editIdEl) editIdEl.value = '';
       const titleEl = document.getElementById('tpo-aptitude-modal-title');
@@ -3244,6 +3281,16 @@ Date generated: ${new Date().toLocaleDateString()}
     const editIdEl = document.getElementById('tpo-aptitude-edit-id');
     if (titleEl) titleEl.innerText = "Edit Aptitude Test";
     if (editIdEl) editIdEl.value = testId;
+
+    const dateEl = document.getElementById('tpo-apt-date');
+    if (dateEl) {
+      const todayStr = getTodayDateString();
+      if (test.scheduled_date && test.scheduled_date < todayStr) {
+        dateEl.min = test.scheduled_date;
+      } else {
+        dateEl.min = todayStr;
+      }
+    }
 
     const setVal = (id, val) => {
       const el = document.getElementById(id);
@@ -3323,10 +3370,24 @@ Date generated: ${new Date().toLocaleDateString()}
   }
 
   // ==================== SCHEDULE / EDIT / DELETE INTERVIEW FLOW ====================
+  const getTodayDateString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   window.openScheduleInterviewModal = function() {
     const form = document.getElementById('form-schedule-interview-api');
     if (form) {
       form.reset();
+      const dateEl = form.querySelector("[name='date']");
+      if (dateEl) {
+        dateEl.min = getTodayDateString();
+      }
+      const appIdEl = document.getElementById('modal-interview-app-id');
+      if (appIdEl) appIdEl.required = true;
       const editIdEl = document.getElementById('modal-interview-edit-id');
       if (editIdEl) editIdEl.value = '';
       const titleEl = document.getElementById('modal-interview-title');
@@ -3351,6 +3412,17 @@ Date generated: ${new Date().toLocaleDateString()}
     if (!form) return;
 
     form.reset();
+    const dateEl = form.querySelector("[name='date']");
+    if (dateEl) {
+      const todayStr = getTodayDateString();
+      if (int.date < todayStr) {
+        dateEl.min = int.date;
+      } else {
+        dateEl.min = todayStr;
+      }
+    }
+    const appIdEl = document.getElementById('modal-interview-app-id');
+    if (appIdEl) appIdEl.required = false;
     const editIdEl = document.getElementById('modal-interview-edit-id');
     if (editIdEl) editIdEl.value = int.id;
     const titleEl = document.getElementById('modal-interview-title');

@@ -43,10 +43,40 @@ try {
         exit;
       }
       
+      // Fetch support query details first to obtain sender's email/name
+      $stmtQuery = $db->prepare("SELECT * FROM support_queries WHERE id = ?");
+      $stmtQuery->execute([$queryId]);
+      $supportQuery = $stmtQuery->fetch();
+      
+      if (!$supportQuery) {
+        echo json_encode(['status' => 'error', 'message' => 'Support inquiry not found.']);
+        exit;
+      }
+      
       $resolvedAt = ($newStatus === 'Resolved') ? date('Y-m-d H:i:s') : null;
       
       $stmt = $db->prepare("UPDATE support_queries SET status = ?, remarks = ?, resolved_at = ? WHERE id = ?");
       $stmt->execute([$newStatus, $remarks, $resolvedAt, $queryId]);
+      
+      if ($newStatus === 'Resolved') {
+        $emailSubject = "Support Inquiry Resolved - CRMS";
+        $emailBody = "
+          <div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;'>
+            <h2 style='color: #2563EB;'>Support Inquiry Resolution</h2>
+            <p>Dear <strong>" . htmlspecialchars($supportQuery['name']) . "</strong>,</p>
+            <p>Your support inquiry has been marked as <strong>Resolved</strong> by our Training & Placement Office.</p>
+            <hr style='border: none; border-top: 1px solid #ddd; margin: 20px 0;'>
+            <p><strong>Your Message:</strong><br>
+            <span style='color: #555; font-style: italic;'>\"" . nl2br(htmlspecialchars($supportQuery['message'])) . "\"</span></p>
+            <p><strong>TPO Resolution Remarks / Action Taken:</strong><br>
+            <span style='color: #10B981; font-weight: 600;'>" . nl2br(htmlspecialchars($remarks)) . "</span></p>
+            <hr style='border: none; border-top: 1px solid #ddd; margin: 20px 0;'>
+            <p>Thank you,<br>
+            <strong>Training & Placement Cell</strong></p>
+          </div>
+        ";
+        sendSystemEmail($supportQuery['email'], $supportQuery['name'], $emailSubject, $emailBody);
+      }
       
       logActivity("Updated support query ID {$queryId} status to {$newStatus}", "success");
       echo json_encode(['status' => 'success', 'message' => 'Inquiry status updated successfully.']);
@@ -898,11 +928,11 @@ try {
       $academicYear = trim($_POST['academic_year'] ?? '');
       $phone = trim($_POST['phone'] ?? '');
 
-      if (!preg_match('/^\d\.\d{2}$|^10\.00$/', $cgpa_raw)) {
-        echo json_encode(['status' => 'error', 'message' => 'Cumulative CGPA must be a valid number with exactly 2 decimal places (e.g., 8.50 or 10.00).']);
+      if (!is_numeric($cgpa_raw) || (float)$cgpa_raw < 0 || (float)$cgpa_raw > 10) {
+        echo json_encode(['status' => 'error', 'message' => 'Cumulative CGPA must be a valid number between 0.00 and 10.00.']);
         exit;
       }
-      $cgpa = (float)$cgpa_raw;
+      $cgpa = (float)number_format((float)$cgpa_raw, 2, '.', '');
 
       if (!$studentId || empty($name) || empty($email) || empty($rollNumber) || empty($department) || $cgpa <= 0 || empty($academicYear)) {
         echo json_encode(['status' => 'error', 'message' => 'Please fill in all required fields.']);

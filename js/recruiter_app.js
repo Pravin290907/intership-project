@@ -499,8 +499,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // CGPA Validation
     const cgpaStr = form.cgpa.value.trim();
-    if (!/^\d\.\d{2}$|^10\.00$/.test(cgpaStr)) {
-      Swal.fire({ title: 'Validation Error', text: 'Cumulative CGPA must be a valid number with exactly 2 decimal places (e.g., 8.50 or 10.00).', icon: 'error' });
+    const cgpaVal = parseFloat(cgpaStr);
+    if (isNaN(cgpaVal) || cgpaVal < 0 || cgpaVal > 10 || !/^\d+(?:\.\d+)?$/.test(cgpaStr)) {
+      Swal.fire({ title: 'Validation Error', text: 'Cumulative CGPA must be a valid number between 0.00 and 10.00.', icon: 'error' });
       if (btn) btn.disabled = false;
       return;
     }
@@ -1139,6 +1140,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(r => {
         if (r.status === 'success') {
           Swal.fire({ title: 'Success', text: 'Drive Cloned Successfully', icon: 'success', timer: 1500 });
+          sessionStorage.setItem('recruiter_active_tab', 'drives');
           setTimeout(() => window.location.reload(), 1500);
         } else {
           Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
@@ -1173,6 +1175,7 @@ document.addEventListener("DOMContentLoaded", () => {
               Swal.fire({ title: 'Success', text: 'Drive deleted successfully', icon: 'success', timer: 1500 });
               globalData.drives = globalData.drives.filter(d => parseInt(d.id) !== parseInt(driveId));
               renderDrivesTable();
+              sessionStorage.setItem('recruiter_active_tab', 'drives');
               setTimeout(() => window.location.reload(), 1500);
             } else {
               Swal.fire({ title: 'Error', text: r.message, icon: 'error' });
@@ -1986,6 +1989,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (r.status === 'success') {
             closeRecruiterModal('modal-create-drive');
             Swal.fire({ title: 'Success', text: 'Drive Created Successfully', icon: 'success', timer: 1500 });
+            sessionStorage.setItem('recruiter_active_tab', 'drives');
             setTimeout(() => window.location.reload(), 1500);
           } else {
             Swal.fire({ title: 'Error', text: r.message, icon: 'error' });

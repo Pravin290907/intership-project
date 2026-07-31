@@ -201,8 +201,9 @@ require_once __DIR__ . '/../config/db.php';
         return;
       }
 
-      if (!/^\d\.\d{2}$|^10\.00$/.test(cgpa.trim())) {
-        errorMsg.innerText = "Cumulative CGPA must be a valid number with exactly 2 decimal places (e.g., 8.50 or 10.00).";
+      const cgpaVal = parseFloat(cgpa.trim());
+      if (isNaN(cgpaVal) || cgpaVal < 0 || cgpaVal > 10 || !/^\d+(?:\.\d+)?$/.test(cgpa.trim())) {
+        errorMsg.innerText = "Cumulative CGPA must be a valid number between 0.00 and 10.00.";
         errorBanner.classList.add("active");
         return;
       }

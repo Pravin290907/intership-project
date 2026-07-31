@@ -186,13 +186,16 @@ $recruiterLogs = $stmtLogs->fetchAll() ?: [];
 if (!function_exists('recruiterGetDeptCode')) {
   function recruiterGetDeptCode($dept) {
     if (!$dept) return 'GEN';
-    if (strpos($dept, 'Computer') !== false || strpos($dept, 'CE') !== false) return 'CE';
-    if (strpos($dept, 'Information') !== false || strpos($dept, 'IT') !== false) return 'IT';
-    if (strpos($dept, 'Electronics') !== false || strpos($dept, 'ENTC') !== false) return 'ENTC';
-    if (strpos($dept, 'Intelligence') !== false) return 'AI';
-    if (strpos($dept, 'Mechanical') !== false) return 'ME';
-    if (strpos($dept, 'Civil') !== false) return 'CE';
-    if (strpos($dept, 'Electrical') !== false) return 'EE';
+    $deptClean = strtoupper(trim($dept));
+    if (in_array($deptClean, ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'ENTC', 'AI'])) {
+      return $deptClean;
+    }
+    if (strpos($deptClean, 'COMPUTER') !== false) return 'CSE';
+    if (strpos($deptClean, 'INFORMATION') !== false) return 'IT';
+    if (strpos($deptClean, 'ELECTRONICS') !== false || strpos($deptClean, 'ENTC') !== false) return 'ECE';
+    if (strpos($deptClean, 'ELECTRICAL') !== false) return 'EE';
+    if (strpos($deptClean, 'MECHANICAL') !== false) return 'ME';
+    if (strpos($deptClean, 'CIVIL') !== false) return 'CE';
     return 'GEN';
   }
 }

@@ -45,13 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
 
       if ($user['email_verified']) {
-        // Redirection target based on role
         $loginRedirect = '../index.php#login-portal';
-        if ($user['role'] === 'student') {
-          $loginRedirect = '../student/login.php';
-        } else if ($user['role'] === 'company') {
-          $loginRedirect = '../company/login.php';
-        }
         echo json_encode(['status' => 'success', 'message' => 'Email is already verified. Redirecting...', 'redirect' => $loginRedirect]);
         exit;
       }
@@ -101,11 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       logActivity("Email verified successfully via OTP", "email_verified", $user['id'], $user['role'], $user['name']);
 
       $loginRedirect = '../index.php#login-portal';
-      if ($user['role'] === 'student') {
-        $loginRedirect = '../student/login.php';
-      } else if ($user['role'] === 'company') {
-        $loginRedirect = '../company/login.php';
-      }
 
       echo json_encode([
         'status' => 'success',

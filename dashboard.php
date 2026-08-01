@@ -22,15 +22,18 @@ $userEmail = $_SESSION['user_email'];
 
 $db = getDB();
 
-// Helper to determine department codes
 function getDeptCode($dept) {
   if (!$dept) return 'GEN';
-  if (strpos($dept, 'Computer') !== false) return 'CSE';
-  if (strpos($dept, 'Information') !== false) return 'IT';
-  if (strpos($dept, 'Electronics') !== false) return 'ECE';
-  if (strpos($dept, 'Electrical') !== false) return 'EE';
-  if (strpos($dept, 'Mechanical') !== false) return 'ME';
-  if (strpos($dept, 'Civil') !== false) return 'CE';
+  $deptClean = strtoupper(trim($dept));
+  if (in_array($deptClean, ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'ENTC', 'AI'])) {
+    return $deptClean;
+  }
+  if (strpos($deptClean, 'COMPUTER') !== false) return 'CSE';
+  if (strpos($deptClean, 'INFORMATION') !== false) return 'IT';
+  if (strpos($deptClean, 'ELECTRONICS') !== false || strpos($deptClean, 'ENTC') !== false) return 'ECE';
+  if (strpos($deptClean, 'ELECTRICAL') !== false) return 'EE';
+  if (strpos($deptClean, 'MECHANICAL') !== false) return 'ME';
+  if (strpos($deptClean, 'CIVIL') !== false) return 'CE';
   return 'GEN';
 }
 
@@ -567,8 +570,8 @@ try {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRMS Workspace Dashboard</title>
   
-  <link rel="stylesheet" href="css/design-system.css">
-  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/design-system.css?v=<?php echo time(); ?>">
+  <link rel="stylesheet" href="css/dashboard.css?v=<?php echo time(); ?>">
   
   
   
@@ -1987,10 +1990,6 @@ try {
               <div class="card">
                 <div class="chart-header">
                   <h3 class="chart-container-title">Monthly Placement Trend</h3>
-                  <div class="chart-actions">
-                    <button class="btn btn-secondary btn-sm chart-export-png">Export PNG</button>
-                    <button class="btn btn-secondary btn-sm chart-download-csv">CSV</button>
-                  </div>
                 </div>
                 <div style="height: 320px; position: relative;">
                   <canvas id="chart-placement-trend"></canvas>
@@ -2143,9 +2142,9 @@ try {
               <div style="display: flex; gap: var(--space-1);">
                 <select class="input-field select-custom btn-sm" id="filter-company-status" style="width: 160px;">
                   <option value="All">All Recruiters</option>
-                  <option value="Active">Active</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Suspended">Suspended</option>
+                  <option value="approved">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="suspended">Suspended</option>
                 </select>
                 <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-company')">Create Company</button>
               </div>
@@ -3151,9 +3150,9 @@ try {
                 <div style="display: flex; gap: var(--space-1);">
                   <select class="input-field select-custom btn-sm" id="filter-drive-status" style="width: 160px;">
                     <option value="All">All Drives</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Ongoing">Ongoing</option>
-                    <option value="Upcoming">Upcoming</option>
+                    <option value="completed">Completed</option>
+                    <option value="open">Ongoing</option>
+                    <option value="upcoming">Upcoming</option>
                   </select>
                   <?php if ($role !== 'student'): ?>
                   <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-drive')">Create Drive</button>
@@ -4151,7 +4150,7 @@ try {
             <div class="grid-12">
               <div class="col-6 col-md-12 form-group">
                 <label class="form-label">Interview Date</label>
-                <input type="date" class="input-field" name="date" required>
+                <input type="date" class="input-field" name="date" min="<?php echo date('Y-m-d'); ?>" required>
               </div>
               <div class="col-6 col-md-12 form-group">
                 <label class="form-label">Interview Time</label>
@@ -4234,7 +4233,7 @@ try {
             <div class="grid-12">
               <div class="col-4 col-md-12 form-group">
                 <label class="form-label">Scheduled Date</label>
-                <input type="date" class="input-field" name="scheduled_date" id="tpo-apt-date">
+                <input type="date" class="input-field" name="scheduled_date" id="tpo-apt-date" min="<?php echo date('Y-m-d'); ?>">
               </div>
               <div class="col-4 col-md-12 form-group">
                 <label class="form-label">Start Time</label>
@@ -4297,7 +4296,7 @@ try {
 
             <div class="form-group">
               <label class="form-label">Registration Deadline</label>
-              <input type="date" class="input-field" name="registration_deadline" required>
+              <input type="date" class="input-field" name="registration_deadline" min="<?php echo date('Y-m-d'); ?>" required>
             </div>
             <div class="form-group">
               <label class="form-label">Target Branches (Comma separated)</label>
@@ -4348,7 +4347,7 @@ try {
             </div>
             <div class="form-group">
               <label class="form-label">Registration Deadline</label>
-              <input type="date" class="input-field" name="registration_deadline" id="edit-drive-deadline" required>
+              <input type="date" class="input-field" name="registration_deadline" id="edit-drive-deadline" min="<?php echo date('Y-m-d'); ?>" required>
             </div>
             <div class="form-group">
               <label class="form-label">Target Branches (Comma separated)</label>
@@ -4548,11 +4547,12 @@ try {
             });
             return;
           }
-          const cgpa = addStuForm.querySelector("[name='cgpa']").value;
-          if (!/^\d\.\d{2}$|^10\.00$/.test(cgpa.trim())) {
+          const cgpaRaw = addStuForm.querySelector("[name='cgpa']").value.trim();
+          const cgpaVal = parseFloat(cgpaRaw);
+          if (isNaN(cgpaVal) || cgpaVal < 0 || cgpaVal > 10 || !/^\d+(?:\.\d+)?$/.test(cgpaRaw)) {
             Swal.fire({
               title: 'Validation Error',
-              text: 'Cumulative CGPA must be a valid number with exactly 2 decimal places (e.g., 8.50 or 10.00).',
+              text: 'Cumulative CGPA must be a valid number between 0.00 and 10.00.',
               icon: 'error'
             });
             return;
@@ -4576,9 +4576,14 @@ try {
           .then(res => res.json())
           .then(res => {
             if (res.status === 'success') {
-              showToast("Student Added", "Verify Student action successfully completed.", "success");
-              // Verify automatically in backend or force page refresh
-              setTimeout(() => window.location.reload(), 1500);
+              showToast("Student Added", "Redirecting to OTP verification page...", "success");
+              if (res.redirect) {
+                setTimeout(() => {
+                  window.location.href = res.redirect;
+                }, 1000);
+              } else {
+                setTimeout(() => window.location.reload(), 1500);
+              }
             } else {
               Swal.fire({
                 title: 'Error',
@@ -4587,6 +4592,9 @@ try {
               });
               btn.disabled = false;
             }
+          })
+          .catch(err => {
+            btn.disabled = false;
           });
         });
       }
@@ -4650,8 +4658,14 @@ try {
           .then(res => res.json())
           .then(res => {
             if (res.status === 'success') {
-              showToast("Recruiter Created", "Employer pending registration created.", "success");
-              setTimeout(() => window.location.reload(), 1500);
+              showToast("Recruiter Created", "Redirecting to OTP verification page...", "success");
+              if (res.redirect) {
+                setTimeout(() => {
+                  window.location.href = res.redirect;
+                }, 1000);
+              } else {
+                setTimeout(() => window.location.reload(), 1500);
+              }
             } else {
               Swal.fire({
                 title: 'Error',
@@ -4660,6 +4674,9 @@ try {
               });
               btn.disabled = false;
             }
+          })
+          .catch(err => {
+            btn.disabled = false;
           });
         });
       }
